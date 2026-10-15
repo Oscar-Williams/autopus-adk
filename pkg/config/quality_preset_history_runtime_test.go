@@ -86,6 +86,9 @@ func TestNativeBalancedAgentCandidate_ClassificationOnlyRowsKeepRuntime(t *testi
 		claudeRoutine = "anthropic/claude-sonnet-5-5@high"
 		codexTop      = "openai-codex/gpt-6-astra@max"
 		codexRest     = "openai-codex/gpt-6-luna@max"
+		// Neither layout names reverse-engineer, so it takes the analysis rung.
+		claudeAnalysis = "anthropic/claude-opus-5-5@high"
+		codexAnalysis  = "openai-codex/gpt-6.1-sol@xhigh"
 	)
 	tests := []struct {
 		name     string
@@ -101,6 +104,7 @@ func TestNativeBalancedAgentCandidate_ClassificationOnlyRowsKeepRuntime(t *testi
 				"frontend-specialist": {claudeImpl, codexRest}, "perf-engineer": {claudeImpl, codexRest},
 				"tester":    {claudeImpl, codexRest},
 				"annotator": {claudeRoutine, codexRest}, "ux-validator": {claudeRoutine, codexRest},
+				"reverse-engineer": {claudeAnalysis, codexAnalysis},
 			},
 		},
 		{
@@ -111,6 +115,7 @@ func TestNativeBalancedAgentCandidate_ClassificationOnlyRowsKeepRuntime(t *testi
 				"perf-engineer": {claudeImpl, codexRest}, "tester": {claudeImpl, codexRest},
 				"annotator": {claudeRoutine, codexRest}, "explorer": {claudeRoutine, codexRest},
 				"ux-validator": {claudeRoutine, codexRest}, "validator": {claudeRoutine, codexRest},
+				"reverse-engineer": {claudeAnalysis, codexAnalysis},
 			},
 		},
 	}

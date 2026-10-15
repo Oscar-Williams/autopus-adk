@@ -141,7 +141,7 @@ func DefaultFullConfig(projectName string) *HarnessConfig {
 						"spec-writer": "fable",
 						"annotator":   "opus", "devops": "opus", "executor": "opus",
 						"explorer": "opus", "frontend-specialist": "opus",
-						"perf-engineer": "opus", "tester": "opus",
+						"perf-engineer": "opus", "reverse-engineer": "opus", "tester": "opus",
 						"ux-validator": "opus", "validator": "opus",
 					},
 				},

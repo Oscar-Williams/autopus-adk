@@ -122,7 +122,7 @@ func TestProfilePolicy_KeepsRuleTwoBesideAPinsOnlyPeer(t *testing.T) {
 
 	require.True(t, ok)
 	assert.False(t, profile.PinsOnly)
-	assert.Len(t, profile.OMPAgentNames(), 17)
+	assert.Len(t, profile.OMPAgentNames(), 18)
 	key, route, err := profile.OMPAgentRoute("executor")
 	require.NoError(t, err)
 	assert.Equal(t, OMPAutopusDefaultAgent, key.Key)
