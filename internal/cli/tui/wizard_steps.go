@@ -32,7 +32,7 @@ type InitWizardResult struct {
 	AILang       string
 	Quality      string // ultra, balanced, or QualityRoleGroups
 	ReviewGate   bool
-	Rea          bool // register the project-scope REA MCP (SPEC-REA-001)
+	Rea          *bool // register the project-scope REA MCP; nil leaves it to init's default (SPEC-REA-001)
 	Methodology  string
 	UsageProfile string
 	Cancelled    bool

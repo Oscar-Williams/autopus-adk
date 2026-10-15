@@ -34,11 +34,12 @@ func TestReaStep_AccessibleAnswers(t *testing.T) {
 	}
 	for _, tc := range cases {
 		result := tui.TestDefaultResult(tui.InitWizardOpts{Platforms: []string{"claude-code"}})
-		require.True(t, result.Rea, "the REA step starts at Yes")
+		require.NotNil(t, result.Rea)
+		require.True(t, *result.Rea, "the REA step starts at Yes")
 
 		out := runAccessible(t, tui.TestBuildReaStepFor(5, 6, result, "ko"), tc.input)
 
-		assert.Equal(t, tc.want, result.Rea, "input %q", tc.input)
+		assert.Equal(t, tc.want, *result.Rea, "input %q", tc.input)
 		assert.Equal(t, 1, strings.Count(out, "REA 역공학 MCP"), out)
 		assert.Contains(t, out, "[5/6] REA 역공학 MCP")
 		assert.Contains(t, out, "[Y/n]")
@@ -103,17 +104,30 @@ func TestBuildStepList_ReaStepFollowsReviewGate(t *testing.T) {
 	assert.Contains(t, runAccessible(t, steps[3](result), "\n"), "[4/6] Review Gate")
 	out := runAccessible(t, steps[4](result), "n\n")
 	assert.Contains(t, out, "[5/6] REA reverse-engineering MCP")
-	assert.False(t, result.Rea)
+	assert.False(t, *result.Rea)
 	assert.NotContains(t, runAccessible(t, steps[5](result), "\n"), "REA")
 }
 
-// Before any step runs the REA answer is the preset decision, else Yes.
+// Before any step runs the REA answer is the preset decision, else Yes, and
+// it never aliases the preset.
 func TestDefaultResult_Rea(t *testing.T) {
 	t.Parallel()
 	on, off := true, false
-	assert.True(t, tui.TestDefaultResult(tui.InitWizardOpts{}).Rea)
-	assert.True(t, tui.TestDefaultResult(tui.InitWizardOpts{Rea: &on}).Rea)
-	assert.False(t, tui.TestDefaultResult(tui.InitWizardOpts{Rea: &off}).Rea)
+	assert.True(t, *tui.TestDefaultResult(tui.InitWizardOpts{}).Rea)
+	assert.True(t, *tui.TestDefaultResult(tui.InitWizardOpts{Rea: &on}).Rea)
+	preset := tui.TestDefaultResult(tui.InitWizardOpts{Rea: &off})
+	assert.False(t, *preset.Rea)
+	assert.NotSame(t, &off, preset.Rea)
+}
+
+// A result built without defaultResult still starts the REA step at Yes.
+func TestReaStep_ZeroResultStartsAtYes(t *testing.T) {
+	t.Parallel()
+	result := &tui.InitWizardResult{}
+	out := runAccessible(t, tui.TestBuildReaStepFor(1, 1, result, "en"), "\n")
+	require.NotNil(t, result.Rea)
+	assert.True(t, *result.Rea)
+	assert.Contains(t, out, "[1/1] REA reverse-engineering MCP")
 }
 
 // The non-interactive wizard returns the same REA defaults without a form.
@@ -122,9 +136,9 @@ func TestRunInitWizard_AccessibleReaDefault(t *testing.T) {
 	off := false
 	result, err := tui.RunInitWizard(tui.InitWizardOpts{Accessible: true, Platforms: []string{"claude-code"}})
 	require.NoError(t, err)
-	assert.True(t, result.Rea)
+	assert.True(t, *result.Rea)
 
 	result, err = tui.RunInitWizard(tui.InitWizardOpts{Accessible: true, Platforms: []string{"claude-code"}, Rea: &off})
 	require.NoError(t, err)
-	assert.False(t, result.Rea)
+	assert.False(t, *result.Rea)
 }
