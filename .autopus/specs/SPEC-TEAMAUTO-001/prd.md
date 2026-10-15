@@ -35,5 +35,5 @@
 
 - 판단: 팀 불가 × 독립 slice 3개 → subagent + `teams_env_missing` 줄, 팀 가능 × 준비된 slice 1개 → subagent + `fewer_than_two_ready` 줄, 경로를 함께 쓰는 2개 → subagent + `ownership_overlap` 줄, 서로 다른 2개 → team + 전환 줄, 설정 off → `config_off` 줄, 명시 flag → 기존 경로(S1–S8).
 - 비 Claude 플랫폼과 명시 flag 절의 생성 bytes가 기준과 같다(S6, S7, S9).
-- `workflow.auto_team`은 바이너리가 스스로 쓰지 않아 끄지 않은 프로젝트는 auto 0.50.125에서도 그대로 읽힌다(S8).
+- `workflow.auto_team`은 바이너리가 스스로 쓰지 않아 사용자가 key를 쓰지 않은 프로젝트는 auto 0.50.125에서도 그대로 읽힌다. key가 있으면 값과 무관하게 옛 auto가 거부한다(S8).
 - 실제 터미널 Claude Code에서 자동 전환 run 1회와 유지 run 1회를 기록한다(S15, CD-1·CD-2).

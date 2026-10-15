@@ -25,3 +25,26 @@
 | F4 | `{}` facts | `auto workflow triage --topology --facts-json <scratch>/f.json --format json` | 종료 1, `Error: unknown flag: --topology` |
 
 결론: 신호 넷(CLAUDECODE, AGENT_TEAMS, ENTRYPOINT·ATTENDED, EXECPATH 버전)은 세션 안 child process에서 결정적으로 읽힌다. 버전은 PATH가 아니라 EXECPATH에서 읽어야 한다. typed key는 있으면 옛 auto를 모두 막으므로 기본값은 key 없음(=on)이고 바이너리는 key를 스스로 쓰지 않는다.
+
+## Y. yaml.v3 v3.0.1 bool decode (review round 1, 2026-10-15)
+
+worktree module(`go.mod`: `gopkg.in/yaml.v3 v3.0.1`) 안의 임시 `main`으로 `workflow:\n  auto_team: <v>`를 `KnownFields(true)` decoder로 `AutoTeam *bool`에 읽었다. 임시 파일은 지웠다.
+
+| `<v>` | node ShortTag | 결과 |
+|---|---|---|
+| `false`, `False` / `true`, `TRUE` | `!!bool` | false / true |
+| `!!bool "false"` | `!!bool` | false |
+| `"false"`, `"true"` | `!!str` | 오류 ``line 2: cannot unmarshal !!str `false` into bool`` |
+| `off`, `"off"`, `no` | `!!str` | 오류 없이 false |
+| `yes`, `"yes"`, `y` | `!!str` | 오류 없이 true |
+| `null`, `~`, 빈 값 | `!!null` | 오류 없이 nil(=기본 on) |
+| `1`, `0` | `!!int` | 오류 ``cannot unmarshal !!int `1` into bool`` |
+
+marshal: `false` → `workflow:\n    auto_team: false\n`, nil → `workflow: {}\n`(key 없음). 결론: `KnownFields`와 `*bool`만으로는 "bool이 아닌 값 거부"가 성립하지 않는다(YAML 1.1 호환 문자열과 null이 통과). raw node의 ShortTag가 `!!bool`인지 따로 확인해야 한다.
+
+## R. root 오류 출력과 쓰기 없는 load (review round 1)
+
+| ID | 관측 |
+|---|---|
+| R1 | v0.50.125 `auto workflow triage --facts-json /nonexistent-teamauto` → 종료 1, stderr bytes `Error: facts file must be a readable regular file at most 1 MiB\n`. `internal/cli/root.go:203-211` `runRootCommand`가 `Error: %s\n`을 쓰고 `exitCodeForError`(`:173-179`)의 일반 값은 1이다 |
+| R2 | `pkg/config/loader.go:16-19` `Load`는 `loadConfig(dir, true)`라 platform 이름을 정규화하면 `os.WriteFile`로 autopus.yaml을 다시 쓴다(`:90-95`). `:22-25` `LoadPreview`는 `loadConfig(dir, false)`로 쓰지 않는다. 파일이 없으면 둘 다 `DefaultFullConfig`를 오류 없이 돌려준다(`:63`) |
