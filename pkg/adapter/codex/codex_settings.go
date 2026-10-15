@@ -42,6 +42,9 @@ func (a *Adapter) prepareConfigFileWithManifest(
 	} else if !os.IsNotExist(readErr) {
 		return nil, fmt.Errorf("existing Codex config 읽기 실패: %w", readErr)
 	}
+	if rendered, err = a.applyCodexReaMCP(rendered, codexReaAction(cfg)); err != nil {
+		return nil, err
+	}
 
 	return []adapter.FileMapping{{
 		TargetPath:      codexConfigRelPath,
