@@ -157,14 +157,9 @@ func TransformAgentForGemini(src AgentSource) string {
 
 // reaMCPTool is the source tool entry granting the project-scoped REA MCP
 // server (SPEC-REA-001). Autopus registers that server for Claude Code, Codex,
-// and Antigravity only, so the OMP and OpenCode projections drop it.
+// and Antigravity only, so the OMP and OpenCode projections drop every REA
+// reference (isReaMCPReference).
 const reaMCPTool = "mcp__rea"
-
-// isReaMCPTool reports whether a source tool names the REA server or one of
-// its tools.
-func isReaMCPTool(tool string) bool {
-	return tool == reaMCPTool || strings.HasPrefix(tool, reaMCPTool+"__")
-}
 
 // @AX:NOTE [AUTO]: This provider vocabulary allowlist intentionally omits unknown and advisory-only source tools.
 func geminiNativeTools(source string) []string {

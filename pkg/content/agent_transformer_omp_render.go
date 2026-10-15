@@ -145,7 +145,7 @@ func ompAgentTools(src AgentSource) []string {
 	}
 	for _, tool := range strings.Split(src.Meta.Tools, ",") {
 		tool = strings.TrimSpace(tool)
-		if isReaMCPTool(tool) {
+		if isReaMCPReference(tool) {
 			continue
 		}
 		if strings.HasPrefix(tool, "mcp__") {
