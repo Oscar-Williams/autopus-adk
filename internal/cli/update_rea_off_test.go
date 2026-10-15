@@ -5,6 +5,7 @@ package cli
 // sweep over an unselected target file.
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -72,4 +73,20 @@ func TestUpdateRea_NoReaSweepsUnselectedTarget(t *testing.T) {
 	assert.NotContains(t, string(readReaFile(t, dir, reamcp.Codex)), "mcp_servers.rea")
 	assert.Equal(t, reaBool(false), reaKey(t, dir))
 	assert.Equal(t, [3]int{0, 0, 1}, reaCounts(out), out)
+}
+
+// reaSettledOff stores the off decision in a settled composition fixture
+// through the real non-interactive `--no-rea` update, so a later interactive
+// update asks no REA question and prints no REA line: its output stays the
+// composition step's own (SPEC-MODELUX-001 line goldens). The codex calls of
+// that run are forgotten, as settled forgets its own.
+func (r composeUpdateRun) reaSettledOff(t *testing.T, dir string) {
+	t.Helper()
+	interactive := composeTTYProbe
+	composeTTYProbe = func() bool { return false }
+	out, err := runComposeUpdate(t, strings.NewReader(""), "--dir", dir, "--no-rea")
+	composeTTYProbe = interactive
+	require.NoError(t, err, out)
+	require.Equal(t, reaBool(false), reaKey(t, dir))
+	require.NoError(t, os.RemoveAll(r.codexLog))
 }
