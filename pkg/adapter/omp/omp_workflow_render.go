@@ -177,6 +177,9 @@ func injectOMPAfterHeading(body, block string) string {
 }
 
 func renderOMPCompactWorkflowSkill(spec workflowSpec) string {
+	if spec.Name == "auto-reverse" {
+		return renderOMPReverseWorkflowSkill(spec)
+	}
 	command, result := ompCompactWorkflowContract(spec.Name)
 	sections := []string{
 		"# " + spec.Name,
@@ -198,6 +201,29 @@ func renderOMPCompactWorkflowSkill(spec workflowSpec) string {
 		"3. "+result,
 	)
 	content := strings.Join(sections, "\n")
+	return buildMarkdown(ompSkillFrontmatter(spec.Name, description), normalizeOMPWorkflowBody(content))
+}
+
+// renderOMPReverseWorkflowSkill renders the shared /auto reverse contract. The
+// OMP reverse-engineer has no REA tools, so the contract's analysis step ends
+// the route with that agent's unavailable sentence and writes nothing.
+func renderOMPReverseWorkflowSkill(spec workflowSpec) string {
+	description := normalizeOMPDescription(spec.Description)
+	content := strings.Join([]string{
+		"# " + spec.Name,
+		"",
+		"## OMP Invocation",
+		"",
+		"- `/auto reverse <대상> <기능> [--runtime]`",
+		"- `/" + spec.Name + " ...`",
+		"- Load detail skill `" + spec.Name + "` for either entrypoint.",
+		"",
+		"## Contract",
+		"",
+		description,
+		"",
+		templates.ReverseRouteContract(),
+	}, "\n")
 	return buildMarkdown(ompSkillFrontmatter(spec.Name, description), normalizeOMPWorkflowBody(content))
 }
 
