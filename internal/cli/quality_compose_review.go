@@ -8,10 +8,6 @@ import (
 	"strings"
 )
 
-// composeReviewTabValue is the tool tab answer of the review tab; no
-// platform name is ever this value.
-const composeReviewTabValue = "\x00review"
-
 // reviewTabState is one entry into the review tab (SPEC-REVMODEL-001 Review
 // Tab Contract): the baseline the tab opened with, this edit's working
 // value, and the entry's one catalog read.
@@ -20,24 +16,6 @@ type reviewTabState struct {
 	working  reviewComposition
 	catalog  *reviewCatalog
 	attested reviewAttestation
-}
-
-// composeReviewTabOption lists the review tab as the last tool tab option
-// (REQ-RVM-01).
-func (f *composeFormRun) composeReviewTabOption() []composeOption[string] {
-	if !f.reviewTabListed() {
-		return nil
-	}
-	return []composeOption[string]{{f.reviewText().Tab, composeReviewTabValue}}
-}
-
-// reviewTabListed reports the tab's entry conditions: spec.review_gate is
-// enabled, the config holds at least two orchestra.providers entries, and
-// CI is not truthy. The CI rule is this tab's own; the entry points' gates
-// stay as they are (REQ-RVM-14).
-func (f *composeFormRun) reviewTabListed() bool {
-	cfg := f.shared.cfg
-	return cfg.Spec.ReviewGate.Enabled && len(cfg.Orchestra.Providers) >= 2 && !composeCITruthy(composeCIEnv())
 }
 
 // reviewTab runs the tab from its baseline until the operator leaves,

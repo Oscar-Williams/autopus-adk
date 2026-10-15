@@ -70,6 +70,7 @@ func (f *composeFormRun) menu() error {
 		if err := f.draw(); err != nil {
 			return err
 		}
+		f.writeReviewSummary()
 		choice, err := composeSelect(f.cmd, f.form.Menu, "", f.menuOptions(), composeFormKeep)
 		switch {
 		case err != nil:
