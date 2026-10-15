@@ -117,6 +117,9 @@ func decodeStrict(data []byte, out any, tokens *placeholderTokens) ([]string, er
 		// required fields with a clearer message than a decoder error would.
 		return nil, nil
 	}
+	if err := checkWorkflowAutoTeamNode(&doc); err != nil {
+		return nil, err
+	}
 	retired := pruneToleratedKeys(&doc)
 	if err := decodeNodeKnownFields(&doc, out); err != nil {
 		return nil, fmt.Errorf("%w (unknown keys are rejected: fix the typo or delete the key)", tokens.spellDecodeError(err))
