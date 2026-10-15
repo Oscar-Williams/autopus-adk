@@ -67,7 +67,8 @@ func buildOpenCodePermissions(src AgentSource) []string {
 	}
 	for _, item := range strings.Split(src.Meta.Tools, ",") {
 		tool := strings.TrimSpace(item)
-		if tool == "" {
+		// Autopus registers no REA server for OpenCode, so its tool is no grant.
+		if tool == "" || isReaMCPTool(tool) {
 			continue
 		}
 		mapped, ok := openCodeToolMap[tool]

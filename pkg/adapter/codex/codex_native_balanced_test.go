@@ -34,6 +34,8 @@ var nativeBalancedCodexTOML = map[string]config.CodexProfile{
 	"tester.toml":              {Model: config.CodexLunaModel, Effort: config.CodexEffortMax},
 	"ux-validator.toml":        {Model: config.CodexLunaModel, Effort: config.CodexEffortMax},
 	"validator.toml":           {Model: config.CodexLunaModel, Effort: config.CodexEffortMax},
+
+	"reverse-engineer.toml": {Model: config.CodexSolModel, Effort: config.CodexEffortXHigh},
 }
 
 func TestPrepareAgentFiles_NativeBalancedRendersPolicyPlacement(t *testing.T) {
@@ -82,8 +84,9 @@ func TestPrepareAgentFiles_NativeBalancedCatalogUnknownKeepsExactProfile(t *test
 	assert.Contains(t, report, string(config.CodexResolutionCatalogUnknown))
 	assert.Contains(t, report, config.CodexAstraModel+"/"+config.CodexEffortMax)
 	assert.Contains(t, report, config.CodexLunaModel+"/"+config.CodexEffortMax)
-	// Two distinct profiles across sixteen agents, each reported once.
-	assert.Equal(t, 2, strings.Count(report, "\n"))
+	assert.Contains(t, report, config.CodexSolModel+"/"+config.CodexEffortXHigh)
+	// Three distinct profiles across seventeen agents, each reported once.
+	assert.Equal(t, 3, strings.Count(report, "\n"))
 }
 
 func TestPrepareAgentFiles_NativeBalancedRefusesCatalogSubstitution(t *testing.T) {
@@ -192,6 +195,9 @@ func TestPrepareAgentFiles_NonPlacementProfilesKeepCatalogFallback(t *testing.T)
 		a.codexFallbackWriter = nil
 		cfg := config.DefaultFullConfig("custom-tier-fallback")
 		cfg.Quality.Presets["balanced"] = withCodexAgentTier(cfg.Quality.Presets["balanced"], "executor", "opus")
+		// reverse-engineer's analysis rung pins gpt-6.1-sol, which this catalog
+		// lacks, so the fixture moves it off the placement as well.
+		cfg.Quality.Presets["balanced"] = withCodexAgentTier(cfg.Quality.Presets["balanced"], "reverse-engineer", "sonnet")
 
 		files, err := a.prepareAgentFiles(cfg)
 		require.NoError(t, err)
