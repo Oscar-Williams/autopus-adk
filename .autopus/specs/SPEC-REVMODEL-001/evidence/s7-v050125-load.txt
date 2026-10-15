@@ -1,0 +1,27 @@
+SPEC-REVMODEL-001 S7 — v0.50.125 loads the files this branch's review writer leaves
+date: 2026-10-16 · branch feat/revmodel-001 · no model call · no network
+
+binary
+  git archive v0.50.125 (dd6d6ea2) | tar -x -C <scratch>/src
+  cd <scratch>/src && GOFLAGS=-mod=mod GOPROXY=off GOTOOLCHAIN=local go build -o <scratch>/auto ./cmd/auto
+  sha256 (first 16): 0b9056531a611a83
+
+run
+  AUTOPUS_V050125_AUTO=<scratch>/auto go test ./internal/cli \
+    -run 'TestReviewCompat_' -count=1 -v
+  (without the variable the load half skips; the key path half always runs)
+
+files (each written by saveReviewComposition from its start file)
+  S1     B0, spec.review_gate.providers [claude, codex]
+  S2     B0, claude anthropic/claude-opus-5-5:max, codex openai-codex/gpt-6-luna:high
+  S3(b)  B0, spec.review_gate.providers [codex, gemini], judge codex
+  S5(3)  B0, gemini google-antigravity/gemini-3.8-flash:high
+  S9(b)  RN, judge codex inserted
+  control  S1 file + spec.review_gate.reviewers: [claude]
+
+result
+  --- PASS: TestReviewCompat_S7KeyPathsStayTheStartFiles (S1, S2, S3(b), S5(3), S9(b))
+      key paths equal the start file's; S9(b) adds spec.review_gate.judge only
+  --- PASS: TestReviewCompat_S7V050125LoadsTheWrittenFiles
+      S1 S2 S3(b) S5(3) S9(b): `auto config get usage_profile` exit 0, output "developer"
+      control: exit 1, "field reviewers not found in type config.ReviewGateConf"

@@ -163,9 +163,17 @@ type reviewUpdate struct {
 }
 
 // newReviewUpdate prepares it and settles dir with one `auto update --yes`,
-// so the file is B0 when it returns; runner nil answers CATG.
+// so the file is B0 when it returns; runner nil answers CATG. The project's
+// REA decision is stored first: an interactive update asks an undecided
+// project before its composition step (SPEC-REA-001), and these answers
+// start at the composition menu.
 func newReviewUpdate(t *testing.T, dir string, runner *ompCLIFakeRunner) reviewUpdate {
 	t.Helper()
+	cfg, err := config.Load(dir)
+	require.NoError(t, err)
+	off := false
+	cfg.Features.Rea.Enabled = &off
+	require.NoError(t, config.Save(dir, cfg))
 	newComposeUpdateRun(t, true, "")
 	usePlatformOMPModelRunner(t, &ompModelDoctorE2ERunner{catalog: ompCLIProfileNativeCatalogJSON()})
 	out, err := runComposeUpdate(t, strings.NewReader(""), "--dir", dir, "--yes")
