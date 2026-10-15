@@ -99,10 +99,13 @@ func DecideTeam(in TeamInput) TeamDecision {
 	n := len(ready)
 	version, ok := parseClaudeVersion(in.Capability.Version)
 	if !ok {
-		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reasonClaudeVersionUnknown, ReadyUnits: &n}
+		line := renderTeamLine(in.Locale, reasonClaudeVersionUnknown, lineValues{execBase: in.Capability.ExecPathBase})
+		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reasonClaudeVersionUnknown, ReadyUnits: &n, Line: line}
 	}
 	if slices.Compare(version, minimumTeamVersion) < 0 {
-		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reasonClaudeVersionOld, ReadyUnits: &n}
+		text := strconv.Itoa(version[0]) + "." + strconv.Itoa(version[1]) + "." + strconv.Itoa(version[2])
+		line := renderTeamLine(in.Locale, reasonClaudeVersionOld, lineValues{version: text})
+		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reasonClaudeVersionOld, ReadyUnits: &n, Line: line}
 	}
 	team := make([]string, 0, n)
 	for _, unit := range ready {
@@ -114,39 +117,43 @@ func DecideTeam(in TeamInput) TeamDecision {
 			followup = append(followup, unit.ID)
 		}
 	}
-	return TeamDecision{Version: 1, Route: routeTeam, Reason: reasonIndependentDisjointSlices, ReadyUnits: &n, TeamUnits: team, FollowupUnits: &followup}
+	return TeamDecision{Version: 1, Route: routeTeam, Reason: reasonIndependentDisjointSlices, ReadyUnits: &n, TeamUnits: team, FollowupUnits: &followup,
+		Line:              renderTeamLine(in.Locale, reasonIndependentDisjointSlices, lineValues{n: n}),
+		ToolsFallbackLine: renderTeamLine(in.Locale, reasonTeamToolsUnavailable, lineValues{})}
 }
 
 // decideBeforeVersion applies rules 1-8: flags, then config, then the plan,
 // then the environment, so a run the plan already keeps on subagents is not
 // told to set experimental variables.
 func decideBeforeVersion(in TeamInput, ready []TeamUnit) (TeamDecision, bool) {
-	if route, _, ok := explicitRoute(in.Flags); ok {
-		return TeamDecision{Version: 1, Route: route, Reason: reasonExplicitFlag}, true
+	if route, flag, ok := explicitRoute(in.Flags); ok {
+		line := renderTeamLine(in.Locale, reasonExplicitFlag, lineValues{flag: flag})
+		return TeamDecision{Version: 1, Route: route, Reason: reasonExplicitFlag, Line: line}, true
 	}
 	n := len(ready)
-	stay := func(reason string) (TeamDecision, bool) {
-		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reason, ReadyUnits: &n}, true
+	stay := func(reason string, values lineValues) (TeamDecision, bool) {
+		values.n = n
+		return TeamDecision{Version: 1, Route: routeSubagent, Reason: reason, ReadyUnits: &n, Line: renderTeamLine(in.Locale, reason, values)}, true
 	}
 	if in.AutoTeam != nil && !*in.AutoTeam {
-		return stay(reasonConfigOff)
+		return stay(reasonConfigOff, lineValues{})
 	}
 	if n < 2 {
-		return stay(reasonFewerThanTwoReady)
+		return stay(reasonFewerThanTwoReady, lineValues{})
 	}
-	if _, _, overlap := firstOverlapPair(ready); overlap {
-		return stay(reasonOwnershipOverlap)
+	if a, b, overlap := firstOverlapPair(ready); overlap {
+		return stay(reasonOwnershipOverlap, lineValues{a: a, b: b})
 	}
 	c := in.Capability
 	switch {
 	case c.ClaudeCode != "1":
-		return stay(reasonNotClaudeCode)
+		return stay(reasonNotClaudeCode, lineValues{})
 	case c.AgentTeams != "1":
-		return stay(reasonTeamsEnvMissing)
+		return stay(reasonTeamsEnvMissing, lineValues{})
 	case c.Entrypoint != "cli" || c.SessionAttended != "1":
-		return stay(reasonNotInteractive)
+		return stay(reasonNotInteractive, lineValues{entrypoint: c.Entrypoint, attended: c.SessionAttended})
 	case c.ChildSession != "":
-		return stay(reasonNotTopLevel)
+		return stay(reasonNotTopLevel, lineValues{})
 	}
 	return TeamDecision{}, false
 }
