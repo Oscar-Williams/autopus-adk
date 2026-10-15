@@ -77,12 +77,12 @@ direct `/auto plan`의 pre-plan 대화에서 온 ledger다(BS 파일 없음). �
 | ID | source clause | invariant type | affected outputs | acceptance IDs |
 |----|---------------|----------------|------------------|----------------|
 | INV-TA-01 | "Print ONE reason line both when switching and when not switching" | ordering (first-match 규칙과 출력 하나) | decision `route`·`reason`·`line`, snippet stdout, Phase 2 진입 transcript | S1, S2, S3, S4, S12, S14, S15 |
-| INV-TA-02 | "≥2 ready slices that can run concurrently with disjoint owned paths" | paired matching (unit 쌍마다 path 겹침), grouping (ready 집합) | `ready_units`, `team_units`, 겹침 쌍 `{a}, {b}` | S2, S3, S4, S15 |
+| INV-TA-02 | "≥2 ready slices that can run concurrently with disjoint owned paths" | paired matching (unit 쌍마다 path 겹침), grouping (ready 집합, follow-up 집합) | `ready_units`, `team_units`, `followup_units`, 겹침 쌍 `{a}, {b}` | S2, S3, S4, S4b, S15 |
 | INV-TA-03 | "the session can run native teams" (Route B preflight: 2.1.246+, env, 대화형) | numeric formula (정수 버전 비교), cross-entity comparison (EXECPATH ≠ PATH) | reason `claude_version_*`, `not_*`, probe 실행 여부 | S4, S5, S15 |
 | INV-TA-04 | "Users can disable via … a config setting" | parser (strict bool, 없음 = on, 쓰지 않음) | `autopus.yaml` bytes, `config_off`, 옛 바이너리 종료 코드 | S8 |
 | INV-TA-05 | "Explicit --team / --workflow / --solo keep current semantics"; 비 Claude 플랫폼 변경 없음 | deduplication (생성 bytes 동일성) | 생성 skill 절 bytes, 네 플랫폼 SHA-256 | S6, S7, S9 |
 | INV-TA-06 | 이유 줄 ko/en 문자열 | parser/report row (언어별 정확한 문자열) | `line`, `tools_fallback_line` | S10 |
-| INV-TA-07 | "Sequential (dependent) phases stay subagent" | ordering (shutdown·ack → 남은 unit → Gate 2) | transcript 순서, T3 파일 변경 시점 | S15 |
+| INV-TA-07 | "Sequential (dependent) phases stay subagent" | grouping (follow-up = team_units 밖이고 done 아님), ordering (shutdown·ack → follow-up → Gate 2) | `followup_units`, transcript 순서 | S4b, S15 |
 
 ## Feature Coverage Map
 

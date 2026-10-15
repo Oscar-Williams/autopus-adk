@@ -4,7 +4,7 @@
 
 기준은 origin/main `33b5bb55`이고 branch는 `feat/teamauto-001`이다. 순서: T1 → T2 → T3(같은 package라 차례로) · T4 · T6(서로 독립) → T5(T1–T4, T6 뒤) → T7 · T8(문구, T5의 출력 모양 확정 뒤) → T9(T7, T8 뒤) → T10(T5 뒤) → T11(마지막). 신규·변경 Go 소스는 300줄 이하다. 기존 `pkg/taskroute/decide.go`(195줄)는 바꾸지 않는다.
 
-- [ ] T1: 판단 함수. 소유: `[NEW] pkg/taskroute/team.go`, `[NEW] pkg/taskroute/team_test.go`. `TeamInput`(flags, auto_team, units, capability snapshot, locale)·`TeamUnit`·`TopologyFlags`·`Capability`·`TeamDecision` 타입, 순수 함수 `NeedsVersionProbe`(규칙 1–8 통과 여부)와 `DecideTeam`(규칙 1–11), ready 집합, `ownershipOverlap`과 같은 판정식의 `[NEW] firstOverlapPair`, 정수 버전 비교. callback·env·실행 없음. test는 flag × config × unit 모양 × snapshot 표 전체 (REQ-TA-04, 05, 10).
+- [ ] T1: 판단 함수. 소유: `[NEW] pkg/taskroute/team.go`, `[NEW] pkg/taskroute/team_test.go`. `TeamInput`(flags, auto_team, units, capability snapshot, locale)·`TeamUnit`·`TopologyFlags`·`Capability`·`TeamDecision` 타입, 순수 함수 `NeedsVersionProbe`(규칙 1–8 통과 여부)와 `DecideTeam`(규칙 1–11), ready 집합, `followup_units`(team_units에도 done에도 없는 unit, facts 순서), `ownershipOverlap`과 같은 판정식의 `[NEW] firstOverlapPair`, 정수 버전 비교. callback·env·실행 없음. test는 flag × config × unit 모양 × snapshot 표 전체 (REQ-TA-04, 05, 10).
 - [ ] T2: facts decode. 소유: `[NEW] pkg/taskroute/team_decode.go`(+test). 기존 `uniqueValue`와 `DisallowUnknownFields`로 decode하고, owned path 끝의 `/**` 하나를 뗀 뒤 `cleanPath`를 적용하며, Topology Facts Contract의 오류 code(`json`, `version`, `topology_conflict`, `unit_id`, `unit_count`, `execution`, `owned_paths`, `depends_on`)를 낸다 (REQ-TA-05, 08).
 - [ ] T3: 이유 문구. 소유: `[NEW] pkg/taskroute/team_lines.go`(+test). Reason Line Contract의 ko·en 문자열, `{e}`·`{t}`·`{x}` 정규화, 언어 선택(`ko`만 한국어) (REQ-TA-12).
 - [ ] T4: 능력 관측. 소유: `[NEW] internal/cli/workflow_triage_capability.go`(+test). env snapshot, EXECPATH guard(절대 경로, regular file, basename, 인자 하나, 5초, `processprobe.OutputLimited` 4096 bytes), PATH 미사용, env 조회·probe 실행 seam(package 변수). test는 POSIX에서 `<tmp>/probe` fake script, Windows에서는 guard 거부 경로만 (REQ-TA-06).
@@ -22,7 +22,7 @@
 - 새 subcommand 대신 기존 `auto workflow triage`에 mode flag를 붙인다. 파일 guard(`readWorkflowTriageFacts`에서 떼어 낸 `readWorkflowTriageFile`), 형식 flag(`singleTriageFlag`), JSON hardening(`uniqueValue`), 경로 규칙(`cleanPath`), 겹침 판정식(`ownershipOverlap`), 쓰지 않는 설정 load(`config.LoadPreview`)를 쓴다.
 - 팀 lifecycle은 Route B를 다시 정의하지 않는다. 자동 진입은 Route B의 named teammate, shared task, receipt, shutdown 규칙을 Phase 2의 한 wave에 쓰고 나머지 run은 Route A다.
 - 비 Claude 플랫폼은 공유 content(`agent-pipeline.md`, `references/agent-pipeline/*.md`)를 바꾸지 않아서 그대로다. 바뀌는 생성 원천은 Claude 전용 두 곳뿐이다.
-- 설정 key는 바이너리가 스스로 쓰지 않는다. 그래서 옛 바이너리 호환 비용은 끈 사용자에게만 생기고 문서로 알린다(A3).
+- 설정 key는 바이너리가 스스로 쓰지 않는다. v0.50.125는 값과 무관하게 key가 있으면 파일을 거부하므로(A3) 호환 비용은 key를 직접 쓴 사용자(`true`든 `false`든)에게만 생기고 문서로 알린다.
 
 ## Visual Planning Brief
 
@@ -48,7 +48,7 @@ sequenceDiagram
     L->>T: shared task + Agent(name=builder-1..n)
     T-->>L: receipt (owned_paths, changed_files, verification, blockers, next_required_step)
     L->>T: shutdown request → ack
-    L->>L: team_units 밖 Phase 2 unit을 Route A로
+    L->>L: followup_units만 Route A로 (done unit 재실행 없음)
   else route = subagent 또는 schema 실패
     L->>L: line / tools_fallback_line 중 하나 출력
   else CLI 실패 또는 빈 stdout

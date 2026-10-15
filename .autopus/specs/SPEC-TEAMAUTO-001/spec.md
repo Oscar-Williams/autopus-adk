@@ -2,7 +2,7 @@
 
 **Status**: draft
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. `evidence/review-rounds.md`)
+**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`)
 **Domain**: TEAMAUTO
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, PR #199와 함께). 작업 branch는 `feat/teamauto-001`이고 기준은 origin/main `33b5bb55`다. PATH의 기준 바이너리는 `auto 0.50.125`다.
@@ -46,7 +46,7 @@ WHEN a Claude Code `/auto go` run with no topology flag enters Phase 2, THEN THE
 ### REQ-TA-02 팀 실행
 Priority: Must · EARS: Event-driven
 
-WHEN the decision route is `team` and the `SendMessage` and shared task-list schemas load, THEN THE SYSTEM SHALL run exactly the units in `team_units` as named teammates under the Route B lifecycle, SHALL send every teammate a shutdown request and wait for every acknowledgement, SHALL then implement every Phase 2 unit not in `team_units` (dependent and inline units) under the Route A Phase 2 rules, and only after that SHALL enter Gate 2 under Route A.
+WHEN the decision route is `team` and the `SendMessage` and shared task-list schemas load, THEN THE SYSTEM SHALL run exactly the units in `team_units` as named teammates under the Route B lifecycle, SHALL send every teammate a shutdown request and wait for every acknowledgement, SHALL then implement exactly the units in `followup_units` (Phase 2 units that are neither in `team_units` nor done) under the Route A Phase 2 rules, re-running no done unit, and only after that SHALL enter Gate 2 under Route A.
 
 - 팀원 이름은 `team_units` 순서로 `builder-1` … `builder-n`이다. 각 prompt는 Phase 2 prompt와 같은 항목(요구사항, owned·forbidden paths, acceptance, gate 결정, minimality ladder)과 Route B receipt 필드를 담는다. tester·guardian 팀원은 띄우지 않는다.
 
@@ -63,7 +63,7 @@ THE SYSTEM SHALL compute the Auto-Team Decision with two pure functions over one
 ### REQ-TA-05 준비된 독립 slice
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL treat a unit as ready only when its execution is `worker`, it is not done, and every unit it depends on is done, and SHALL select `team` only when at least two units are ready and no two ready units own the same cleaned path or a path inside the other's owned path.
+THE SYSTEM SHALL treat a unit as ready only when its execution is `worker`, it is not done, and every unit it depends on is done, SHALL select `team` only when at least two units are ready and no two ready units own the same cleaned path or a path inside the other's owned path, and for route `team` SHALL report as `followup_units` exactly the units that are neither in `team_units` nor done, in facts order.
 
 ### REQ-TA-06 능력 관측
 Priority: Must · EARS: Ubiquitous
@@ -162,6 +162,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | `reason` | 위 reason code |
 | `ready_units` | ready unit 수. 규칙 1이면 없다 |
 | `team_units` | route `team`일 때만. ready unit id, facts 순서 |
+| `followup_units` | route `team`일 때만. `team_units`에도 없고 done도 아닌 unit id(의존 worker, inline), facts 순서. 빈 배열일 수 있다 |
 | `line` | 이유 한 줄 |
 | `tools_fallback_line` | route `team`일 때만. `team_tools_unavailable` 줄 |
 
@@ -242,7 +243,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 {"mode": "topology", "unit_source": "caller_declared", "capability_source": "observed_process_env",
  "config_source": "autopus.yaml", "execution_performed": false,
  "decision": {"version": 1, "route": "team", "reason": "independent_disjoint_slices", "ready_units": 2,
-              "team_units": ["T1", "T2"], "line": "…", "tools_fallback_line": "…"}}
+              "team_units": ["T1", "T2"], "followup_units": ["T3"], "line": "…", "tools_fallback_line": "…"}}
 ```
 
 - CLI는 실행 디렉터리의 `autopus.yaml`을 `os.Lstat`로 확인한다. 없으면 `config_source: default`(on, en)이고 load하지 않는다. 있으면 `config.LoadPreview`로 읽고, 실패하면 `config load failed: <loader 오류>`를 돌려준다(종료 1). `LoadPreview`는 파일이 없을 때도 기본값을 돌려주므로(evidence R2) 존재는 `Lstat`가 정한다.
@@ -256,7 +257,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
   2. lead는 `FACTS="$(mktemp)"`, `TEAM_JSON="$(mktemp)"`를 만들고 Phase 1 배정 표를 facts로 옮긴다(done unit 포함, 표가 없으면, 예를 들어 compact route에서 unit을 나누지 않았으면 `units: []`이고 결과는 `fewer_than_two_ready`다). 그 다음 `WORKING_DIR`에서 아래 snippet을 그대로 실행한다.
   3. `TEAM_JSON`이 비어 있으면 snippet이 이미 고정 실패 줄을 출력했다. lead는 줄을 더 출력하지 않고 Route A Phase 2로 간다.
   4. route가 `subagent`면 `line`을 출력하고 Route A Phase 2를 그대로 돈다.
-  5. route가 `team`이면 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. 실패하면 `tools_fallback_line`을 출력하고 Route A Phase 2다. 성공하면 `line`을 출력하고 `team_units`를 Route B lifecycle(shared task, named `builder-1` … `builder-n`, receipt)로 실행한다. 모든 teammate에 shutdown을 보내 ack를 받은 뒤, `team_units`에 없는 Phase 2 unit(의존 unit, inline unit)을 Route A Phase 2 규칙으로 구현하고, 그 다음에 Gate 2로 간다.
+  5. route가 `team`이면 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. 실패하면 `tools_fallback_line`을 출력하고 Route A Phase 2다. 성공하면 `line`을 출력하고 `team_units`를 Route B lifecycle(shared task, named `builder-1` … `builder-n`, receipt)로 실행한다. 모든 teammate에 shutdown을 보내 ack를 받은 뒤, decision의 `followup_units`(team_units에도 없고 done도 아닌 unit)만 Route A Phase 2 규칙으로 구현하고, done unit은 다시 돌리지 않으며, 그 다음에 Gate 2로 간다.
 
 ```sh
 if ! auto workflow triage --topology --facts-json "$FACTS" --format json >"$TEAM_JSON" 2>/dev/null || [ ! -s "$TEAM_JSON" ]; then
@@ -319,7 +320,7 @@ flowchart TD
   R -- "team" --> T{"SendMessage·task schema 로드?"}
   T -- "실패" --> U["tools_fallback_line → Route A Phase 2"]
   T -- "성공" --> V["line 출력 → team_units를 named builder로 → shutdown·ack"]
-  V --> W["team_units 밖 Phase 2 unit(의존·inline)을 Route A로"]
+  V --> W["followup_units(team_units 밖, done 아님)만 Route A로"]
   W --> G["Gate 2 이후 Route A"]
   S --> G
   U --> G
@@ -354,7 +355,7 @@ These are optional improvements and do not block sync completion.
 | Requirement | Plan Task | Acceptance Scenario | Semantic Invariant |
 |-------------|-----------|---------------------|--------------------|
 | REQ-TA-01 | T7, T9, T11 | S12, S14, S15 | INV-TA-01 |
-| REQ-TA-02 | T7, T8, T11 | S4, S13, S15 | INV-TA-02, INV-TA-07 |
+| REQ-TA-02 | T1, T7, T8, T11 | S4, S13, S15 | INV-TA-02, INV-TA-07 |
 | REQ-TA-03 | T7, T11 | S1, S2, S3, S15 | INV-TA-01 |
 | REQ-TA-04 | T1 | S1, S2, S3, S4, S5 | INV-TA-01 |
 | REQ-TA-05 | T1, T2 | S2, S3, S4 | INV-TA-02 |

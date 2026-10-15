@@ -5,7 +5,7 @@
 - 디렉터리: `<tmp>/proj`는 명령을 돌리는 project(autopus.yaml), `<tmp>/probe`는 fake EXECPATH script와 counter, `<tmp>/facts`는 facts 파일이다. 파일 무변경 단정은 `<tmp>/proj`만 본다.
 - 바이너리: branch `go build -o <tmp>/bin/auto-branch ./cmd/auto`, 기준 `33b5bb55`를 `git worktree add`로 꺼내 같은 방식으로 빌드한 `<tmp>/bin/auto-base`, PATH의 `auto 0.50.125`. stderr·종료 코드 단정은 빌드한 바이너리 기준이다. root는 오류를 `Error: <msg>\n`으로 쓰고 일반 오류의 종료 코드는 1이다(`internal/cli/root.go:203-211`, `:173-179`, evidence R1). in-process `NewRootCmd` test는 같은 `<msg>`를 반환 error로 단정한다.
 - CAP-OK: `CLAUDECODE=1`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `CLAUDE_CODE_ENTRYPOINT=cli`, `CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_CHILD_SESSION` 없음, `CLAUDE_CODE_EXECPATH=<tmp>/probe/claude`. 그 파일은 `2.1.288 (Claude Code)`를 출력하고 `<tmp>/probe/probe.count`에 한 줄을 더하는 실행 script다. PATH 맨 앞 `<tmp>/probe/other/claude`는 `9.9.9 (Claude Code)`를 출력하고 `<tmp>/probe/path.touched`를 만든다. CAP-NOENV: CAP-OK에서 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`만 뺀 것.
-- U3: T1 worker `[pkg/alpha]`, T2 worker `[internal/beta]`, T3 worker `[docs/gamma.md]`, 의존·done 없음. U1: T1 worker `[pkg/alpha]`, T2 worker `[pkg/beta]` depends_on `[T1]`, T3 inline `[README.md]`. UOV: T1 worker `[pkg/alpha]`, T2 worker `[pkg/alpha/b.go]`. UDJ: T1 worker `[pkg/a]`, T2 worker `[pkg/ab]`, T3 worker `[pkg/c]` depends_on `[T1]`, T4 worker `[pkg/d]` done. UGL: T1 worker `[pkg/a/**]`, T2 worker `[pkg/ab/**]`. UGO: T1 worker `[pkg/alpha/**]`, T2 worker `[pkg/alpha/b.go]`.
+- U3: T1 worker `[pkg/alpha]`, T2 worker `[internal/beta]`, T3 worker `[docs/gamma.md]`, 의존·done 없음. U1: T1 worker `[pkg/alpha]`, T2 worker `[pkg/beta]` depends_on `[T1]`, T3 inline `[README.md]`. UOV: T1 worker `[pkg/alpha]`, T2 worker `[pkg/alpha/b.go]`. UDJ: T1 worker `[pkg/a]`, T2 worker `[pkg/ab]`, T3 worker `[pkg/c]` depends_on `[T1]`, T4 worker `[pkg/d]` done. UGL: T1 worker `[pkg/a/**]`, T2 worker `[pkg/ab/**]`. UFU: T4 worker `[pkg/d]` done, T5 worker `[pkg/e]`, T6 worker `[pkg/f]`, T7 worker `[pkg/g]` depends_on `[T5]`, T8 inline `[docs/h.md]`. UGO: T1 worker `[pkg/alpha/**]`, T2 worker `[pkg/alpha/b.go]`.
 - CFG-KO: `platforms: [claude-code]`, `language.ai_responses: ko`, `workflow.auto_team` 없음. CFG-EN·CFG-JA: 언어만 `en`·`ja`. CFG-OFF: CFG-KO + `workflow.auto_team: false`. CFG-LEG: CFG-KO인데 `platforms: [claude]`(옛 이름, `Load`라면 다시 쓰는 입력).
 - 따로 적지 않으면 flag는 모두 false, config는 CFG-KO, 명령은 `<tmp>/proj`에서 `auto-branch workflow triage --topology --facts-json <tmp>/facts/f.json --format json`이다.
 
@@ -39,7 +39,16 @@ Given CAP-OK와 UDJ(`pkg/a`와 `pkg/ab`는 겹치지 않고 T3은 T1을 기다�
 When UDJ로 두 번, UGL로 한 번 명령을 실행한다
 Then 세 run 모두 `route: team`, `reason: independent_disjoint_slices`, `ready_units: 2`, `team_units: ["T1", "T2"]`다
 And `line`은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다`, `tools_fallback_line`은 `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다`다
+And UDJ의 `followup_units`는 `["T3"]`(T4는 done이라 없다), UGL은 `[]`다
 And `<tmp>/probe/probe.count`는 run마다 한 줄씩 3줄이고 `<tmp>/probe/path.touched`가 없으며 UDJ 두 run의 stdout bytes가 같다
+
+### S4b: 팀 wave 뒤 Route A로 넘길 unit 집합
+Priority: Must
+Given CAP-OK와 UFU가 있다
+When 명령을 실행한다
+Then decision은 `route: team`, `ready_units: 2`, `team_units: ["T5", "T6"]`, `followup_units: ["T7", "T8"]`이다
+And done인 T4는 `team_units`에도 `followup_units`에도 없다
+And UFU에서 T7을 done으로 바꾸면 `followup_units`는 `["T8"]`, T7·T8을 모두 done으로 바꾸면 `[]`다
 
 ### S5: 능력 신호 하나씩 바꾸기
 Priority: Must
@@ -148,7 +157,7 @@ And (iv)의 stdout과 stderr는 비어 있고 `TEAM_JSON`은 `decision.route: te
 Priority: Must
 Given 실제 터미널의 대화형 최상위 `claude`(2.1.246 이상) 세션에 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`이 있고, scratch project에 SPEC-A(disjoint ready worker T1·T2와 T1에 의존하는 T3)와 SPEC-B(ready worker 1개)가 있다
 When (a) SPEC-A, (b) SPEC-B로 `/auto go SPEC-ID --auto`를, (c) `claude --disallowedTools SendMessage` 세션에서 SPEC-A를, (d) (a)를 Gate 2에서 멈춘 뒤 `/auto go SPEC-A --continue`를 돌리고, (e) 같은 세션 Bash와 `claude -p`에서 `CLAUDE_CODE_ENTRYPOINT`·`CLAUDE_CODE_SESSION_ATTENDED`·`CLAUDE_CODE_CHILD_SESSION`과 npm 설치가 있으면 그 세션의 EXECPATH basename을 기록한다
-Then (a) transcript의 `Agent Team:` 줄은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다` 하나이고, runtime이 teammate로 보고한 `builder-1`·`builder-2`, shutdown ack, T3 파일 변경, Gate 2 시작이 이 순서로 나온다(CD-1)
+Then (a) transcript의 `Agent Team:` 줄은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다` 하나이고, runtime이 teammate로 보고한 `builder-1`·`builder-2`, shutdown ack, `followup_units`인 T3의 파일 변경(T1·T2는 다시 돌지 않음), Gate 2 시작이 이 순서로 나온다(CD-1)
 And (b)는 `Agent Team: 유지 — 함께 실행할 준비된 slice가 1개라 subagent로 실행한다` 한 줄뿐이고 named teammate가 없다(CD-2)
 And (c)는 `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` 한 줄뿐이고 named teammate가 없으며, (d)의 `Agent Team:` 줄은 0개다(CD-3)
 And (e)의 최상위 세션은 `cli`, `1`, CHILD 없음이고 `claude -p`는 (`cli`, `1`) 쌍이 아니다. 쌍이 같으면 A2는 FAIL이고 규칙 7을 고친 뒤에만 릴리스한다. 기록은 `<home>`·scratch 경로를 바꿔 `evidence/manual-smoke-teamauto.txt`에 있다
@@ -163,4 +172,4 @@ And help에 `--topology`가 있다
 ## Oracle Acceptance Notes
 
 - S1–S12, S14의 oracle은 route·reason·line 문자열, 수, stderr bytes, 종료 코드, SHA-256, snippet 실행 결과다. S13은 생성 문구의 정확한 문자열과 순서, diff 범위다. S15는 실제 터미널 기록이다.
-- 실행 invariant는 실행 oracle에 묶는다. INV-TA-01: S1, S2, S3, S4, S12, S14, S15. INV-TA-02: S2, S3, S4, S15. INV-TA-03: S4, S5, S15. INV-TA-04: S8. INV-TA-05: S6, S7, S9. INV-TA-06: S10. INV-TA-07: S15. S13은 문구 보조 확인이다.
+- 실행 invariant는 실행 oracle에 묶는다. INV-TA-01: S1, S2, S3, S4, S12, S14, S15. INV-TA-02: S2, S3, S4, S4b, S15. INV-TA-03: S4, S5, S15. INV-TA-04: S8. INV-TA-05: S6, S7, S9. INV-TA-06: S10. INV-TA-07: S4b, S15. S13은 문구 보조 확인이다.

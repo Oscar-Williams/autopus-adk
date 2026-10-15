@@ -25,3 +25,10 @@
 | F-009 (deferred) | 반영 | `[NEW] firstOverlapPair`, 재사용은 판정식만 | spec Decision Contract, plan T1 |
 
 체크리스트 FAIL 항목(Q-CORR-01, Q-CORR-03, Q-COMP-02, Q-COMP-04, Q-COMP-05, Q-FEAS-01, Q-FEAS-03)의 재판정은 `research.md` `## Self-Verify Summary`다.
+
+## Round 2 (2026-10-15, 20 resolved, 2 open)
+
+| Finding | 판정 | 처리 | 위치 |
+|---|---|---|---|
+| F-022 (major) | 수용 | follow-up 집합을 "team_units에도 없고 done도 아닌 Phase 2 unit"으로 정하고 CLI가 decision `followup_units`로 낸다. lead는 그 집합만 Route A로 구현하고 done unit은 다시 돌리지 않는다. 실행 oracle: S4(UDJ → `["T3"]`), S4b(UFU → team `[T5, T6]`, follow-up `[T7, T8]`, done T4는 어디에도 없음) | spec REQ-TA-02·05·Decision Contract 출력·Facts 출력 예·Skill Surface 규칙 5·flowchart, plan T1·sequence, acceptance S4·S4b·S15(a), research INV-TA-02·07 |
+| F-019 (minor) | 수용 | plan Implementation Strategy를 계약과 맞췄다: v0.50.125는 값과 무관하게 key를 거부하므로 비용은 key를 직접 쓴 사용자(`true`·`false`)에게만, 바이너리는 key를 쓰지 않는다 | plan.md `## Implementation Strategy` |
