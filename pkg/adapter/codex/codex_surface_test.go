@@ -25,7 +25,7 @@ func TestCodexAdapter_Generate_WorkflowSurfacesUseV2Conventions(t *testing.T) {
 		"auto", "auto-setup", "auto-status", "auto-goal", "auto-update", "auto-plan",
 		"auto-go", "auto-fix", "auto-review", "auto-sync", "auto-idea", "auto-map",
 		"auto-why", "auto-verify", "auto-secure", "auto-test", "auto-qa", "auto-dev",
-		"auto-canary", "auto-doctor",
+		"auto-canary", "auto-doctor", "auto-reverse",
 	} {
 		path := filepath.Join(dir, ".codex", "skills", "codex-"+name, "SKILL.md")
 		data, readErr := os.ReadFile(path)

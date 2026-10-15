@@ -143,6 +143,13 @@
     {
       "kind": "route_detail",
       "platform": "antigravity-cli",
+      "path": ".agents/plugins/autopus/skills/auto/SKILL.md",
+      "route": "| `reverse` |",
+      "detail": ".agents/plugins/autopus/skills/auto-reverse/SKILL.md"
+    },
+    {
+      "kind": "route_detail",
+      "platform": "antigravity-cli",
       "path": ".gemini/skills/auto/SKILL.md",
       "route": "| `setup` |",
       "detail": ".gemini/skills/autopus/auto-setup/SKILL.md"
@@ -272,6 +279,13 @@
       "path": ".gemini/skills/auto/SKILL.md",
       "route": "| `doctor` |",
       "detail": ".gemini/skills/autopus/auto-doctor/SKILL.md"
+    },
+    {
+      "kind": "route_detail",
+      "platform": "antigravity-cli",
+      "path": ".gemini/skills/auto/SKILL.md",
+      "route": "| `reverse` |",
+      "detail": ".gemini/skills/autopus/auto-reverse/SKILL.md"
     }
   ],
   "provenance": {

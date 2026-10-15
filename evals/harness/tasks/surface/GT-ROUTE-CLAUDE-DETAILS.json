@@ -139,6 +139,13 @@
       "path": ".claude/skills/auto/SKILL.md",
       "route": "| `doctor` |",
       "detail": ".claude/skills/auto-doctor/SKILL.md"
+    },
+    {
+      "kind": "route_detail",
+      "platform": "claude-code",
+      "path": ".claude/skills/auto/SKILL.md",
+      "route": "| `reverse` |",
+      "detail": ".claude/skills/auto-reverse/SKILL.md"
     }
   ],
   "provenance": {

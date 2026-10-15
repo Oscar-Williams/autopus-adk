@@ -157,6 +157,13 @@
     {
       "kind": "route_detail",
       "platform": "antigravity-cli",
+      "path": ".agents/plugins/autopus/commands/auto/reverse.toml",
+      "route": "Load the autopus skill from",
+      "detail": ".agents/plugins/autopus/skills/auto-reverse/SKILL.md"
+    },
+    {
+      "kind": "route_detail",
+      "platform": "antigravity-cli",
       "path": ".gemini/commands/auto/setup.toml",
       "route": "Load the autopus skill from",
       "detail": ".gemini/skills/autopus/auto-setup/SKILL.md"
@@ -286,6 +293,13 @@
       "path": ".gemini/commands/auto/doctor.toml",
       "route": "Load the autopus skill from",
       "detail": ".gemini/skills/autopus/auto-doctor/SKILL.md"
+    },
+    {
+      "kind": "route_detail",
+      "platform": "antigravity-cli",
+      "path": ".gemini/commands/auto/reverse.toml",
+      "route": "Load the autopus skill from",
+      "detail": ".gemini/skills/autopus/auto-reverse/SKILL.md"
     }
   ],
   "provenance": {

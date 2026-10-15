@@ -16,6 +16,7 @@ import (
 var frozenAutoRoutes = []string{
 	"setup", "status", "goal", "update", "plan", "go", "fix", "review", "sync",
 	"idea", "map", "why", "verify", "secure", "test", "qa", "dev", "canary", "doctor",
+	"reverse",
 }
 
 func TestRouterBudget_FullGenerate_RootIsThinAndEveryRouteHasOneDetail(t *testing.T) {
