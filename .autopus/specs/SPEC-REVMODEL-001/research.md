@@ -25,6 +25,20 @@
 - 상위 세션 live 증거(재실행 안 함): catalog의 `google-antigravity/gemini-3.1-pro:high` one-shot은 HTTP 404, `gemini-3-pro`는 stream 끊김, `gemini-3.8-flash:high`는 `ok`.
 - 2026-10-16 사용자 결정: 이 repo의 gemini 리뷰 model을 `google-antigravity/gemini-3.8-flash:high`로 바꾼다(위 live 증거). catalog 증명만으로는 404를 못 잡는다는 D6의 근거이고 S15의 목표 값이다. fixture는 이 값에 기대지 않는다(R3는 `gemini-3.1-pro:high` 그대로).
 
+## T1 기존 test 분류
+
+2026-10-16, `feat/revmodel-001`(a15ca6d1). grep(`어느 도구를 바꿀까요`, `Which tool`, `composeFormTabD`, `OMP 리뷰 세션`, `리뷰 세션 재시도`, init test의 `ReviewGate`·`review_gate`)으로 모으고, tool tab 끝에 리뷰 탭 선택지만 임시로 더한 build로 `CI= go test ./internal/cli -count=1`을 돌려 확인했다. 임시 변경은 되돌렸다.
+
+| Existing Test Change | test | 처리 |
+|---|---|---|
+| 1·2 | `TestComposeForms_ToolTabListsTheInstalledTools`의 `opencode,antigravity-cli` case(`quality_compose_form_driver_test.go:141`) | 유일하게 깨진 test다. D fixture(`DefaultFullConfig`: review gate 켜짐, provider 3개)가 REQ-RVM-01을 만족해 건너뛰던 tool tab이 `모든 도구 같게`·`멀티프로바이더 리뷰`로 열린다. 그 case의 기대값을 두 선택지 목록으로 바꾸고(2), 입력은 이미 넉넉해 Enter를 더하지 않아도 된다(1, 입력 끝은 기본값). 원래 단언(선택지가 하나면 건너뜀)은 바꿀 수 없어, 같은 platform에 `spec.review_gate.enabled: false`인 case(RD 규칙)로 그대로 남긴다 |
+| 2, 변경 없음 | `composeFormTabD`나 `…4. OMP\n`까지를 `assert.Contains`로 단언하는 test(`quality_compose_form_driver_test.go:86`, `:139-140`, `quality_compose_form_locale_test.go:21`, `:28`, `quality_compose_omp_test.go:67`, `:160`, `init_compose_omp_test.go:65`, `init_compose_form_test.go:46`, `update_compose_form_test.go:50`) | 목록 앞부분만 단언해 리뷰 탭이 끝에 붙어도 통과한다. 바꾸지 않는다 |
+| 3, 해당 없음 | init의 compose 뒤 `spec.review_gate.providers` 단언 | 없다. init test의 wizard stub(`stubInitWizard`)은 Review Gate가 아니오라 T7 뒤에는 탭도 열리지 않는다 |
+| 4, 해당 없음 | OMP review backend stderr bytes 단언 | 없다. 두 줄의 문구를 단언하는 test가 없다 |
+| 결정성 | 폼 runner `useComposeFormRunner`(`quality_compose_form_helpers_test.go`) | GitHub Actions는 `CI=true`라 REQ-RVM-01이 탭을 숨기고, 위 test 결과가 CI 값에 따라 달라진다. 폼 runner가 `t.Setenv("CI", "")`로 대화형 터미널을 흉내 낸다. `composeCIEnv`를 직접 바꾼 test(`stubDriverProbes`)는 그 값이 이긴다 |
+
+기준 branch에서 이미 실패하는 test 둘은 이 SPEC과 무관하다(변경 없는 base에서 재현): `TestEditGuardCorpus_ProtectedDeniedAndLegitimateAllowed`(`.claude/hooks/README.md` replace를 deny), `TestGeneratePreviewMappings_OMPResolvesToAdapter`(OMP preview 명령 20개 기대, 21개).
+
 ## Plan Intent Ledger
 
 direct `auto plan` 문맥의 ledger다(planning context). 칸은 증거로만 요약한다.
