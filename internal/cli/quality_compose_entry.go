@@ -40,7 +40,8 @@ func runQualityComposeEntry(
 		return err
 	}
 	router := qualityComposeRouter{cmd: cmd, dir: dir, cfg: cfg, apply: apply, deps: deps}
-	session := newComposeSession(dir, cfg, sources, composeLanguage(), composeSessionFile, router)
+	session := newComposeSession(dir, cfg, sources, composeLanguage(), composeSessionFile, router).
+		withReaFallbackNotice(cmd.Context())
 	if composeFormsProbe(cmd) {
 		return runQualityComposeForms(cmd, dir, cfg, apply, deps, session)
 	}

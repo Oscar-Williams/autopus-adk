@@ -60,3 +60,22 @@ func TestReaFallbackNotice_CodexUpdatePrintsOneLine(t *testing.T) {
 		})
 	}
 }
+
+// The Form Text contract is one line per run: an interactive update whose
+// compose step shows the fallback in its table and then generates prints the
+// table's line only, never a second one from the generation.
+func TestReaFallbackNotice_InteractiveComposeAndGeneratePrintsOnce(t *testing.T) {
+	newComposeUpdateRun(t, true, "")
+	composeSessionCatalog(t, "CAT-B")
+	dir := writeComposeFixture(t, "claude-code", "codex")
+
+	out, err := runComposeUpdate(t, strings.NewReader("\n"), "--dir", dir)
+
+	require.NoError(t, err, out)
+	line := "reverse-engineer: gpt-6.1-sol/xhigh이 Codex catalog에 없어 세션 모델을 씁니다"
+	assert.Equal(t, 1, strings.Count(out, line), out)
+	assert.Contains(t, out, "\n"+line+"\n", "the table footer carries the line")
+	agent, err := os.ReadFile(filepath.Join(dir, ".codex", "agents", "reverse-engineer.toml"))
+	require.NoError(t, err)
+	assert.NotContains(t, string(agent), "\nmodel = ", "the generation took the same fallback")
+}

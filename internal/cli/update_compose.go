@@ -39,7 +39,8 @@ func runUpdateComposeStep(
 		warnUpdateCompose(cmd.OutOrStdout(), lang, err)
 		return driftGenerationSnapshot{}
 	}
-	session := newComposeSession(dir, cfg, sources, lang, composeSessionFile, nil).withDetected(gate.Detected)
+	session := newComposeSession(dir, cfg, sources, lang, composeSessionFile, nil).
+		withDetected(gate.Detected).withReaFallbackNotice(cmd.Context())
 	// REQ-MUX-20 applies to every editing entry point, not only `auto quality`.
 	session = withComposeOverrideQuestion(cmd, session)
 	result, err := runUpdateComposeDriver(cmd, gate, session)
