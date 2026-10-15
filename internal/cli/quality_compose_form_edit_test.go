@@ -45,10 +45,10 @@ func TestComposeForms_AllToolsGroupEditBindsCustom(t *testing.T) {
 		"3. opus — Claude Code: opus-5-5 · high | Codex: 6.1-sol · xhigh\n"+
 		"4. sonnet — Claude Code: sonnet-5-5 · medium | Codex: 6-luna · max\n"+
 		"5. haiku — Claude Code: haiku-4-5 · - | Codex: 6-luna · max\n")
-	assert.Equal(t, 16, composeFormMarks(t, out, "Claude Code"))
+	assert.Equal(t, 17, composeFormMarks(t, out, "Claude Code"))
 	assert.Equal(t, 4, composeFormMarks(t, out, "Codex"))
 	assert.Contains(t, out, "바뀌는 설정:\n"+
-		"  quality.presets.custom 새로 씀 (16개 에이전트)\n"+
+		"  quality.presets.custom 새로 씀 (17개 에이전트)\n"+
 		"  quality.default balanced → custom\n"+
 		"  custom은 balanced 표준 배치를 받지 않음\n"+
 		"  "+composeToolBlockNotice+"\n"+

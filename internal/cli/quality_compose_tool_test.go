@@ -53,7 +53,7 @@ func TestComposeToolPlanner_CodexEditWritesTheProviderBinding(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{
-		"quality.presets.codex-custom 새로 씀 (16개 에이전트)",
+		"quality.presets.codex-custom 새로 씀 (17개 에이전트)",
 		"quality.providers.codex 없음 → codex-custom",
 		"codex-custom은 balanced 표준 배치를 받지 않음",
 		composeToolBlockNotice,
@@ -75,7 +75,7 @@ func TestComposeToolPlanner_CodexEditWritesTheProviderBinding(t *testing.T) {
 	preset := written.Presets["codex-custom"]
 	assert.Equal(t, "Codex custom agent tiers", preset.Description)
 	want := map[string]string{"architect": "opus", "planner": "opus", "security-auditor": "opus", "spec-writer": "opus",
-		"debugger": "fable", "deep-worker": "fable", "reviewer": "fable"}
+		"debugger": "fable", "deep-worker": "fable", "reviewer": "fable", "reverse-engineer": "opus"}
 	for _, agent := range []string{"annotator", "devops", "executor", "explorer", "frontend-specialist",
 		"perf-engineer", "tester", "ux-validator", "validator"} {
 		want[agent] = "sonnet"
@@ -138,11 +138,11 @@ func TestComposeToolPlanner_PresetKindAndProviderLines(t *testing.T) {
 	}
 
 	boundLines := plan(bound)
-	assert.Equal(t, "quality.presets.codex-custom 고쳐 씀 (16개 에이전트)", boundLines[0])
+	assert.Equal(t, "quality.presets.codex-custom 고쳐 씀 (17개 에이전트)", boundLines[0])
 	assert.NotContains(t, boundLines, "quality.providers.codex codex-custom → codex-custom")
 	assert.NotContains(t, boundLines, "codex-custom은 balanced 표준 배치를 받지 않음")
 	unboundLines := plan(unbound)
-	assert.Equal(t, "quality.presets.codex-custom 덮어씀 (16개 에이전트)", unboundLines[0])
+	assert.Equal(t, "quality.presets.codex-custom 덮어씀 (17개 에이전트)", unboundLines[0])
 	assert.Contains(t, unboundLines, "quality.providers.codex 없음 → codex-custom")
 }
 

@@ -54,7 +54,7 @@ func rawQualityOf(t *testing.T, data string) config.QualityConf {
 
 // s6CustomAgents is the composition acceptance S6 confirms.
 func s6CustomAgents() map[string]string {
-	agents := map[string]string{"explorer": "haiku", "annotator": "haiku"}
+	agents := map[string]string{"explorer": "haiku", "annotator": "haiku", "reverse-engineer": "haiku"}
 	for _, name := range []string{"architect", "planner", "reviewer", "security-auditor", "spec-writer"} {
 		agents[name] = "fable"
 	}

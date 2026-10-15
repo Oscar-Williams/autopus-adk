@@ -22,15 +22,17 @@ import (
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
-// composeOMPCatalogML is ML: the four models of
+// composeOMPCatalogML is ML: the six models of
 // ompCLIProfileNativeCatalogJSON in the shape an installed omp prints, with
 // no family or capability metadata. ompCLIProfileNativeCatalogJSON itself
 // lacks the display fields the tab's catalog rule reads.
 const composeOMPCatalogML = `{"models":[
 	{"provider":"anthropic","id":"claude-fable-5-1","selector":"anthropic/claude-fable-5-1","name":"Claude Fable 5.1","contextWindow":200000,"reasoning":true,"thinking":["high","max"],"input":["text"]},
+	{"provider":"anthropic","id":"claude-opus-5-5","selector":"anthropic/claude-opus-5-5","name":"Claude Opus 5.5","contextWindow":200000,"reasoning":true,"thinking":["high","max"],"input":["text"]},
 	{"provider":"anthropic","id":"claude-sonnet-5-5","selector":"anthropic/claude-sonnet-5-5","name":"Claude Sonnet 5.5","contextWindow":200000,"reasoning":true,"thinking":["high","max"],"input":["text"]},
 	{"provider":"openai-codex","id":"gpt-6-astra","selector":"openai-codex/gpt-6-astra","name":"GPT-6 Astra","contextWindow":272000,"reasoning":true,"thinking":["high","max"],"input":["text"]},
-	{"provider":"openai-codex","id":"gpt-6-luna","selector":"openai-codex/gpt-6-luna","name":"GPT-6 Luna","contextWindow":272000,"reasoning":true,"thinking":["high","max"],"input":["text"]}
+	{"provider":"openai-codex","id":"gpt-6-luna","selector":"openai-codex/gpt-6-luna","name":"GPT-6 Luna","contextWindow":272000,"reasoning":true,"thinking":["high","max"],"input":["text"]},
+	{"provider":"openai-codex","id":"gpt-6.1-sol","selector":"openai-codex/gpt-6.1-sol","name":"GPT-6.1 Sol","contextWindow":272000,"reasoning":true,"thinking":["xhigh","max"],"input":["text"]}
 ]}`
 
 const composeOMPDesignGroup = "설계·판단 — planner, architect, spec-writer, security-auditor"
@@ -169,7 +171,8 @@ func TestComposeOMPAutopus_S11_StartThinkingAndCatalogRules(t *testing.T) {
 		require.NoError(t, err, out)
 		assert.NotContains(t, out, composeFormTextKO.OMPAttestedOnly)
 		assert.Contains(t, out, composeOMPDesignGroup+" \n"+composeOMPOptionList("그대로 — anthropic/claude-fable-5-1 · high",
-			"OMP 세션 모델 그대로", "anthropic/claude-fable-5-1", "openai-codex/gpt-6-astra"))
+			"OMP 세션 모델 그대로", "anthropic/claude-fable-5-1", "anthropic/claude-opus-5-5",
+			"openai-codex/gpt-6-astra", "openai-codex/gpt-6.1-sol"))
 	})
 	t.Run("native mode", func(t *testing.T) {
 		policy := composeOMPS10Policy()

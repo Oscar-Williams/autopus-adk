@@ -18,6 +18,7 @@ quality.default = ultra   ultra: 이전 버전 기본값 (갱신 가능)   balan
 검증·리뷰  ux-validator         기본값(sonnet)  sonnet · high  6.1-sol · xhigh  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 탐색·보조  explorer             opus            opus · max     6.1-sol · xhigh  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 탐색·보조  annotator            기본값(sonnet)  sonnet · high  6.1-sol · xhigh  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
+탐색·보조  reverse-engineer     기본값(opus)    opus · max     6.1-sol · xhigh  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 Codex catalog: 읽음 · 대체 0칸
 Codex 기본 세션: 6-astra · ultra
 구성을 바꿀까요? [Enter] 유지 · u) 최신 기본값으로 갱신 · g) 역할 그룹 · a) 고급

@@ -32,7 +32,7 @@ var composeRoleGroups = []composeRoleGroup{
 		"reviewer", "validator", "tester", "ux-validator",
 	}},
 	{ko: "탐색·보조", en: "Exploration·Support", Agents: []string{
-		"explorer", "annotator",
+		"explorer", "annotator", "reverse-engineer",
 	}},
 }
 

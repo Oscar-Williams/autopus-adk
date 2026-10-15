@@ -1207,7 +1207,7 @@ Ultra에서 Astra/ultra, Balanced에서 Astra/xhigh를 사용합니다.
 | 설계·판단 | planner, architect, spec-writer, security-auditor |
 | 구현 | executor, debugger, deep-worker, devops, frontend-specialist, perf-engineer |
 | 검증·리뷰 | reviewer, validator, tester, ux-validator |
-| 탐색·보조 | explorer, annotator |
+| 탐색·보조 | explorer, annotator, reverse-engineer |
 
 `구성을 바꿀까요?`에서 `g`는 그룹마다 등급을 고르고(Enter는 섞인 그룹도 그대로 둠), `a`는
 `agent=tier` 줄을 받고, `u`(그런 프리셋이 있을 때만 보임)는 이전 버전 기본값을 최신 기본값으로

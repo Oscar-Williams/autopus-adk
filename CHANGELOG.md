@@ -111,8 +111,9 @@ All notable changes to this project will be documented in this file.
     열은 override로 계산하고 머리말에 `개별 설정: <preset>`을 쓴다.
   - 편집: 화면에만 있는 역할 그룹 4개 — 설계·판단(planner, architect, spec-writer, security-auditor),
     구현(executor, debugger, deep-worker, devops, frontend-specialist, perf-engineer), 검증·리뷰(reviewer,
-    validator, tester, ux-validator), 탐색·보조(explorer, annotator) — 마다 등급을 고르거나(`g`, 섞인 그룹은
-    `혼합 (fable 2 · sonnet 4)`처럼 보이고 Enter면 그대로) 고급(`a`)에서 `agent=tier` 줄로 하나씩 바꾼다.
+    validator, tester, ux-validator), 탐색·보조(explorer, annotator, reverse-engineer) — 마다 등급을 고르거나(`g`,
+    섞인 그룹은 `혼합 (fable 2 · sonnet 4)`처럼 보이고 Enter면 그대로) 고급(`a`)에서 `agent=tier` 줄로 하나씩
+    바꾼다.
     그룹 이름은 `autopus.yaml`에 쓰지 않는다. 시작 구성은 지금 생성되는 등급이다. 바뀐 칸에 `*`가 붙은
     적용 후 표와 바뀌는 키 목록을 보고 `y`/`yes`로 답할 때만 쓴다(`e`는 계속 편집, 그 밖의 답은 취소).
     손대지 않고 끝내면 아무것도 쓰지 않는다.

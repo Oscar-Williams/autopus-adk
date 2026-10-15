@@ -175,8 +175,8 @@ func TestUpdateCompose_GroupEditGeneratesTheApprovedTable(t *testing.T) {
 	assert.Equal(t, composeTableK, written.Presets["custom"].Agents)
 
 	claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, composeRenderedTable(t, out, "미리보기 (아직 바뀌지 않음)"))
-	assert.Equal(t, 16, claudeMarks)
-	assert.Equal(t, 4, codexMarks)
+	assert.Equal(t, 17, claudeMarks)
+	assert.Equal(t, 5, codexMarks)
 	assert.Equal(t, composeTableClaudeCell{model: "sonnet", effort: "medium"}, readComposeTableClaudeProfile(t, dir, "debugger"))
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6-luna", Effort: "max"}, readComposeCodexProfile(t, dir, "debugger"))
 }

@@ -68,7 +68,7 @@ func TestDescribeComposeRefresh_R_ShowsPerPresetLines(t *testing.T) {
 	assert.Equal(t, []string{
 		"quality.presets.ultra 최신 기본값으로 갱신: architect, debugger, planner, reviewer, security-auditor, " +
 			"spec-writer opus→fable · 추가 annotator→opus, deep-worker→fable, frontend-specialist→opus, " +
-			"perf-engineer→opus, ux-validator→opus",
+			"perf-engineer→opus, reverse-engineer→opus, ux-validator→opus",
 		"quality.presets.balanced 최신 기본값으로 갱신: 모델 변화 없음, YAML만 정리",
 		"quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)",
 	}, composeBindDescribe(t, dir, cfg, plan, "ko"))
@@ -95,7 +95,7 @@ func TestDescribeComposeRefresh_BoundHB1_ShowsEveryTransition(t *testing.T) {
 	assert.Equal(t, "quality.presets.balanced refreshed to the current default: architect, planner, "+
 		"security-auditor, spec-writer opus→fable · debugger, reviewer sonnet→fable · explorer, "+
 		"validator haiku→sonnet · added annotator→sonnet, deep-worker→fable, frontend-specialist→sonnet, "+
-		"perf-engineer→sonnet, ux-validator→sonnet", lines[0])
+		"perf-engineer→sonnet, reverse-engineer→opus, ux-validator→sonnet", lines[0])
 }
 
 func TestDescribeComposeRefresh_BoundRuntimeStandardBalanced_MovesNoModel(t *testing.T) {
@@ -170,7 +170,7 @@ func TestPlanComposeBindingAfter_EditsOnTopOfRefresh_KeepTheRefreshInTheSameWrit
 	assert.Equal(t, []string{
 		"quality.presets.ultra 최신 기본값으로 갱신: 모델 변화 없음, YAML만 정리",
 		"quality.presets.balanced 최신 기본값으로 갱신: 모델 변화 없음, YAML만 정리",
-		"quality.presets.custom 새로 씀 (16개 에이전트)",
+		"quality.presets.custom 새로 씀 (17개 에이전트)",
 		"quality.default ultra → custom",
 		"Codex 기본 세션: 6-astra · ultra → 6-astra · xhigh",
 		"custom은 ultra effort 사다리를 받지 않음",

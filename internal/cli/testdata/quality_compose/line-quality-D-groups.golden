@@ -18,6 +18,7 @@ quality.default = balanced   ultra: 현재 기본값   balanced: 현재 기본�
 검증·리뷰  ux-validator         sonnet  sonnet-5-5 · high  6-luna · max
 탐색·보조  explorer             sonnet  sonnet-5-5 · high  6-luna · max
 탐색·보조  annotator            sonnet  sonnet-5-5 · high  6-luna · max
+탐색·보조  reverse-engineer     opus    opus-5-5 · high    6.1-sol · xhigh
 Codex catalog: 읽음 · 대체 0칸
 구성을 바꿀까요? [Enter] 유지 · g) 역할 그룹 · a) 고급 · t) 도구별 설정
 > 역할 그룹마다 등급을 고르세요 (Enter = 그대로)
@@ -27,7 +28,7 @@ Codex catalog: 읽음 · 대체 0칸
   1) fable 2) opus 3) sonnet 4) haiku [Enter] 그대로
 > 검증·리뷰  reviewer, validator, tester, ux-validator  현재: 혼합 (fable 1 · sonnet 3)
   1) fable 2) opus 3) sonnet 4) haiku [Enter] 그대로
-> 탐색·보조  explorer, annotator  현재: sonnet
+> 탐색·보조  explorer, annotator, reverse-engineer  현재: 혼합 (opus 1 · sonnet 2)
   1) fable 2) opus 3) sonnet 4) haiku [Enter] 그대로
 > 
 미리보기 (아직 바뀌지 않음)
@@ -48,10 +49,11 @@ Codex catalog: 읽음 · 대체 0칸
 검증·리뷰  ux-validator         sonnet   sonnet · medium*  6-luna · max
 탐색·보조  explorer             haiku*   haiku · -*        6-luna · medium*
 탐색·보조  annotator            haiku*   haiku · -*        6-luna · medium*
+탐색·보조  reverse-engineer     haiku*   haiku · -*        6-luna · high*
 Codex catalog: 읽음 · 대체 0칸
 * = 바뀌는 칸
 바뀌는 설정:
-  quality.presets.custom 새로 씀 (16개 에이전트)
+  quality.presets.custom 새로 씀 (17개 에이전트)
   quality.default balanced → custom
   custom은 balanced 표준 배치를 받지 않음
   quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)

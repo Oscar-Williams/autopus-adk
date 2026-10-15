@@ -83,10 +83,11 @@ func TestComposeOMPTab_SingleLevelPinAndUnpin(t *testing.T) {
 	deps, activations := composeOMPDeps([]byte(strings.Replace(catalog, astra, strings.Replace(astra, `["high","max"]`, `["max"]`, 1), 1)))
 
 	out, err := runComposeOMPForms(t, dir, deps,
-		"2\n", "4\n", "4\n", "1\n", "5\n", "3\n", "5\n", "1\n", "\n", "\n")
+		"2\n", "4\n", "4\n", "1\n", "5\n", "4\n", "5\n", "1\n", "\n", "\n")
 
 	require.NoError(t, err, out)
-	assert.Contains(t, out, "task (deep_reasoning) \n1. 프로필 기본값\n2. anthropic/claude-fable-5-1\n3. openai-codex/gpt-6-astra\nEnter")
+	assert.Contains(t, out, "task (deep_reasoning) \n1. 프로필 기본값\n2. anthropic/claude-fable-5-1\n3. anthropic/claude-opus-5-5\n"+
+		"4. openai-codex/gpt-6-astra\n5. openai-codex/gpt-6.1-sol\nEnter")
 	assert.Contains(t, out, "5. task — openai-codex/gpt-6-astra:max\n")
 	assert.NotContains(t, out, "task thinking")
 	assert.Contains(t, out, "No agent was pinned; nothing changed.\n")

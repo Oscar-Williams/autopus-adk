@@ -77,7 +77,7 @@ func TestComposeTable_RowsFollowRoleGroupOrder(t *testing.T) {
 		"planner", "architect", "spec-writer", "security-auditor",
 		"executor", "debugger", "deep-worker", "devops", "frontend-specialist", "perf-engineer",
 		"reviewer", "validator", "tester", "ux-validator",
-		"explorer", "annotator",
+		"explorer", "annotator", "reverse-engineer",
 	}, agents)
 	assert.ElementsMatch(t, config.CanonicalAgentNames(), agents)
 	assert.Equal(t, "설계·판단", groups[0])

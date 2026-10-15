@@ -148,7 +148,7 @@ func TestQualityCompose_CustomizedBuiltinBindsCustomAndKeepsItsValues(t *testing
 	out, err := runQualityCompose(t, dir, strings.NewReader(input.String()))
 
 	require.NoError(t, err, out)
-	assert.Contains(t, out, "quality.default = ultra   ultra: 사용자 수정 (12개 다름)   balanced: 이전 버전 기본값 (갱신 가능)\n")
+	assert.Contains(t, out, "quality.default = ultra   ultra: 사용자 수정 (13개 다름)   balanced: 이전 버전 기본값 (갱신 가능)\n")
 	written := rawQualityOf(t, readBlockFixture(t, dir))
 	assert.Equal(t, "custom", written.Default)
 	assert.Equal(t, latest, written.Presets["custom"].Agents)

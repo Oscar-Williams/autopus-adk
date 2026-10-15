@@ -85,7 +85,7 @@ func TestQualityComposeForms_ClaudeAgentApplyGeneratesThePreview(t *testing.T) {
 
 	require.NoError(t, err, out)
 	claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, plainComposeHeaders(composeRenderedTable(t, out, composeFormPreviewMarker)))
-	assert.Equal(t, 16, claudeMarks)
+	assert.Equal(t, 17, claudeMarks)
 	assert.Zero(t, codexMarks)
 	assert.Equal(t, composeTableClaudeCell{model: "opus", effort: "high"}, readComposeTableClaudeProfile(t, dir, "executor"))
 	assert.Equal(t, composeTableClaudeCell{model: "sonnet", effort: "medium"}, readComposeTableClaudeProfile(t, dir, "validator"))

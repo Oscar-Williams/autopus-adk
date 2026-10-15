@@ -45,7 +45,7 @@ func TestOMPGenerate_AutopusSurfaceNeverSelectsADisabledAgent(t *testing.T) {
 		assert.NotContains(t, body, "There is no Autopus-specific agent", path)
 	}
 	pipeline := tree[".omp/skills/agent-pipeline/SKILL.md"]
-	assert.Contains(t, pipeline, "16 Autopus agents")
+	assert.Contains(t, pipeline, "17 Autopus agents")
 	assert.Contains(t, pipeline, "`task.disabledAgents`")
 }
 
@@ -56,5 +56,5 @@ func TestOMPGenerate_NativePipelineKeepsTheBundledRegistrySentence(t *testing.T)
 	pipeline := generatedOMPTree(t, cfg)[".omp/skills/agent-pipeline/SKILL.md"]
 	assert.Contains(t, pipeline, "OMP registers five agents")
 	assert.Contains(t, pipeline, "There is no Autopus-specific agent to select")
-	assert.False(t, strings.Contains(pipeline, "16 Autopus agents"))
+	assert.False(t, strings.Contains(pipeline, "17 Autopus agents"))
 }

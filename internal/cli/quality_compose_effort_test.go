@@ -48,12 +48,12 @@ func TestComposeEffortOptions_ClaudeLeavesHaikuOut(t *testing.T) {
 		"2\n", "2\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "4\n", "2\n", "\n")
 
 	assert.Contains(t, out, "탐색·보조 effort \n"+
-		"1. 그대로 — sonnet-5-5 · medium\n"+
-		"2. sonnet-5-5 · low\n"+
-		"3. sonnet-5-5 · medium (자동)\n"+
-		"4. sonnet-5-5 · high\n"+
-		"5. sonnet-5-5 · xhigh\n"+
-		"6. sonnet-5-5 · max\n")
+		"1. 그대로 — sonnet-5-5 · medium / opus-5-5 · high\n"+
+		"2. sonnet-5-5 · low / opus-5-5 · low\n"+
+		"3. sonnet-5-5 · medium / opus-5-5 · medium\n"+
+		"4. sonnet-5-5 · high / opus-5-5 · high\n"+
+		"5. sonnet-5-5 · xhigh / opus-5-5 · xhigh\n"+
+		"6. sonnet-5-5 · max / opus-5-5 · max\n")
 	assert.Equal(t, map[string]string{"explorer": "high"}, composeBindLoad(t, dir).Quality.Presets["claude-custom"].Efforts)
 }
 
@@ -91,8 +91,9 @@ func TestComposeEffortOptions_CodexIntersectsTheMembersLevels(t *testing.T) {
 
 // On the standard placement the automatic level is the one the start
 // shows. A level that equals the custom binding's automatic effort but not
-// the start's is stored for every member, so the choice is what the
-// operator gets.
+// the start's is stored where that binding differs (reverse-engineer, on
+// opus), which lands every member on the chosen level, so the choice is what
+// the operator gets.
 func TestComposeEffortOptions_AutomaticIsJudgedWhereTheChoiceLands(t *testing.T) {
 	dir := writeComposeFixture(t, "claude-code", "codex")
 
@@ -100,16 +101,18 @@ func TestComposeEffortOptions_AutomaticIsJudgedWhereTheChoiceLands(t *testing.T)
 		"2\n", "2\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "3\n", "2\n", "\n")
 
 	assert.Contains(t, out, "탐색·보조 effort \n"+
-		"1. 그대로 — sonnet-5-5 · high\n"+
-		"2. sonnet-5-5 · low\n"+
-		"3. sonnet-5-5 · medium\n"+
-		"4. sonnet-5-5 · high (자동)\n"+
-		"5. sonnet-5-5 · xhigh\n"+
-		"6. sonnet-5-5 · max\n")
+		"1. 그대로 — sonnet-5-5 · high / opus-5-5 · high\n"+
+		"2. sonnet-5-5 · low / opus-5-5 · low\n"+
+		"3. sonnet-5-5 · medium / opus-5-5 · medium\n"+
+		"4. sonnet-5-5 · high / opus-5-5 · high (자동)\n"+
+		"5. sonnet-5-5 · xhigh / opus-5-5 · xhigh\n"+
+		"6. sonnet-5-5 · max / opus-5-5 · max\n")
 	saved := composeBindLoad(t, dir).Quality
-	assert.Equal(t, composeEfforts("medium", "annotator", "explorer"), saved.Presets["claude-custom"].Efforts)
-	model, effort := saved.ClaudeAgentProfile("explorer", "sonnet")
-	assert.Equal(t, []string{"sonnet", "medium"}, []string{model, effort})
+	assert.Equal(t, composeEfforts("medium", "reverse-engineer"), saved.Presets["claude-custom"].Efforts)
+	for _, agent := range []string{"explorer", "annotator"} {
+		model, effort := saved.ClaudeAgentProfile(agent, "sonnet")
+		assert.Equal(t, []string{"sonnet", "medium"}, []string{model, effort}, agent)
+	}
 }
 
 // Choosing the automatic level of the start stores nothing, so the edit is

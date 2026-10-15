@@ -41,7 +41,7 @@ func TestComposeRoleGroups_ContractOrder_CoversEveryCanonicalAgentOnce(t *testin
 			"executor", "debugger", "deep-worker", "devops", "frontend-specialist", "perf-engineer",
 		}},
 		{"검증·리뷰", "Verification·Review", []string{"reviewer", "validator", "tester", "ux-validator"}},
-		{"탐색·보조", "Exploration·Support", []string{"explorer", "annotator"}},
+		{"탐색·보조", "Exploration·Support", []string{"explorer", "annotator", "reverse-engineer"}},
 	}
 	require.Len(t, composeRoleGroups, len(want))
 	for i, group := range composeRoleGroups {
@@ -78,17 +78,17 @@ func TestNewQualityComposition_StartsFromEffectiveTiers(t *testing.T) {
 		{
 			name:    "D current balanced",
 			quality: config.DefaultFullConfig("p").Quality,
-			want:    []string{"fable", "혼합 (fable 2 · sonnet 4)", "혼합 (fable 1 · sonnet 3)", "sonnet"},
+			want:    []string{"fable", "혼합 (fable 2 · sonnet 4)", "혼합 (fable 1 · sonnet 3)", "혼합 (opus 1 · sonnet 2)"},
 		},
 		{
 			name:    "R ultra HU1 with source fallbacks",
 			quality: repo,
-			want:    []string{"opus", "혼합 (opus 4 · sonnet 2)", "혼합 (opus 3 · sonnet 1)", "혼합 (opus 1 · sonnet 1)"},
+			want:    []string{"opus", "혼합 (opus 4 · sonnet 2)", "혼합 (opus 3 · sonnet 1)", "혼합 (opus 2 · sonnet 1)"},
 		},
 		{
 			name:    "B2 historical balanced keeps the standard placement",
 			quality: b2,
-			want:    []string{"fable", "혼합 (fable 2 · sonnet 4)", "혼합 (fable 1 · sonnet 3)", "sonnet"},
+			want:    []string{"fable", "혼합 (fable 2 · sonnet 4)", "혼합 (fable 1 · sonnet 3)", "혼합 (opus 1 · sonnet 2)"},
 		},
 	}
 	for _, tt := range tests {
@@ -140,8 +140,8 @@ func TestComposeSessionGroups_EditsRecomputeTheGroupDisplay(t *testing.T) {
 	composition["debugger"] = "opus"
 	assert.Equal(t, "혼합 (opus 1 · sonnet 5)", displays("ko")[1])
 	composition["explorer"] = "fable"
-	assert.Equal(t, "혼합 (fable 1 · haiku 1)", displays("ko")[3])
-	assert.Equal(t, "mixed (fable 1 · haiku 1)", displays("en")[3])
+	assert.Equal(t, "혼합 (fable 1 · haiku 2)", displays("ko")[3])
+	assert.Equal(t, "mixed (fable 1 · haiku 2)", displays("en")[3])
 }
 
 func TestQualityComposition_SetGroupTier_RejectsUnknownTier(t *testing.T) {
