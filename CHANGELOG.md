@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: 구성 UI의 멀티프로바이더 리뷰 탭** (2026-10-16, SPEC-REVMODEL-001): `auto spec review`의
+  provider·model·judge는 autopus.yaml을 손으로 고쳐야만 바뀌었고, catalog에 있는 model이 실제로 답하는지(예:
+  `google-antigravity/gemini-3.1-pro:high`의 HTTP 404) 확인할 길이 없었다.
+  - 탭: `auto init`·`auto update`·`auto quality`의 구성 편집 tool tab 마지막에 `멀티프로바이더 리뷰`가 나온다.
+    `spec.review_gate.enabled`가 켜져 있고 `orchestra.providers`가 둘 이상이며 CI가 아닐 때만이고, 그동안 메뉴 표
+    아래에 `멀티프로바이더 리뷰: claude · codex · gemini(꺼짐) · judge claude` 같은 요약 줄이 나온다. provider마다
+    참여(둘 미만이면 오류 뒤 `다시 고르기`·`나가기`), `backend: omp` provider의 model(그 family에서 증명된 설치
+    model만)과 보고된 thinking, judge(참여 provider, 빈 judge는 `그대로 — judge 없음`)를 묻고 지금 값과 비교한 after
+    표와 바뀌는 설정을 미리 보인다. CLI backend provider의 model은 args와 quality 정책이 정하므로 바꾸지 않고 이유
+    줄을 쓴다.
+  - 쓰기: `spec.review_gate.providers`, `orchestra.providers.<p>.model`(`<provider>/<model>:<thinking>`),
+    `spec.review_gate.judge` 셋만 쓰고 셋 다 v0.50.125가 읽는다. update·quality는 그 값 span만 바꿔 주석·빈 줄·
+    들여쓰기가 그대로이고, `${NAME}`, anchor·alias·merge key, block scalar처럼 안전하지 않은 값은
+    `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: <key>`로 거부한다. init은 Review
+    Gate 답과 감지 provider를 구성 단계 전에 넣고 탭 편집을 저장할 설정에 넣는다. provider를 꺼도 orchestra
+    명령(brainstorm·plan·review·secure)과 `auto spec review --multi`는 모든 provider를 쓴다.
+  - 확인 호출: 미리보기나 `변경 없음` 뒤 고를 때만 `auto doctor --provider-smoke`와 같은 요청을 리뷰 provider마다
+    1회(60초) 보낸다. 라벨이 `provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)`을 적고, 결과는
+    provider마다 `확인 호출 <p> (<model>): 통과`·`응답에 확인 문자열이 없습니다`·`실패 — <detail>` 한 줄이며
+    저장하지 않는다. 이름에 터미널 제어 문자가 있는 provider가 있으면 요청 전에 막고, OMP review backend의 stderr
+    진단 두 줄은 provider·model·tools·사유를 `terminalSafe`로 감싼다. `--yes`, 터미널이 아닌 입력, CI에는 탭이 없다.
+
 - **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 16개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
   모델과 thinking을 따로 줄 수 없었다.

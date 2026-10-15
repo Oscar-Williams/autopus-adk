@@ -83,4 +83,18 @@ confirmation: unchanged agents and task keep their routes, and an ultra
 profile stops following quality.presets.ultra. Native mode, the OMP line
 editor, and auto platform omp profile apply keep profiles;
 role_model_policy.agent_source: native keeps the five bundled agents during
-v0.50.126 (removal planned in v0.50.127).`
+v0.50.126 (removal planned in v0.50.127).
+
+The tool tab ends with Multi-provider review while spec.review_gate is
+enabled, autopus.yaml holds at least two orchestra.providers entries, and CI
+is not set (SPEC-REVMODEL-001); a summary line under the table names the
+review providers and the judge. The tab sets the providers auto spec review
+uses (spec.review_gate.providers), the model and thinking of each provider
+with backend: omp (only installed models Autopus attests for its family;
+orchestra.providers.<p>.model), and the judge (spec.review_gate.judge). It
+previews the change and writes only those three keys, value by value, so
+comments and layout stay. A provider on a CLI backend keeps its model: its
+args and quality policy decide it. Orchestra commands (brainstorm, plan,
+review, secure) and auto spec review --multi keep every provider. An
+optional live check sends one request to each of n review providers (at
+most 3n model calls with retries) and writes nothing.`

@@ -39,4 +39,12 @@ const updateCmdLong = "설치된 하네스 파일을 업데이트합니다.\n\n"
 	"보입니다. 결과는 프로필 없는 pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면\n" +
 	"planner를 따릅니다. 프로필 설정 위에서 적용하면 변환 줄과 확인 뒤 pin으로 옮기고, 바꾸지 않은 에이전트와 task는\n" +
 	"route가 그대로이며 ultra 프로필의 quality.presets.ultra 연동은 끝납니다. native mode, 줄 OMP 편집기,\n" +
-	"auto platform omp profile apply는 그대로 프로필을 씁니다."
+	"auto platform omp profile apply는 그대로 프로필을 씁니다.\n\n" +
+	"도구 탭의 마지막 선택지는 spec.review_gate.enabled가 켜져 있고 orchestra.providers가 둘 이상이며 CI가 아닐 때\n" +
+	"나오는 멀티프로바이더 리뷰입니다(SPEC-REVMODEL-001). 표 아래 요약 줄이 리뷰 provider와 judge를 보입니다. 탭은\n" +
+	"auto spec review에 참여하는 provider(spec.review_gate.providers), backend: omp provider의 model과\n" +
+	"thinking(그 family의 증명된 설치 model만, orchestra.providers.<p>.model), judge(spec.review_gate.judge)를 정하고,\n" +
+	"미리보기 뒤 이 세 key의 값만 바꿔 써서 주석과 서식이 그대로입니다. CLI backend provider의 model은 args와\n" +
+	"quality 정책이 정하므로 그대로 둡니다. 끈 provider도 orchestra 명령(brainstorm·plan·review·secure)과\n" +
+	"auto spec review --multi에서는 계속 돕니다. 확인 호출을 고르면 provider n개에 요청 1회씩(재시도 포함 최대\n" +
+	"3n회 model 호출) 보내고 결과 줄만 쓰며 아무것도 저장하지 않습니다."

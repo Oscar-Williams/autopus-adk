@@ -23,4 +23,11 @@ const initCmdLong = "코딩 CLI에 Autopus 하네스를 설치합니다. autopus
 	"v0.50.126 동안 bundled 5개 방식을 고릅니다.\n\n" +
 	"이 기본 mode의 OMP 탭은 프로필·계열을 묻지 않고 역할 그룹 4개나 에이전트별로 그대로 · OMP 세션 모델 그대로 ·\n" +
 	"모든 provider의 증명된 설치 model을 고르며, thinking은 고른 model이 보고한 단계만 보입니다. 결과는 프로필 없는\n" +
-	"pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면 planner를 따릅니다."
+	"pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면 planner를 따릅니다.\n\n" +
+	"wizard의 Review Gate가 예이고 orchestra.providers가 둘 이상이며 CI가 아니면 도구 탭 마지막에 멀티프로바이더\n" +
+	"리뷰가 나옵니다(SPEC-REVMODEL-001). Review Gate 답과 감지한 provider는 구성 단계 전에 들어가고, 탭은 auto spec\n" +
+	"review에 참여하는 provider(spec.review_gate.providers), backend: omp provider의 증명된 model과\n" +
+	"thinking(orchestra.providers.<p>.model), judge(spec.review_gate.judge)를 init 설정에 넣어 init이 함께 씁니다.\n" +
+	"CLI backend provider의 model은 args와 quality 정책이 정하므로 그대로입니다. 끈 provider도 orchestra\n" +
+	"명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속 돕니다. 확인 호출을 고르면 provider\n" +
+	"n개에 요청 1회씩(재시도 포함 최대 3n회 model 호출) 보내고 결과 줄만 씁니다."
