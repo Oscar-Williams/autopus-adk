@@ -44,7 +44,7 @@ func TestUpdateComposeForms_DetectedCodexTabEdit(t *testing.T) {
 	useAccessibleComposeForms(t)
 	dir := writeComposeFixture(t, "claude-code")
 
-	out, err := runComposeUpdate(t, formInput(composeFormLines(composeFormS5, "2\n", "\n")...), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(formInput(composeFormLines(composeFormS5, "2\n", "\n")...)), "--dir", dir)
 
 	require.NoError(t, err, out)
 	assert.Contains(t, out, composeFormTabD)
@@ -125,7 +125,7 @@ func TestUpdateComposeForms_InterruptAfterAWriteKeepsTheWrite(t *testing.T) {
 	abortComposeFormAt(t, 13)
 	dir := writeComposeFixture(t, "claude-code", "codex")
 
-	out, err := runComposeUpdate(t, formInput(composeFormLines(composeFormS5, "2\n")...), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(formInput(composeFormLines(composeFormS5, "2\n")...)), "--dir", dir)
 
 	require.Error(t, err)
 	assert.Contains(t, out, "구성을 적용했습니다.\n")
@@ -145,7 +145,7 @@ func TestUpdateComposeForms_FailedOMPReReadEndsTheUpdate(t *testing.T) {
 	composeReloadConfig = func(string) (*config.HarnessConfig, error) { return nil, errors.New("disk gone") }
 	dir := writeNativeComposeFixture(t, "claude-code", "codex", "omp")
 
-	out, err := runComposeUpdate(t, formInput(composeUpdateS8...), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(formInput(composeUpdateS8...)), "--dir", dir)
 
 	var reload composeReloadError
 	require.ErrorAs(t, err, &reload)
