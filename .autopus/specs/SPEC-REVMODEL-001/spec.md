@@ -1,6 +1,6 @@
 # SPEC-REVMODEL-001: 멀티프로바이더 리뷰 모델 구성 탭
 
-**Status**: draft
+**Status**: approved
 **Created**: 2026-10-15
 **Revised**: 2026-10-16 (review round 1 J-001–J-021: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. round 2 J-010·F-001: S4(b) 음성 사례, baseline 1개 경로와 `나가기`. Gate 1 G1-1·G1-2 사용자 확정. `evidence/review-rounds.md`)
 **Domain**: REVMODEL
