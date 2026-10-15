@@ -52,7 +52,7 @@ func runReviewForms(t *testing.T, dir string, runner *ompCLIFakeRunner, lines ..
 	if runner == nil {
 		runner = &ompCLIFakeRunner{catalog: []byte(reviewCatalogCATG)}
 	}
-	smoke := useReviewSmokeBackend(t)
+	smoke := useReviewSmokeBackend(t, "omp")
 	deps := ompPlatformDependencies{newRunner: func() omp.OMPModelCatalogRunner { return runner }}
 	session := newComposeFormSession(t, dir)
 	_, out, err := runComposeForms(t, session, composeFormOptions{OMP: &composeOMPTab{deps: deps}}, lines...)

@@ -17,6 +17,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/insajin/autopus-adk/pkg/adapter/omp"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/orchestra"
 )
@@ -137,17 +138,42 @@ func (b *reviewSmokeBackend) recorded() []reviewSmokeRequest {
 }
 
 // useReviewSmokeBackend installs FB as providerSmokeBackendFactory and puts
-// empty omp, claude, codex, and agy executables first on PATH, so the
-// installed check passes without running anything.
-func useReviewSmokeBackend(t *testing.T) *reviewSmokeBackend {
+// empty executables of binaries first on PATH, so the installed check
+// passes without running anything. An update run detects platforms from
+// PATH, so a test adds only the binaries its providers need.
+func useReviewSmokeBackend(t *testing.T, binaries ...string) *reviewSmokeBackend {
 	t.Helper()
 	backend := &reviewSmokeBackend{}
 	original := providerSmokeBackendFactory
 	t.Cleanup(func() { providerSmokeBackendFactory = original })
 	providerSmokeBackendFactory = func(orchestra.OrchestraConfig) orchestra.ExecutionBackend { return backend }
 	bin := t.TempDir()
-	for _, binary := range []string{"omp", "claude", "codex", "agy"} {
+	for _, binary := range binaries {
 		setFakeProviderOnPath(t, bin, binary)
 	}
 	return backend
+}
+
+// reviewUpdate is the environment of a real `auto update` over a review
+// fixture: the compose seams, the OMP tab's catalog runner, the OMP
+// generation's runner, and FB with an omp stand-in on PATH.
+type reviewUpdate struct {
+	runner *ompCLIFakeRunner
+	smoke  *reviewSmokeBackend
+}
+
+// newReviewUpdate prepares it and settles dir with one `auto update --yes`,
+// so the file is B0 when it returns; runner nil answers CATG.
+func newReviewUpdate(t *testing.T, dir string, runner *ompCLIFakeRunner) reviewUpdate {
+	t.Helper()
+	newComposeUpdateRun(t, true, "")
+	usePlatformOMPModelRunner(t, &ompModelDoctorE2ERunner{catalog: ompCLIProfileNativeCatalogJSON()})
+	out, err := runComposeUpdate(t, strings.NewReader(""), "--dir", dir, "--yes")
+	require.NoError(t, err, out)
+	useAccessibleComposeForms(t)
+	if runner == nil {
+		runner = &ompCLIFakeRunner{catalog: []byte(reviewCatalogCATG)}
+	}
+	useComposeUpdateOMPDeps(t, ompPlatformDependencies{newRunner: func() omp.OMPModelCatalogRunner { return runner }})
+	return reviewUpdate{runner: runner, smoke: useReviewSmokeBackend(t, "omp")}
 }
