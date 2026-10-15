@@ -1199,22 +1199,28 @@ session, so a team run uses more tokens; the feature is experimental.
 1. This section runs only when `TOPOLOGY_FLAG_COUNT == 0`, exactly once, before
    any Phase 2 dispatch. A `--continue` run that resumes from a checkpoint where
    Phase 2 already finished skips this section and prints no `Agent Team:` line.
-2. Create `FACTS="$(mktemp)"` and `TEAM_JSON="$(mktemp)"`. Copy the Phase 1
-   assignment table into `FACTS`, done units included: `Unit` → `id`,
-   `Execution` → `execution` (`worker` or `inline`), `Owned paths` →
-   `owned_paths` (literal paths or one trailing `/**`), `Depends on` →
-   `depends_on`, and `done: true` for a unit that is already complete. A plan
+2. Do steps (a)–(d) in ONE Bash tool call from `WORKING_DIR`, because shell
+   variables such as `FACTS` do not survive between Bash tool calls.
+   (a) Create `FACTS="$(mktemp)"` and `TEAM_JSON="$(mktemp)"`.
+   (b) Copy the Phase 1 assignment table into `FACTS`, done units included:
+   `Unit` → `id`, `Execution` → `execution` (`worker` or `inline`),
+   `Owned paths` → `owned_paths` (literal paths or one trailing `/**`),
+   `Depends on` → `depends_on`, and `done: true` for a unit that is already
+   complete. Write it with the quoted heredoc below (`<<'JSON'`) so the shell
+   expands nothing in the facts; never use `echo` or an unquoted heredoc. A plan
    without a table, for example a compact route that kept one unit, writes
    `"units": []`, which decides `fewer_than_two_ready`.
 
-```json
+```bash
+cat >"$FACTS" <<'JSON'
 {"version": 1,
  "flags": {"team": false, "workflow": false, "solo": false},
  "units": [{"id": "T1", "execution": "worker", "owned_paths": ["pkg/a/**"], "depends_on": [], "done": false}]}
+JSON
 ```
 
-Then run this snippet exactly as written from `WORKING_DIR`. It discards stderr
-so a diagnostic never becomes a second line:
+   (c) Run this snippet exactly as written. It discards stderr so a diagnostic
+   never becomes a second line:
 
 ```sh
 if ! auto workflow triage --topology --facts-json "$FACTS" --format json >"$TEAM_JSON" 2>/dev/null || [ ! -s "$TEAM_JSON" ]; then
@@ -1224,6 +1230,8 @@ fi
 rm -f "$FACTS"
 ```
 
+   (d) Print the decision with `cat "$TEAM_JSON"`, then remove the file with
+   `rm -f "$TEAM_JSON"`.
 3. If `TEAM_JSON` is empty, the snippet already printed the fixed failure line.
    Print no other `Agent Team:` line and run Route A Phase 2.
 4. If `decision.route` is `subagent`, print `decision.line` and run Route A

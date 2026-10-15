@@ -135,3 +135,37 @@ func TestAutoTeamSnippetWithTheBranchBinary(t *testing.T) {
 	assert.Empty(t, run.teamJSON)
 	assert.False(t, run.factsLeft)
 }
+
+// The documented single call writes facts through the quoted heredoc, so an
+// owned path such as pkg/$(touch PWNED)/x reaches auto as text and never runs.
+func TestAutoTeamOneCallRecipeKeepsFactsLiteral(t *testing.T) {
+	t.Parallel()
+	autoGo, _ := generateAutoTeamSkills(t)
+	section := between(t, autoGo, autoTeamSectionHeading, routeBHeading)
+	heredoc := strings.Split(strings.TrimPrefix(between(t, section, "```bash\n", "\n```"), "```bash\n"), "\n")
+	require.Equal(t, `cat >"$FACTS" <<'JSON'`, heredoc[0])
+	require.Equal(t, "JSON", heredoc[len(heredoc)-1])
+
+	work, bin := t.TempDir(), t.TempDir()
+	seen := filepath.Join(t.TempDir(), "facts.seen")
+	writeExecutable(t, filepath.Join(bin, "auto"), `cp "$5" '`+seen+`'; exit 1`)
+	facts := `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/$(touch PWNED)/x"]}]}`
+	call := "FACTS=\"$(mktemp)\"\nTEAM_JSON=\"$(mktemp)\"\n" +
+		heredoc[0] + "\n" + facts + "\n" + heredoc[len(heredoc)-1] + "\n" +
+		extractAutoTeamSnippet(t) +
+		"cat \"$TEAM_JSON\"\nrm -f \"$TEAM_JSON\"\n"
+	cmd := exec.Command("/bin/sh", "-c", call)
+	cmd.Dir = work
+	cmd.Env = []string{"PATH=" + bin + ":/usr/bin:/bin", "HOME=" + work, "TMPDIR=" + work}
+	out, err := cmd.CombinedOutput()
+	require.NoError(t, err, string(out))
+	assert.Equal(t, snippetFailureLine, string(out))
+	data, err := os.ReadFile(seen)
+	require.NoError(t, err)
+	assert.Equal(t, facts+"\n", string(data))
+	_, statErr := os.Stat(filepath.Join(work, "PWNED"))
+	assert.True(t, os.IsNotExist(statErr), "a path in the facts ran as a command")
+	entries, err := os.ReadDir(work)
+	require.NoError(t, err)
+	assert.Empty(t, entries, "the call leaves no temp file behind")
+}

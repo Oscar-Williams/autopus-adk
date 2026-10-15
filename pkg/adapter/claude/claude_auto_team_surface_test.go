@@ -112,7 +112,11 @@ func TestAutoTeamSurfaceSectionOrder(t *testing.T) {
 	ordered := []string{
 		"`TOPOLOGY_FLAG_COUNT == 0`",
 		"A `--continue` run that resumes from a checkpoint where\n   Phase 2 already finished skips this section and prints no `Agent Team:` line.",
+		"in ONE Bash tool call from `WORKING_DIR`, because shell\n   variables such as `FACTS` do not survive between Bash tool calls.",
+		"never use `echo` or an unquoted heredoc.",
+		"```bash\ncat >\"$FACTS\" <<'JSON'\n",
 		"```sh\n" + autoTeamSnippet + "\n```",
+		"(d) Print the decision with `cat \"$TEAM_JSON\"`",
 		"If `TEAM_JSON` is empty, the snippet already printed the fixed failure line.",
 		"`select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`",
 		"print `decision.tools_fallback_line` instead of `decision.line`",

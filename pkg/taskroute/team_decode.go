@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"regexp"
+	"strings"
 )
 
 // Bounds of the Topology Facts Contract.
@@ -23,6 +24,12 @@ const (
 var teamFactsKeyPattern = regexp.MustCompile(`^[a-z_]+$`)
 
 var errTeamFactsKey = errors.New("facts key outside [a-z_]")
+
+// teamShellMetacharacters are refused in owned paths although cleanPath allows
+// most of them. The session writes facts through a shell, and one of these in
+// a path would run or split a command if the facts were ever written with echo
+// or an unquoted heredoc.
+const teamShellMetacharacters = "$`" + `\"';&|<>` + "\n"
 
 // TeamFacts is a caller-declared topology facts document: the session copies
 // the Phase 1 assignment table into it. Nothing checks the filesystem.
@@ -108,7 +115,7 @@ func teamFactsViolation(facts TeamFacts) string {
 		}
 		// Only one trailing "/**" is a scope; any glob left after it fails cleanPath.
 		for _, root := range ownedRoots(unit.OwnedPaths) {
-			if _, err := cleanPath(root); err != nil {
+			if _, err := cleanPath(root); err != nil || strings.ContainsAny(root, teamShellMetacharacters) {
 				return "owned_paths"
 			}
 		}

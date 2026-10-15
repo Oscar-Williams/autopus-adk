@@ -1,6 +1,7 @@
 package taskroute
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -158,5 +159,32 @@ func TestDecodeTeamFactsRejectsKeysTheDecoderWouldFold(t *testing.T) {
 	// An escaped lowercase key is still exactly the field name.
 	if _, err := DecodeTeamFacts([]byte(`{"version":1}`)); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// The session writes facts through a shell, so an owned path that would run
+// or split a command if written with echo or an unquoted heredoc is refused.
+func TestDecodeTeamFactsRejectsShellMetacharactersInOwnedPaths(t *testing.T) {
+	facts := func(execution, owned string) []byte {
+		raw, err := json.Marshal(map[string]any{"version": 1, "units": []any{
+			map[string]any{"id": "T1", "execution": execution, "owned_paths": []string{owned}},
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return raw
+	}
+	quote, backslash := string(rune(34)), string(rune(92))
+	for _, owned := range []string{"pkg/$(id)/x", "pkg/`id`/x", "pkg/$HOME", "pkg/a" + backslash + "b", "pkg/a" + quote + "b", "pkg/a'b", "pkg/a;b", "pkg/a&b", "pkg/a|b", "pkg/a<b", "pkg/a>b", "pkg/a\nb", "pkg/$x/**"} {
+		for _, execution := range []string{"worker", "inline"} {
+			if _, err := DecodeTeamFacts(facts(execution, owned)); err == nil || err.Error() != "invalid topology facts: owned_paths" {
+				t.Fatalf("%s %q: %v", execution, owned, err)
+			}
+		}
+	}
+	for _, owned := range []string{"pkg/a b", "pkg/a-b_c.d", "pkg/(x)", "pkg/a+b", "pkg/a#b", "pkg/@x", "pkg/a,b", "pkg/~x", "pkg/a=b/**"} {
+		if _, err := DecodeTeamFacts(facts("worker", owned)); err != nil {
+			t.Fatalf("%q: %v", owned, err)
+		}
 	}
 }
