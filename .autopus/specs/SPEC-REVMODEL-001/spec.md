@@ -2,7 +2,7 @@
 
 **Status**: draft
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1 J-001–J-021 반영: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. `evidence/review-rounds.md`)
+**Revised**: 2026-10-16 (review round 1 J-001–J-021: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. round 2 J-010·F-001: S4(b) 음성 사례, baseline 1개 경로와 `나가기`. Gate 1 G1-1·G1-2 사용자 확정. `evidence/review-rounds.md`)
 **Domain**: REVMODEL
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, SPEC-TEAMAUTO-001, redline capability와 함께). 작업 branch는 `feat/revmodel-001`이고 기준은 `feat/rea-001`(ee811e2e)이다. SPEC-REA-001이 구성 UI의 에이전트 수를 17개로 바꿨기 때문이다.
@@ -27,7 +27,7 @@
   - `orchestra.providers` 항목 추가·삭제, `backend`·`binary`·`tools`·`subprocess` 변경
   - review receipt `degraded_reasons` 규칙과 `auto doctor --provider-smoke` 동작 변경(Evolution Idea)
   - 확인 요청 자동 실행, 결과 저장(receipt·cache), 새 YAML key
-- Completion evidence: Must S1–S12, S15–S17 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
+- Completion evidence: Must S1–S12, S15–S18 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
 
 ## Trust Model
 
@@ -44,6 +44,7 @@ Priority: Must · EARS: EventDriven
 WHEN the operator chooses 구성 편집 in auto init, auto update, or auto quality while `spec.review_gate.enabled` is true, the config holds at least two `orchestra.providers` entries, and `composeCITruthy(composeCIEnv())` is false, THEN THE SYSTEM SHALL list `멀티프로바이더 리뷰` as the last option of the tool tab select and run the Review Tab Contract when it is chosen, and SHALL otherwise not list it.
 
 - 진입점은 `chooseTab`(`internal/cli/quality_compose_form_driver.go:155`)과 `edit`(`:133`)의 분기다. 290줄 파일이라 선택지 조립은 `[NEW] composeReviewTabOption`(`quality_compose_review.go`)이 하고 driver에는 호출 두 줄만 더한다.
+- baseline 참여 수는 진입 조건이 아니다(REQ-RVM-05의 경고 줄과 `나가기`).
 - CI 조건은 이 탭만의 규칙이다. update는 이미 CI에서 구성 단계를 열지 않고(`quality_compose_driver_gate.go:66-70`), quality는 CI가 아무것도 정하지 않으며(`quality_compose_entry.go:82-84`, REQ-MUX-16), init은 `!yes && composeTTYProbe()`만 본다(`init.go:100`). 그 gate들은 바꾸지 않는다.
 
 ### REQ-RVM-02 참여와 두 값
@@ -70,9 +71,9 @@ WHEN the participation passes the count check, THEN THE SYSTEM SHALL ask the jud
 ### REQ-RVM-05 편집 검증
 Priority: Must · EARS: Unwanted
 
-IF the participation selects leave fewer than two participating providers, or a planned edit names a judge that does not take part, or a model or thinking that differs from the baseline and is not among the attested choices of REQ-RVM-06, THEN THE SYSTEM SHALL print the exact error line of the Form Text table, reset the working value to the baseline, write nothing, and ask the participation selects again.
+IF the participation selects leave fewer than two participating providers, or a planned edit names a judge that does not take part, or a model or thinking that differs from the baseline and is not among the attested choices of REQ-RVM-06, THEN THE SYSTEM SHALL print the exact error line of the Form Text table, reset the working value to the baseline, write nothing, and ask the after-error select, whose default 다시 고르기 asks the participation selects again and whose 나가기 returns to the menu.
 
-- 수 검사는 참여 Select 바로 뒤에 한다. 그래서 0개·1개에서도 judge Select가 열리지 않는다. 검증은 `[NEW] planReviewComposition`(순수 함수)이다. baseline과 같은 model(`그대로`)은 catalog와 대조하지 않는다. 두 개 이상 규칙은 init이 provider가 둘보다 적으면 Review Gate를 끄는 규칙(`init.go:154-157`)과 같다.
+- 수 검사는 참여 Select 바로 뒤에 하고 보이는 provider(`orchestra.providers` 항목)만 센다. 그래서 0개·1개에서도 judge Select가 열리지 않는다. baseline 참여가 이미 둘보다 적어도 탭에 들어갈 수 있다: 첫 참여 Select 앞에 경고 줄을 쓰고, 사용자는 provider를 켜서 둘 이상으로 만들거나 오류 뒤 `나가기`로 나간다. 그래서 고칠 수 없는 반복은 없다. 검증은 `[NEW] planReviewComposition`(순수 함수)이다. baseline과 같은 model(`그대로`)은 catalog와 대조하지 않는다. 두 개 이상 규칙은 init이 provider가 둘보다 적으면 Review Gate를 끄는 규칙(`init.go:154-157`)과 같다.
 
 ### REQ-RVM-06 증명된 model 선택지
 Priority: Must · EARS: EventDriven
@@ -96,6 +97,7 @@ Priority: Must · EARS: StateDriven
 WHERE a participating provider entry has no `backend: omp`, THEN THE SYSTEM SHALL ask no model or thinking select for it, print the CLI-backend note for it once per pass, and leave its `backend`, `binary`, `args`, `model_policy`, and `model` unchanged.
 
 - 근거: CLI codex의 model은 `model_policy: quality`일 때 런타임에 `CodexOrchestraProfile`이 args를 덮어 정하고(`orchestra_run_runtime.go:27-35`, `codex_profile.go:93-95`), 기본 gemini(`agy --print`)에는 model flag가 없다(`defaults.go:119`).
+- 안내 줄은 그 이유를 함께 쓴다(Form Text, Gate 1 G1-2 사용자 결정 2026-10-16).
 
 ### REQ-RVM-09 미리보기
 Priority: Must · EARS: EventDriven
@@ -179,13 +181,13 @@ THE SYSTEM SHALL pass the provider, the model selector, the tools, and the retry
 |---|---|
 | 진입 | REQ-RVM-01의 세 조건을 모두 만족할 때 tool tab Select의 마지막 선택지 |
 | 값 | baseline(탭 진입: run의 cfg, 그리고 raw document에서 `spec.review_gate.judge` key가 있는지와 그 raw 값)과 working(이번 편집). Select 기본값과 `그대로 — <값>`은 working, 변경 판정과 쓰기는 baseline 기준. 검증 오류 → working = baseline |
-| 참여 | provider마다 Select. 켜짐이면 `그대로 — 켜짐`·`끄기`, 꺼짐이면 `그대로 — 꺼짐`·`켜기`. `orchestra.providers` 항목이 없는 목록 이름은 보이지 않고 바뀌지 않는다 |
-| 수 검사 | 참여 Select 바로 뒤. 둘보다 적으면 오류 줄 → 참여 Select부터 다시 |
+| 참여 | baseline 참여가 둘보다 적으면 첫 Select 앞에 경고 줄. provider마다 Select. 켜짐이면 `그대로 — 켜짐`·`끄기`, 꺼짐이면 `그대로 — 꺼짐`·`켜기`. `orchestra.providers` 항목이 없는 목록 이름은 보이지 않고 바뀌지 않는다 |
+| 수 검사 | 참여 Select 바로 뒤, 보이는 provider만 센다. 둘보다 적으면 오류 줄 → 오류 뒤 Select(`다시 고르기` 기본 → 참여 Select부터 baseline 기본값으로, `나가기` → 쓰지 않고 메뉴로) |
 | model | 참여하는 `backend: omp` provider만(REQ-RVM-06). catalog 읽기는 탭 진입당 1회 |
 | thinking | model을 바꿨을 때만(REQ-RVM-07) |
 | CLI 안내 | 참여하는 CLI backend provider마다 그 pass에 1줄(REQ-RVM-08) |
 | judge | working judge가 참여하면 `그대로 — <j>` 뒤 다른 참여 provider. working judge가 비었으면 `그대로 — judge 없음` 뒤 참여 provider. working judge가 꺼졌으면 안내 1줄 뒤 참여 provider만, 첫 provider가 기본 |
-| 검증 | `planReviewComposition`(REQ-RVM-05) |
+| 검증 | `planReviewComposition`(REQ-RVM-05). 오류 뒤 Select는 수 검사 행과 같다 |
 | 미리보기 | after 표, 바뀌는 설정 줄(순서: `spec.review_gate.providers` → `orchestra.providers.<p>.model`(provider 순) → `spec.review_gate.judge`, 모양 `<key> <before> → <after>`, 목록은 `[a, b]`, 빈 judge는 `judge 없음`), 고정 안내(provider를 끈 편집이면 명령 안내, model을 바꾼 편집이면 model 안내). 같으면 `변경 없음` |
 | 확인 요청 | 미리보기나 `변경 없음` 뒤 `확인 호출 없이 계속`(기본) · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)`. `<n>`은 후보의 참여 provider 수 |
 | 확인 | 바뀐 편집만: 기존 `review`(`quality_compose_form_driver.go:213`)와 같은 `취소`(기본) · `적용` · `다시 편집`. 바뀐 것이 없으면 확인 없이 메뉴로 |
@@ -252,10 +254,11 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | 참여 | `<p> 리뷰 참여` · `그대로 — 켜짐` · `끄기` · `그대로 — 꺼짐` · `켜기` | `<p> takes part in review` · `keep — on` · `turn off` · `keep — off` · `turn on` |
 | model | `<p> model` · `그대로 — <selector>` · ` (catalog에 없음)` | `<p> model` · `keep — <selector>` · ` (not in catalog)` |
 | thinking | `<p> thinking (<provider>/<model>)` | 같다 |
-| CLI 안내 | `<p>는 CLI backend라 이 탭에서 model을 바꾸지 않습니다` | `<p> runs on a CLI backend; this tab leaves its model unchanged` |
+| CLI 안내 | `<p>는 CLI backend라 model을 바꾸지 않습니다: 증명된 model 목록은 OMP backend에만 있고 CLI model은 args와 quality 정책이 정합니다` | `<p> runs on a CLI backend, so its model stays: attested model lists exist only for OMP backends, and a CLI model comes from its args and quality policy` |
 | catalog 안내 | `OMP catalog를 읽지 못해 model은 그대로입니다` | `The OMP catalog is unreadable; models stay unchanged` |
 | judge | `judge` · `그대로 — judge 없음` · `judge <j>가 꺼져 judge를 다시 고릅니다` | `judge` · `keep — no judge` · `judge <j> was turned off; choose a new judge` |
 | 오류 | `리뷰에는 provider가 두 개 이상 필요합니다 (지금 <n>개)` · `judge <j>는 리뷰에 참여하지 않는 provider라 고를 수 없습니다` · `<p> model <selector>는 설치된 OMP catalog가 증명하지 않습니다` · `<p> thinking <t>는 <selector>가 보고하지 않는 단계입니다` | `The review needs at least two providers (now <n>)` · `judge <j> does not take part in the review and cannot be chosen` · `The installed OMP catalog does not attest <p> model <selector>` · `<selector> reports no thinking level <t> for <p>` |
+| 오류 뒤 | `다시 고르기` · `나가기` · `지금 리뷰 provider가 <n>개뿐입니다. 두 개 이상 켜야 적용할 수 있습니다` | `choose again` · `leave` · `Only <n> review providers now; turn on at least two to apply` |
 | 명령 안내 | `꺼진 provider도 orchestra 명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속 돕니다` | `Turned-off providers still run in orchestra commands (brainstorm, plan, review, secure) and in auto spec review --multi` |
 | model 안내 | `바뀐 model은 auto spec review와 orchestra 명령 모두에 쓰입니다` | `A changed model applies to auto spec review and to orchestra commands` |
 | 확인 요청 | `확인 호출` · `확인 호출 없이 계속` · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)` · 결과 줄 · `확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.` · `확인 호출을 할 수 없습니다: provider 이름 <terminalSafe(p)>에 터미널 제어 문자가 있습니다` | `Live check` · `continue without a live check` · `live check — one request for each of <n> providers (at most <3n> model calls with retries)` · `live check <p> (<model>): passed` / `: the reply lacks the check token` / `: failed — <detail>` · `A live check failed; if you apply, that provider keeps failing in reviews.` · `Cannot run the live check: provider name <terminalSafe(p)> holds terminal control characters` |
@@ -287,20 +290,20 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 
 ## Open Issues
 
-Gate 1에서 사용자가 볼 범위 결정 둘(근거는 `research.md` D2·D3):
+Gate 1 범위 결정 둘은 2026-10-16 사용자가 확정했다(근거는 `research.md` D2·D3).
 
-- G1-1 | scope | 참여 켜기·끄기는 `auto spec review`(`spec.review_gate.providers`)에만 효과가 있다. planning 예시("orchestra.commands.*.providers lose gemini")는 Migration 3이 load마다 되돌려 쓰기만으로는 이룰 수 없다. 명령 목록까지 바꾸려면 Migration 3 변경이 필요하고, 그것은 scope expansion이다
-- G1-2 | scope | model 편집은 OMP backend provider만 된다. CLI codex model은 `CodexOrchestraProfile`이, 기본 gemini(agy)는 model flag 없음이 정한다. CLI backend만 있는 새 init 프로젝트는 참여와 judge만 고칠 수 있다
+- G1-1 | resolved 2026-10-16 | 사용자 결정: 참여 끄기는 `auto spec review`(`spec.review_gate.providers`)에만 적용하고, 미리보기의 명령 안내 줄(orchestra 명령과 `--multi`는 그대로)을 유지한다. 명령 목록은 Migration 3이 load마다 다시 채우므로 그것을 바꾸는 일은 scope expansion으로 남는다
+- G1-2 | resolved 2026-10-16 | 사용자 결정: model 편집은 OMP backend provider만 한다. CLI backend provider에는 탭이 이유 줄(Form Text CLI 안내)을 보인다. CLI codex model은 `CodexOrchestraProfile`이, 기본 gemini(agy)는 model flag 없음이 정한다
 
 ## Traceability Matrix
 
 | Requirement | Plan Task | Acceptance Scenario | Semantic Invariant |
 |-------------|-----------|---------------------|--------------------|
-| REQ-RVM-01 | T5 | S1, S6, S10 | INV-RVM-08 |
+| REQ-RVM-01 | T5 | S1, S6, S10, S18 | INV-RVM-08 |
 | REQ-RVM-02 | T2, T5 | S1, S3, S17 | INV-RVM-01, INV-RVM-09 |
 | REQ-RVM-03 | T2, T4 | S1, S11 | INV-RVM-01 |
 | REQ-RVM-04 | T2, T5 | S3, S9 | INV-RVM-02 |
-| REQ-RVM-05 | T2 | S3, S4 | INV-RVM-02, INV-RVM-03, INV-RVM-09 |
+| REQ-RVM-05 | T2 | S3, S4, S18 | INV-RVM-02, INV-RVM-03, INV-RVM-09 |
 | REQ-RVM-06 | T3 | S4 | INV-RVM-03 |
 | REQ-RVM-07 | T3, T4 | S2, S5 | INV-RVM-03, INV-RVM-04 |
 | REQ-RVM-08 | T3, T5 | S8 | INV-RVM-01 |

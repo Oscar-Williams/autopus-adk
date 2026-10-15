@@ -22,7 +22,8 @@
   - `PERSIST migrate changed=true review_gate.providers=[claude codex] commands.review.providers=[claude codex gemini]`
   - `TSAFE "gem\\x1b[2Jini\\nx"`(`terminalSafe` 결과는 역슬래시 글자)
 - A3(2026-10-15): `git archive v0.50.125`(dd6d6ea2) 빌드. 본 파일 `config get usage_profile` → exit 0, `developer`. 대조군 → `field reviewers not found in type config.ReviewGateConf`, `validate config: provider_model_required: codex`(둘 다 exit 1). `config get`은 두 key만 받지만 파일 전체를 strict load한다.
-- 상위 세션 live 증거(재실행 안 함): catalog의 `google-antigravity/gemini-3.1-pro:high` one-shot은 HTTP 404, `gemini-3.8-flash:high`는 `ok`.
+- 상위 세션 live 증거(재실행 안 함): catalog의 `google-antigravity/gemini-3.1-pro:high` one-shot은 HTTP 404, `gemini-3-pro`는 stream 끊김, `gemini-3.8-flash:high`는 `ok`.
+- 2026-10-16 사용자 결정: 이 repo의 gemini 리뷰 model을 `google-antigravity/gemini-3.8-flash:high`로 바꾼다(위 live 증거). catalog 증명만으로는 404를 못 잡는다는 D6의 근거이고 S15의 목표 값이다. fixture는 이 값에 기대지 않는다(R3는 `gemini-3.1-pro:high` 그대로).
 
 ## Plan Intent Ledger
 
@@ -46,7 +47,7 @@ direct `auto plan` 문맥의 ledger다(planning context). 칸은 증거로만 �
 - User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, OMP backend provider의 model·thinking(증명된 선택지만), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 세 경로뿐이다.
 - Mandatory requirements: REQ-RVM-01 ~ 15, 19, 20.
 - Explicit non-goals: `spec.md` `## Outcome Boundary`의 목록. 특히 orchestra 명령 목록과 `--multi`는 바뀌지 않는다(G1-1).
-- Completion evidence: Must S1–S12, S15–S17 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
+- Completion evidence: Must S1–S12, S15–S18 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
 
 ## Visual Planning Brief
 
@@ -78,13 +79,13 @@ sequenceDiagram
 ## 설계 결정
 
 - D1 탭 위치: 기존 tool tab의 마지막 선택지다(사용자 답 location=compose tab). gate는 `spec.review_gate.enabled`, provider 둘 이상, CI 아님(J-015, J-020).
-- D2 참여 = `spec.review_gate.providers`만: 명령 목록은 Migration 3이 load마다 다시 채우므로 쓰면 미리보기가 거짓이 되고 다음 update가 되돌린다(J-001, probe A2). planning 예시의 "명령 목록에서도 gemini 제거"는 Migration 3 변경이 필요해 scope expansion이다(G1-1). 미리보기 안내가 명령과 `--multi`는 그대로라고 알린다.
-- D3 model은 OMP backend만: OMP catalog가 세 family의 model과 thinking을 모두 보고하는 유일한 증명 원천이다. CLI codex model은 `CodexOrchestraProfile`이 정하고 기본 gemini에는 model flag가 없다(G1-2). 대안(CLI args 편집, CLI→OMP 전환)은 정책 key 변경이라 Evolution Idea다.
+- D2 참여 = `spec.review_gate.providers`만: 명령 목록은 Migration 3이 load마다 다시 채우므로 쓰면 미리보기가 거짓이 되고 다음 update가 되돌린다(J-001, probe A2). planning 예시의 "명령 목록에서도 gemini 제거"는 Migration 3 변경이 필요해 scope expansion이다(G1-1). 미리보기 안내가 명령과 `--multi`는 그대로라고 알린다. 2026-10-16 Gate 1에서 사용자가 이 범위를 확정했다(안내 줄 유지).
+- D3 model은 OMP backend만: OMP catalog가 세 family의 model과 thinking을 모두 보고하는 유일한 증명 원천이다. CLI codex model은 `CodexOrchestraProfile`이 정하고 기본 gemini에는 model flag가 없다(G1-2). 대안(CLI args 편집, CLI→OMP 전환)은 정책 key 변경이라 Evolution Idea다. 2026-10-16 Gate 1에서 사용자가 확정했고, 탭은 CLI backend provider에 이유 줄을 보인다.
 - D4 family 필터: 런타임의 두 함수로 맞춰 provider 이름과 model family가 어긋나지 않게 한다.
 - D5 judge: `spec.review_gate.judge`만 쓴다. `orchestra.judge`는 명령 쪽 값이라 쓰지 않는다(D2와 같은 경계). 빈 judge는 `그대로 — judge 없음`으로 남는다(J-018). raw node로 key 유무를 baseline에 담아 없으면 넣고 `""`면 값만 바꾼다(J-014).
 - D6 확인 요청: `runProviderTransportSmoke` 전체를 쓴다. 조립 오류와 0개를 그 함수가 이미 결과로 바꾼다(J-017). 통과는 "답했다"이고 readiness 필터는 별개다(J-016). 요청은 provider당 1회지만 model 호출은 최대 3n회라 라벨이 적는다(J-003). 편집 없이도 돈다(J-004).
 - D7 writer: 줄 splice다. `encodeAutopusConfigRewrite`는 문서 전체를 다시 encode해 손으로 쓴 파일의 span 밖 bytes를 바꾼다(J-006). 대상 span만 바꾸고 `verifyQualityLineEdit` 방식의 전체 문서 검사로 anchor 공유(J-007)와 alias를 막는다.
-- D8 baseline·working: 비교와 쓰기는 baseline, Select 기본값은 working, 오류 뒤 reset(J-010, J-012). 수 검사는 참여 직후(J-011).
+- D8 baseline·working: 비교와 쓰기는 baseline, Select 기본값은 working, 오류 뒤 reset(J-010, J-012). 수 검사는 참여 직후(J-011). baseline 참여가 이미 둘보다 적으면 경고 줄을 쓰고, 오류 뒤 Select의 `나가기`로 언제든 쓰지 않고 나간다(round 2 F-001).
 - D9 터미널: backend 진단 줄 두 개에 `terminalSafe`를 더하고(REQ-RVM-20), 이름이 바뀌는 provider가 있으면 확인 요청을 시작하지 않는다(J-002).
 
 ## Minimality Decision Matrix
@@ -103,8 +104,8 @@ sequenceDiagram
 | ID | source clause | invariant type | affected outputs | acceptance IDs |
 |----|---------------|----------------|------------------|----------------|
 | INV-RVM-01 | "which providers take part (on/off)" | 참여 = 쓴 `spec.review_gate.providers`이고 loader·migration 뒤에도 같다. 명령 목록은 바뀌지 않는다 | review gate 목록, loader 값 | S1, S8, S10, S11 |
-| INV-RVM-02 | "the judge" + 참여 provider | judge ∈ 참여 집합 또는 그대로인 judge 없음, 하한 2 | `spec.review_gate.judge`, 오류 줄 | S3, S9 |
-| INV-RVM-03 | "Only models verified for that provider are offered" | 선택지 = 같은 family ∩ 증명된 설치 model, 바뀐 값만 대조, thinking = catalog 순서의 보고 단계 | Select 목록, 오류 줄 | S2, S4 |
+| INV-RVM-02 | "the judge" + 참여 provider | judge ∈ 참여 집합 또는 그대로인 judge 없음, 하한 2, baseline이 하한 아래면 경고와 `나가기` | `spec.review_gate.judge`, 오류 줄, 오류 뒤 Select | S3, S9, S18 |
+| INV-RVM-03 | "Only models verified for that provider are offered" | 선택지 = 같은 family ∩ 증명된 설치 model, 바뀐 값만 대조(baseline과 같은 값은 catalog에 없어도 통과), thinking = catalog 순서의 보고 단계 | Select 목록, planner 오류(baseline과 다른 값에만) | S2, S4 |
 | INV-RVM-04 | "model + effort/thinking" | 쓰는 값 = `<provider>/<model>:<thinking>` | `orchestra.providers.<p>.model` | S2, S5 |
 | INV-RVM-05 | "Non-TTY … no prompt, keep" + 비용 | 확인 요청은 opt-in, 요청 n·호출 최대 3n, 비대화형·CI는 요청·쓰기 0, 실패 뒤 기본 취소 | FB 요청 수, 라벨, SHA | S5, S6, S11 |
 | INV-RVM-06 | "older binaries still load the file" | 쓰는 key 경로 ⊆ 시작 파일 key ∪ {`spec.review_gate.judge`} | v0.50.125 load 결과 | S7 |
@@ -117,7 +118,7 @@ sequenceDiagram
 
 | Outcome slice | Covered by | Status |
 |---------------|------------|--------|
-| 탭 진입·참여·judge·미리보기 | REQ-RVM-01–05, 09 / S1, S3, S9 | covered |
+| 탭 진입·참여·judge·미리보기 | REQ-RVM-01–05, 09 / S1, S3, S9, S17, S18 | covered |
 | 증명된 model·thinking·CLI 한계 | REQ-RVM-06–08 / S2, S4, S8 | covered |
 | 확인 요청·터미널 안전 | REQ-RVM-10, 11, 20 / S5, S16 | covered |
 | 쓰기 안전·init·update·비대화형·호환 | REQ-RVM-12–15 / S6, S7, S10–S12 | covered |
@@ -135,7 +136,7 @@ These are optional improvements and do not block sync completion.
 | Idea | Why not required now | Promotion trigger |
 |------|----------------------|-------------------|
 | quorum이 차도 실패한 provider를 receipt에 남기기(승격을 막지 않는 정보 필드) | `degraded_reasons`는 승격을 막는다. 사유로 넣으면 provider 하나만 실패해도 모든 리뷰가 막혀 리뷰 무결성 quorum 규칙을 바꾼다 | 사용자가 별도 필드를 요청 |
-| Migration 3이 명시적으로 뺀 provider를 다시 붙이지 않게 바꾸기(명령 목록 참여) | load 의미 변경이고 기존 migration test가 바뀐다(G1-1) | Gate 1에서 사용자가 명령 목록까지 원함 |
+| Migration 3이 명시적으로 뺀 provider를 다시 붙이지 않게 바꾸기(명령 목록 참여) | load 의미 변경이고 기존 migration test가 바뀐다. Gate 1(2026-10-16)은 리뷰 목록만으로 확정했다 | 사용자가 나중에 명령 목록 참여를 요청 |
 | CLI backend model 편집 또는 CLI→OMP 전환 | 정책 key 변경이고 원천마다 증명 방식이 다르다(G1-2) | init 사용자 요청 |
 | `auto doctor --provider-smoke`에 "catalog에는 있으나 호출 실패" 안내 | 확인 요청이 같은 판정을 이미 보인다 | doctor 개선 요청 |
 
@@ -158,7 +159,7 @@ These are optional improvements and do not block sync completion.
 - Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, judge, 미리보기), 세 key만 쓰는 줄 splice writer, opt-in 확인 요청, backend 진단 줄 escape, init 순서 수정.
 - Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI backend model, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Self-verified: A1·A2(실제 loader 경유 throwaway test), A3(v0.50.125 바이너리와 대조군 둘), catalog 정규화·재시도·CI gate 줄 번호, Traceability Matrix, oracle 시나리오, existing/[NEW] 구분.
-- Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1 결정 G1-1·G1-2, 그리고 Completion Debt only.
+- Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1에서 확정된 G1-1·G1-2의 반영, 그리고 Completion Debt only.
 
 ## Self-Verify Summary
 
@@ -168,7 +169,7 @@ These are optional improvements and do not block sync completion.
 - Q-CORR-04 | status: PASS | attempt: 1 | files: research.md | reason: Reference Discipline이 existing, tag, [NEW]를 나눈다
 - Q-COMP-02 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: 0명 참여(S3d), CI의 init·quality(S6d), catalog_invalid(S4c), 조립 실패(Live Check 엔진 행), judge 없음(S9)을 닫았다
 - Q-COMP-04 | status: PASS | attempt: 2 | files: spec.md, acceptance.md, research.md | reason: 편집 없는 확인 요청을 허용하고 S15 예산을 재시도 포함 18회로, `auto spec review`를 빼 CD-1을 닫을 수 있게 했다
-- Q-COMP-05 | status: PASS | attempt: 3 | files: research.md, acceptance.md | reason: INV-RVM-01–10이 S1–S16 oracle에 잇는다. loader 값, 손으로 쓴 파일의 span 밖 bytes, 공유 anchor, 최대 호출 수(3n)를 판정한다
+- Q-COMP-05 | status: PASS | attempt: 4 | files: research.md, acceptance.md | reason: round 2에서 S4(b) 음성 사례를 baseline과 다른 비증명 값으로 바꾸고 baseline 대조군을 더했으며 S18(baseline 1개)을 더했다. INV-RVM-01–10이 S1–S18 oracle에 잇는다. loader 값, 손으로 쓴 파일의 span 밖 bytes, 공유 anchor, 최대 호출 수(3n)를 판정한다
 - Q-COMP-06 | status: PASS | attempt: 2 | files: spec.md | reason: Traceability Matrix가 REQ 20개를 잇는다
 - Q-COMP-07 | status: PASS | attempt: 1 | files: research.md | reason: live 확인을 CD-1로 남겼다
 - Q-COMP-08 | status: PASS | attempt: 2 | files: plan.md | reason: A1·A2를 `loadHarnessConfigForFlags` 경유로 다시 돌렸고 소비처 주장을 진술 분류에 넣었다

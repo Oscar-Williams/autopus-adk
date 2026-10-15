@@ -29,3 +29,16 @@
 | J-021 300줄 여유 | suggestion | 맞음 | driver에는 호출 두 줄, 넘으면 새 파일로(T5) |
 
 checklist FAIL(Q-COMP-02/04/05/08, Q-CORR-03, Q-FEAS-01/03, Q-STYLE-01, Q-SEC-01/03)은 위 반영으로 닫았고 `research.md` `## Self-Verify Summary`에 attempt 2로 남겼다.
+
+## Round 2 (2026-10-16, 20 resolved, major 2 open)
+
+| Finding | Severity | 판정 | 반영 |
+|---|---|---|---|
+| J-010 S4(b)가 baseline 값을 "새 model"로 줌 | major | 맞음(R3 gemini baseline = `gemini-3.1-pro:high`) | 음성 사례를 baseline과 다르고 catalog에 없는 `google-antigravity/gemini-3-pro:high`로 바꾸고, baseline 값 대조군(오류 없음)을 더함. INV-RVM-03에 "baseline과 같은 값은 통과"와 planner 오류 범위를 적음 |
+| F-001 baseline 참여가 2개 미만이면 탈출 불가 | major | 맞음(진입은 막지 않고 오류 뒤 reset만 있었음) | 진입 허용, 첫 참여 Select 앞 경고 줄, 오류 뒤 Select `다시 고르기`(기본)·`나가기`, 보이는 provider만 셈(REQ-RVM-05, Review Tab Contract, Form Text, S3(c)(d), 새 S18) |
+
+## Gate 1 (2026-10-16, 사용자 결정)
+
+- G1-1 확정: 참여 끄기는 `auto spec review`(`spec.review_gate.providers`)에만 적용한다. 미리보기의 명령 안내 줄을 유지한다(`spec.md` Open Issues resolved).
+- G1-2 확정: model 편집은 OMP backend provider만 한다. CLI backend provider에는 탭이 이유 줄을 보인다(Form Text CLI 안내, S8).
+- 이 repo의 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`로 바뀐다(live: `gemini-3.1-pro:high` 404, `gemini-3-pro` stream 끊김, `3.8-flash` ok). research 증거와 S15 목표 값으로만 쓰고 fixture는 기대지 않는다.

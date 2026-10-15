@@ -5,7 +5,7 @@ fixture는 모두 temp project 안에 만든다. 폼 test는 SPEC-MODELUX-002처
 
 - R3: `platforms: [claude-code, codex, omp]`. `orchestra.judge: claude`. `orchestra.providers`의 claude·codex·gemini는 모두 `backend: omp`, `subprocess.timeout: 900`이고 model은 차례로 `anthropic/claude-fable-5-1:max`, `openai-codex/gpt-6-astra:max`, `google-antigravity/gemini-3.1-pro:high`다. `orchestra.commands`의 brainstorm·plan·review·secure는 모두 `providers: [claude, codex, gemini]`다. `spec.review_gate`는 `enabled: true`, `strategy: debate`, `providers: [claude, codex, gemini]`, `judge: claude`, `max_revisions: 2`다. 이 branch의 `auto update --yes`로 한 번 맞춘 bytes를 B0라 한다.
 - RH: R3와 같은 값을 손으로 쓴 파일. 들여쓰기 2칸, `spec:` 바로 위에 주석 줄 `# review settings`, 구역 사이 빈 줄, `providers: [claude, codex, gemini] # reviewers`. retired key는 없다.
-- RL: R3에서 `orchestra.providers`만 이 branch의 기본 항목(`DefaultClaudeProviderEntry`, `DefaultCodexProviderEntry`, gemini `binary: agy`)으로 바꾼 것. 셋 다 `backend`가 없다. RN: R3에서 `spec.review_gate.judge` 줄을 지운 것. RE: R3의 그 줄이 `judge: ""`인 것. RD: R3의 `enabled: false`.
+- RL: R3에서 `orchestra.providers`만 이 branch의 기본 항목(`DefaultClaudeProviderEntry`, `DefaultCodexProviderEntry`, gemini `binary: agy`)으로 바꾼 것. 셋 다 `backend`가 없다. RB: R3의 `spec.review_gate.providers: [claude]`. RN: R3에서 `spec.review_gate.judge` 줄을 지운 것. RE: R3의 그 줄이 `judge: ""`인 것. RD: R3의 `enabled: false`.
 - CATG: strict catalog. 보고 thinking은 `anthropic/claude-fable-5-1` [low, medium, high, max], `anthropic/claude-opus-5-5` [high, max], `openai-codex/gpt-6-astra` [low, medium, high, xhigh, max], `openai-codex/gpt-6-luna` [low, medium, high], `google-antigravity/gemini-3.1-pro` [low, high], `google-antigravity/gemini-3.8-flash` [low, medium, high], `example/foo-1` [high]. 정규화 뒤 순서는 정렬 순서다(예: luna는 `high`, `low`, `medium`).
 - CATN: CATG에서 `google-antigravity/gemini-3.1-pro`를 뺀 것. CATE: CATG에 `thinking: []`인 `example/bar-1`을 더한 것(`catalog_invalid`). CATX: `omp models`가 오류를 내는 runner.
 - FB 응답: claude·codex와 `google-antigravity/gemini-3.8-flash:high`인 gemini는 output `AUTOPUS_PROVIDER_SMOKE_OK`, `google-antigravity/gemini-3.1-pro:high`인 gemini는 error `HTTP 404 Not Found (Cloud Code Assist)`. FB는 요청마다 Provider, Prompt, Timeout, `Config.Model`을 기록한다.
@@ -30,17 +30,17 @@ And 적용 뒤 `orchestra.providers.codex.model`은 문자열 `openai-codex/gpt-
 ### S3: judge와 provider 수 검증
 Priority: Must
 Given R3(B0), CATG가 있다
-When (a) `planReviewComposition`에 참여 {claude, codex}·judge gemini를 준다. (b) 리뷰 탭에서 claude `끄기`, 나머지 Enter, judge Enter, 확인 호출 Enter, `적용`. (c) 새 run에서 codex `끄기`, gemini `끄기`, 그 뒤 모든 Select Enter, 유지. (d) 새 run에서 셋 다 `끄기`, 그 뒤 모든 Select Enter, 유지
+When (a) `planReviewComposition`에 참여 {claude, codex}·judge gemini를 준다. (b) 리뷰 탭에서 claude `끄기`, 나머지 Enter, judge Enter, 확인 호출 Enter, `적용`. (c) 새 run에서 codex `끄기`, gemini `끄기`, 오류 뒤 `다시 고르기` Enter, 그 뒤 모든 Select Enter, 유지. (d) 새 run에서 셋 다 `끄기`, 오류 뒤 `나가기`, 유지
 Then (a)는 `judge gemini는 리뷰에 참여하지 않는 provider라 고를 수 없습니다` 오류다
 And (b)의 judge Select 앞에 `judge claude가 꺼져 judge를 다시 고릅니다`가 있고 선택지는 정확히 `codex`, `gemini`, 기본 `codex`다. 적용 뒤 `spec.review_gate.judge` = codex, `spec.review_gate.providers` = [codex, gemini], `orchestra.judge` = claude이고 B0와의 diff는 두 줄이다
-And (c)·(d)는 참여 Select 바로 뒤 `리뷰에는 provider가 두 개 이상 필요합니다 (지금 1개)`·`(지금 0개)`를 쓰고 그 pass에 model·judge Select가 없다. 다시 묻는 참여 Select의 기본값은 baseline(`그대로 — 켜짐`)이라 다음 pass는 `변경 없음`이고 파일 SHA-256이 B0와 같다
+And (c)·(d)는 참여 Select 바로 뒤 `리뷰에는 provider가 두 개 이상 필요합니다 (지금 1개)`·`(지금 0개)`를 쓰고 그 pass에 model·judge Select가 없으며, 오류 뒤 Select는 정확히 `다시 고르기`(기본)·`나가기`다. (c)에서 다시 묻는 참여 Select의 기본값은 baseline(`그대로 — 켜짐`)이라 다음 pass는 `변경 없음`이고, (d)는 `나가기` 뒤 바로 메뉴다. 두 run 뒤 파일 SHA-256은 B0와 같다
 
 ### S4: catalog 상태와 증명
 Priority: Must
 Given R3, CATN, CATX, CATE가 있다
-When (a) CATN으로 리뷰 탭에서 gemini model Enter, codex model `openai-codex/gpt-6-luna` → Enter, judge Enter, 확인 호출 Enter, `적용`. (b) `planReviewComposition`에 CATN과 gemini 새 model `google-antigravity/gemini-3.1-pro:high`, CATG와 codex `openai-codex/gpt-6-luna` thinking `xhigh`를 준다. (c) CATX와 CATE로 각각 gemini `끄기` → `적용`
+When (a) CATN으로 리뷰 탭에서 gemini model Enter, codex model `openai-codex/gpt-6-luna` → Enter, judge Enter, 확인 호출 Enter, `적용`. (b) `planReviewComposition`에 ① CATN과 gemini 새 model `google-antigravity/gemini-3-pro:high`(baseline과 다르고 catalog에 없음), ② CATN과 baseline 그대로의 gemini model `google-antigravity/gemini-3.1-pro:high`, ③ CATG와 codex `openai-codex/gpt-6-luna` thinking `xhigh`를 준다. (c) CATX와 CATE로 각각 gemini `끄기` → `적용`
 Then (a)의 gemini model Select는 정확히 `그대로 — google-antigravity/gemini-3.1-pro:high (catalog에 없음)`, `google-antigravity/gemini-3.8-flash`이고, 적용은 성공해 gemini model은 그대로, codex model은 `openai-codex/gpt-6-luna:high`다
-And (b)의 오류는 `gemini model google-antigravity/gemini-3.1-pro:high는 설치된 OMP catalog가 증명하지 않습니다`와 `codex thinking xhigh는 openai-codex/gpt-6-luna가 보고하지 않는 단계입니다`다
+And (b)의 ①은 `gemini model google-antigravity/gemini-3-pro:high는 설치된 OMP catalog가 증명하지 않습니다`, ③은 `codex thinking xhigh는 openai-codex/gpt-6-luna가 보고하지 않는 단계입니다` 오류이고, ②는 baseline과 같은 값이라 오류가 없다
 And (c)는 둘 다 `OMP catalog를 읽지 못해 model은 그대로입니다`를 한 번 쓰고 model Select 없이 적용에 성공하며 `spec.review_gate.providers`는 [claude, codex]다
 
 ### S5: 확인 요청과 404
@@ -70,7 +70,7 @@ And 다섯 파일의 key 경로 집합은 시작 파일과 같고, 더해진 key
 Priority: Must
 Given RL, CATG가 있다
 When 리뷰 탭에서 gemini `끄기`, 나머지 Enter, 확인 호출 Enter, `적용`을 고른다
-Then 출력에 `claude는 CLI backend라 이 탭에서 model을 바꾸지 않습니다`와 `codex는 CLI backend라 이 탭에서 model을 바꾸지 않습니다`가 하나씩 있고 gemini 줄과 model·thinking Select title은 없으며, after 표의 model 칸은 셋 다 `CLI backend`다
+Then 출력에 `claude는 CLI backend라 model을 바꾸지 않습니다: 증명된 model 목록은 OMP backend에만 있고 CLI model은 args와 quality 정책이 정합니다`와 같은 모양의 codex 줄이 하나씩 있고 gemini 줄과 model·thinking Select title은 없으며, after 표의 model 칸은 셋 다 `CLI backend`다
 And 적용 뒤 `spec.review_gate.providers`는 [claude, codex]이고 `orchestra.providers` mapping은 적용 전과 deep-equal이다(`args`, `model_policy`, `binary` 그대로)
 
 ### S9: judge 없음과 judge key 삽입
@@ -117,8 +117,8 @@ Then 리뷰 탭, 쓰는 key 셋, 확인 요청의 최대 호출 수, CLI backend
 
 ### S15: 실제 터미널 smoke
 Priority: Must
-Given 이 repo(gemini가 `google-antigravity/gemini-3.1-pro:high`)와 실제 터미널, 사용자 동의(확인 요청 두 번, model 호출 보통 6회, 재시도 포함 최대 18회)가 있다
-When `auto update`에서 리뷰 탭 → 모든 Select Enter → 확인 호출(편집 없음), 다시 구성 편집 → 리뷰 탭 → gemini `google-antigravity/gemini-3.8-flash` → Enter → 확인 호출 → `적용` → 유지를 하고, `auto doctor`(model 호출 없음)를 실행한다
+Given 이 repo와 실제 터미널, 사용자 동의(확인 요청 두 번, model 호출 보통 6회, 재시도 포함 최대 18회)가 있다. 사용자 결정(2026-10-16)대로 목표 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`다
+When `auto update`에서 리뷰 탭 → 모든 Select Enter → 확인 호출(편집 없음), 다시 구성 편집 → 리뷰 탭 → gemini model을 목표 값으로(이미 목표 값이면 다른 증명된 google model로) → Enter → 확인 호출 → `적용` → 유지를 하고(뒤의 경우는 같은 탭으로 목표 값에 되돌리고 확인 요청은 하지 않는다), `auto doctor`(model 호출 없음)를 실행한다
 Then `evidence/manual-smoke-revmodel.txt`에 두 확인 요청의 결과 줄, 바뀐 `orchestra.providers.gemini.model` 줄, doctor의 리뷰 provider readiness 줄이 경로를 치환해 남는다
 And `auto spec review`는 이 smoke에서 돌리지 않는다. 기록이 없으면 CD-1이 남고 완료가 아니다
 
@@ -136,9 +136,16 @@ When (1) 리뷰 탭에서 gemini `끄기`, 나머지 Enter, 확인 호출 Enter 
 Then (1)의 두 번째 pass에서 gemini 참여 Select의 기본은 `그대로 — 꺼짐`이고 미리보기는 다시 `spec.review_gate.providers [claude, codex, gemini] → [claude, codex]`를 쓰며, 적용 뒤 그 목록은 [claude, codex]다
 And (2)의 두 번째 pass는 `변경 없음`을 쓰고 확인 Select 없이 메뉴로 돌아가며 파일 SHA-256은 B0와 같다
 
+### S18: baseline 참여가 둘보다 적어도 들어가고 나갈 수 있다
+Priority: Must
+Given RB, CATG가 있다
+When (1) 리뷰 탭을 열고 참여 Select를 모두 Enter, 오류 뒤 `나가기`, 유지를 고른다. (2) 새 run에서 리뷰 탭의 codex `켜기`, 나머지 Enter, judge Enter, 확인 호출 Enter, `적용`, 유지를 고른다
+Then (1)은 첫 참여 Select 앞에 `지금 리뷰 provider가 1개뿐입니다. 두 개 이상 켜야 적용할 수 있습니다`를 쓰고, 참여 Select 뒤 `리뷰에는 provider가 두 개 이상 필요합니다 (지금 1개)`와 정확히 `다시 고르기`(기본)·`나가기`인 Select를 보인 뒤 메뉴로 돌아가며 파일 SHA-256은 RB와 같다
+And (2)의 바뀌는 설정은 `spec.review_gate.providers [claude] → [claude, codex]`이고 적용 뒤 loader 값의 그 목록은 [claude, codex], judge는 claude다
+
 ## Oracle Acceptance Notes
 
 - Must 시나리오는 concrete 값을 판정한다: Select 선택지 목록·순서·기본값, 바뀌는 설정 줄과 순서, 결과·안내·오류 문구, loader 값, 정확한 selector 문자열, FB 요청 수·Prompt·Timeout·`Config.Model`, diff 줄 수, span 밖 bytes, SHA-256, v0.50.125의 exit 코드와 오류 문구. 파일 존재나 종료 코드만으로 닫는 Must는 없다.
-- 입력은 provider·backend·family·catalog 상태가 서로 다른 fixture다: 세 family의 OMP backend(R3), 손으로 쓴 파일(RH), CLI backend(RL), judge 없음(RN·RE), 꺼진 gate(RD는 S10(c)와 같은 규칙), catalog 넷(CATG·CATN·CATE·CATX), 통과·404가 섞인 확인 요청(FB).
+- 입력은 provider·backend·family·catalog 상태가 서로 다른 fixture다: 세 family의 OMP backend(R3), 손으로 쓴 파일(RH), CLI backend(RL), baseline 참여 1개(RB), judge 없음(RN·RE), 꺼진 gate(RD는 S10(c)와 같은 규칙), catalog 넷(CATG·CATN·CATE·CATX), 통과·404가 섞인 확인 요청(FB).
 - FB는 `Execute` 요청을 센다. 한 요청 안의 재시도(최대 3회)는 backend 안이라 FB가 보지 않으므로 라벨의 최대 호출 수(3n)는 `ompReviewMaxAttempts`로 판정하고, S15의 동의 범위가 그 수를 덮는다.
 - 기대 값은 2026-10-15에 이 branch 코드와 probe A1–A3에서 계산했다. thinking 순서는 catalog 정규화의 정렬을 따른다. 코드 사실과 다르면 test가 아니라 이 SPEC을 고친다.
