@@ -164,6 +164,7 @@ func runDoctorText(cmd *cobra.Command, opts doctorOptions) error {
 	}
 	// The edit-guard registration report is advisory and never touches allOK.
 	checkEditGuardText(out, opts.dir, cfg)
+	checkReaText(ctx, out, opts.dir, cfg)
 
 	// Legacy orchestra keys and stale completion hooks are what `auto update`
 	// removes, so they share the managed-surface remediation unless every
