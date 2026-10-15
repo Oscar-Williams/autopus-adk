@@ -53,16 +53,21 @@ EOF
 
 func TestJSONContract_PhaseOneCommandsRequireEnvelopeSupport(t *testing.T) {
 	dir := makeJSONContractWorkspace(t)
+	// doctor runs the REA Node probe through `/bin/bash -l` in the built
+	// binary, where no test seam reaches; an empty HOME keeps the developer's
+	// login profile out of it (SPEC-REA-001 REQ-REA-20).
+	home := t.TempDir()
 	tests := []struct {
 		name        string
 		workdir     string
+		env         []string
 		args        []string
 		wantCommand string
 	}{
 		{name: "status", args: []string{"status", "--dir", dir, "--json"}, wantCommand: "auto status"},
 		{name: "setup status", args: []string{"setup", "status", dir, "--json"}, wantCommand: "auto setup status"},
 		{name: "setup validate", args: []string{"setup", "validate", dir, "--json"}, wantCommand: "auto setup validate"},
-		{name: "doctor", args: []string{"doctor", "--dir", dir, "--json"}, wantCommand: "auto doctor"},
+		{name: "doctor", env: []string{"HOME=" + home}, args: []string{"doctor", "--dir", dir, "--json"}, wantCommand: "auto doctor"},
 		{name: "telemetry summary", workdir: dir, args: []string{"telemetry", "summary", "--json"}, wantCommand: "auto telemetry summary"},
 		{name: "telemetry cost", workdir: dir, args: []string{"telemetry", "cost", "--json"}, wantCommand: "auto telemetry cost"},
 		{name: "telemetry compare", workdir: dir, args: []string{"telemetry", "compare", "--json"}, wantCommand: "auto telemetry compare"},
@@ -71,7 +76,7 @@ func TestJSONContract_PhaseOneCommandsRequireEnvelopeSupport(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := executeRoot(t, tt.workdir, tt.args...)
+			out, err := executeRootWithEnv(t, tt.workdir, tt.env, tt.args...)
 			require.NoError(t, err)
 			assertCommonJSONEnvelope(t, decodeJSONMap(t, out), tt.wantCommand)
 		})
