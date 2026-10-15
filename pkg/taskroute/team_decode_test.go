@@ -130,3 +130,33 @@ func TestDecodeTeamFactsBoundsAreInclusive(t *testing.T) {
 		}
 	}
 }
+
+// encoding/json matches field names case-insensitively, with Unicode folding,
+// and lets a later key win, so these keys would silently replace or set a
+// declared value that uniqueValue, which compares bytes, sees as distinct.
+func TestDecodeTeamFactsRejectsKeysTheDecoderWouldFold(t *testing.T) {
+	for name, raw := range map[string]string{
+		"later upper-case owned_paths": `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/a"],"OWNED_PATHS":["pkg/z"]}]}`,
+		"long s":                       `{"version":1,"units":[{"id":"T1","execution":"worker","owned_path` + "ſ" + `":["pkg/a"]}]}`,
+		"Done":                         `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["a"],"Done":true}]}`,
+		"TEAM":                         `{"version":1,"flags":{"TEAM":true},"units":[]}`,
+		"Kelvin sign":                  `{"version":1,"flags":{"wor` + "K" + `flow":true},"units":[]}`,
+		"Version":                      `{"Version":1}`,
+		"Units":                        `{"version":1,"Units":[]}`,
+		"ID":                           `{"version":1,"units":[{"ID":"T1","execution":"worker","owned_paths":["a"]}]}`,
+		"empty key":                    `{"version":1,"":1}`,
+	} {
+		if _, err := DecodeTeamFacts([]byte(raw)); err == nil || err.Error() != "invalid topology facts: json" {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	// The overlap a folded key would hide: T1 reads as pkg/a to a reviewer.
+	hidden := `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/a"],"OWNED_PATHS":["pkg/z"]},{"id":"T2","execution":"worker","owned_paths":["pkg/a"]}]}`
+	if _, err := DecodeTeamFacts([]byte(hidden)); err == nil {
+		t.Fatal("a folded key replaced owned_paths")
+	}
+	// An escaped lowercase key is still exactly the field name.
+	if _, err := DecodeTeamFacts([]byte(`{"version":1}`)); err != nil {
+		t.Fatal(err)
+	}
+}

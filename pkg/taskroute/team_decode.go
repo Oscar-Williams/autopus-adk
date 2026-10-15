@@ -3,7 +3,9 @@ package taskroute
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
+	"regexp"
 )
 
 // Bounds of the Topology Facts Contract.
@@ -12,6 +14,15 @@ const (
 	maxTeamOwnedPaths = 256
 	maxTeamUnitID     = 128
 )
+
+// teamFactsKeyPattern is the only key spelling the facts accept. encoding/json
+// matches field names case-insensitively, with Unicode folding, and lets a
+// later key win, so "OWNED_PATHS" or "owned_pathſ" after "owned_paths" would
+// silently replace a declared value that uniqueValue, comparing bytes, saw as
+// a distinct key. Every schema key is lowercase ASCII with underscores.
+var teamFactsKeyPattern = regexp.MustCompile(`^[a-z_]+$`)
+
+var errTeamFactsKey = errors.New("facts key outside [a-z_]")
 
 // TeamFacts is a caller-declared topology facts document: the session copies
 // the Phase 1 assignment table into it. Nothing checks the filesystem.
@@ -40,6 +51,9 @@ func DecodeTeamFacts(data []byte) (TeamFacts, error) {
 		return TeamFacts{}, &TeamFactsError{Code: "json"}
 	}
 	if _, err := tokens.Token(); err != io.EOF {
+		return TeamFacts{}, &TeamFactsError{Code: "json"}
+	}
+	if err := lowercaseTeamKeys(json.NewDecoder(bytes.NewReader(data))); err != nil {
 		return TeamFacts{}, &TeamFactsError{Code: "json"}
 	}
 	decoder := json.NewDecoder(bytes.NewReader(data))
@@ -107,6 +121,35 @@ func teamFactsViolation(facts TeamFacts) string {
 		}
 	}
 	return ""
+}
+
+// lowercaseTeamKeys rejects any object key outside teamFactsKeyPattern. It
+// runs after uniqueValue, which already bounds the nesting depth.
+func lowercaseTeamKeys(d *json.Decoder) error {
+	token, err := d.Token()
+	if err != nil {
+		return err
+	}
+	delimiter, ok := token.(json.Delim)
+	if !ok {
+		return nil
+	}
+	for d.More() {
+		if delimiter == '{' {
+			key, err := d.Token()
+			if err != nil {
+				return err
+			}
+			if name, _ := key.(string); !teamFactsKeyPattern.MatchString(name) {
+				return errTeamFactsKey
+			}
+		}
+		if err := lowercaseTeamKeys(d); err != nil {
+			return err
+		}
+	}
+	_, err = d.Token()
+	return err
 }
 
 // validTeamUnitID accepts the worker ID alphabet validate uses, so an ID is
