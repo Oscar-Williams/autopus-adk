@@ -33,6 +33,10 @@ func abortComposeFormAt(t *testing.T, nth int) *int {
 
 func useComposeFormRunner(t *testing.T, before func(run int) error) *int {
 	t.Helper()
+	// The forms stand for an interactive terminal: a CI value of the test
+	// run must not hide the review tab (SPEC-REVMODEL-001 REQ-RVM-01). A test
+	// that stubs composeCIEnv keeps its own value.
+	t.Setenv("CI", "")
 	originalProbe, originalRun := composeFormsProbe, composeRunForm
 	t.Cleanup(func() { composeFormsProbe, composeRunForm = originalProbe, originalRun })
 	runs := new(int)

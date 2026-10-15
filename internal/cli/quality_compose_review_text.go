@@ -1,10 +1,10 @@
 package cli
 
 // composeReviewText holds every operator-facing string of the review tab
-// (SPEC-REVMODEL-001 Form Text). Like composeFormText, a locale changes only
-// what the operator reads: provider names, model selectors, and every value
-// written to autopus.yaml stay the same in every locale. A keep option is
-// composeFormText.Keep, " — ", and the current value.
+// (SPEC-REVMODEL-001 Form Text) beside composeFormText. Like it, a locale
+// changes only what the operator reads: provider names, model selectors, and
+// every value written to autopus.yaml stay the same in every locale. A keep
+// option is composeFormText.Keep, " — ", and the current value.
 type composeReviewText struct {
 	Tab                              string // the tool tab option, the after-error select, and the summary
 	TakesPart                        string // %s: the provider
@@ -91,4 +91,18 @@ var composeReviewTextEN = composeReviewText{
 	ReloadFailed: "The review settings were applied but could not be re-read: %s",
 	ColProvider:  "provider", ColReview: "review", ColModel: "model", CLIBackend: "CLI backend",
 	SummaryOff: " (off)", SummaryJudge: "judge %s",
+}
+
+// composeReviewTextFor returns Korean for ko and English for every other
+// locale, as composeFormTextFor does.
+func composeReviewTextFor(lang string) composeReviewText {
+	if lang == "ko" {
+		return composeReviewTextKO
+	}
+	return composeReviewTextEN
+}
+
+// reviewText is the review tab's text in the run's locale.
+func (f *composeFormRun) reviewText() composeReviewText {
+	return composeReviewTextFor(f.shared.lang)
 }

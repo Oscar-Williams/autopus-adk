@@ -138,6 +138,9 @@ func (f *composeFormRun) edit() error {
 	if platform == "omp" {
 		return f.omp()
 	}
+	if platform == composeReviewTabValue {
+		return f.reviewTab()
+	}
 	for _, tool := range qualityModelTools {
 		if tool.provider != "" && tool.platform == platform {
 			planner, labeler := newComposeToolTab(f.shared, tool)
@@ -149,9 +152,10 @@ func (f *composeFormRun) edit() error {
 }
 
 // chooseTab asks the tool tab (REQ-MUX2-04): 모든 도구 같게, whose answer is
-// "", then Claude Code and Codex when the display view installs them, and
-// OMP by the OMP Tab Contract. OpenCode and Antigravity bind no model and
-// never appear, and a tab of one option is skipped.
+// "", then Claude Code and Codex when the display view installs them, OMP
+// by the OMP Tab Contract, and last the review tab (SPEC-REVMODEL-001
+// REQ-RVM-01). OpenCode and Antigravity bind no model and never appear, and
+// a tab of one option is skipped.
 func (f *composeFormRun) chooseTab() (string, error) {
 	f.noteDetectedOMP()
 	options := []composeOption[string]{{f.form.TabAll, ""}}
@@ -164,6 +168,7 @@ func (f *composeFormRun) chooseTab() (string, error) {
 	if f.ompOffered() {
 		options = append(options, composeOption[string]{"OMP", "omp"})
 	}
+	options = append(options, f.composeReviewTabOption()...)
 	if len(options) == 1 {
 		return "", nil
 	}
