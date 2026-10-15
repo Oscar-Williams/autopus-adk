@@ -23,6 +23,7 @@
 | F2 | 같음 | `auto update --yes` | 종료 1, ``line 163: field auto_team not found in type config.WorkflowConf (unknown keys are rejected: fix the typo or delete the key)`` |
 | F3 | key 없는 init 결과 | `auto update --yes`, `grep -c auto_team` | 종료 0, `0` |
 | F4 | `{}` facts | `auto workflow triage --topology --facts-json <scratch>/f.json --format json` | 종료 1, `Error: unknown flag: --topology` |
+| F5 | tag v0.50.112를 `git archive` 뒤 `GOPROXY=off`로 빌드, 그 바이너리로 `init` 뒤 `workflow:` 아래 `auto_team: false` (review, 2026-10-15) | `auto update --yes`, `grep -c auto_team` | 종료 0, `0`. v0.50.112에는 `KnownFields(true)`가 없어 key를 무시하고 typed Save가 그 줄을 지운다. strict decode는 v0.50.113부터다 |
 
 결론: 신호 넷(CLAUDECODE, AGENT_TEAMS, ENTRYPOINT·ATTENDED, EXECPATH 버전)은 세션 안 child process에서 결정적으로 읽힌다. 버전은 PATH가 아니라 EXECPATH에서 읽어야 한다. typed key는 있으면 옛 auto를 모두 막으므로 기본값은 key 없음(=on)이고 바이너리는 key를 스스로 쓰지 않는다.
 

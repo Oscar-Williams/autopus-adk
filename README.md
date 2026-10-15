@@ -1644,9 +1644,10 @@ why it switched or stayed.
 - Each teammate is a separate Claude session, so a team run uses more tokens.
   The feature is experimental.
 - Turn it off with `workflow.auto_team: false`, or pass `--solo` for one run.
-- auto 0.50.125 and older refuse an `autopus.yaml` that contains
-  `workflow.auto_team` with any value, `true` included. auto never writes the
-  key itself.
+- auto 0.50.113 through 0.50.125 refuse an `autopus.yaml` that contains
+  `workflow.auto_team` with any value, `true` included. auto 0.50.112 and older
+  ignore the key, and their `auto update` deletes it. auto never writes the key
+  itself.
 - The version is read from the running binary that `CLAUDE_CODE_EXECPATH` names
   (`claude` or `claude.exe`), never from `PATH`. Other installs stay on
   subagents with the `claude_version_unknown` line.

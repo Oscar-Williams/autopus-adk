@@ -27,8 +27,9 @@ disjoint paths.
 
 Each teammate is a separate Claude session, so a team run uses more tokens, and
 the feature is experimental. Turn it off with workflow.auto_team: false in
-autopus.yaml, or pass --solo to /auto go for one run. auto 0.50.125 and older
-refuse an autopus.yaml that contains workflow.auto_team with any value.
+autopus.yaml, or pass --solo to /auto go for one run. auto 0.50.113 through
+0.50.125 refuse an autopus.yaml that contains workflow.auto_team with any
+value; auto 0.50.112 and older ignore the key and delete it on auto update.
 
 The version is read only from the running binary CLAUDE_CODE_EXECPATH names,
 which must be called claude or claude.exe; other installs stay on subagents

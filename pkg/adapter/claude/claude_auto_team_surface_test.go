@@ -93,7 +93,7 @@ func TestAutoTeamSurfaceAddsOnlyTheNewSections(t *testing.T) {
 	assert.Equal(t, baseAgentTeamsSkillSHA256, digest(strings.Replace(agentTeams, entry, "", 1)), "agent-teams changed outside the new section")
 	assert.NotContains(t, agentTeams, "--topology")
 	assert.NotContains(t, agentTeams, "auto workflow triage")
-	for _, item := range []string{"one ready wave of Phase 2", "No `tester` or\n  `guardian` teammate", "a fallback, not a stop", "separate Claude session", "experimental", "`workflow.auto_team: false`", "`--solo`", "auto 0.50.125 and older", "`CLAUDE_CODE_EXECPATH`"} {
+	for _, item := range []string{"one ready wave of Phase 2", "No `tester` or\n  `guardian` teammate", "a fallback, not a stop", "separate Claude session", "experimental", "`workflow.auto_team: false`", "`--solo`", "auto 0.50.113 through 0.50.125 refuse", "auto 0.50.112 and older ignore it", "`CLAUDE_CODE_EXECPATH`"} {
 		assert.Contains(t, entry, item)
 	}
 }

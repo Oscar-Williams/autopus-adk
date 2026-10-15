@@ -111,7 +111,7 @@ IF `auto workflow triage --topology` exits non-zero or writes an empty stdout, T
 ### REQ-TA-14 문서와 비용 공지
 Priority: Should · EARS: Ubiquitous
 
-THE SYSTEM SHALL document in README, CHANGELOG (v0.50.126), the agent-teams skill, and `auto workflow triage --help` that auto-selection is on by default for eligible Claude Code sessions, that each teammate is a separate Claude session with higher token use and the feature is experimental, how to turn it off (`workflow.auto_team: false`, or `--solo` for one run), that auto 0.50.125 or older refuses a file containing the key with any value, and that auto-selection needs `CLAUDE_CODE_EXECPATH` to name the Claude Code binary (`claude` or `claude.exe`), so other installs stay on subagents with the `claude_version_unknown` line.
+THE SYSTEM SHALL document in README, CHANGELOG (v0.50.126), the agent-teams skill, and `auto workflow triage --help` that auto-selection is on by default for eligible Claude Code sessions, that each teammate is a separate Claude session with higher token use and the feature is experimental, how to turn it off (`workflow.auto_team: false`, or `--solo` for one run), that auto 0.50.113 through 0.50.125 refuse a file containing the key with any value while auto 0.50.112 and older ignore the key and delete it on `auto update`, and that auto-selection needs `CLAUDE_CODE_EXECPATH` to name the Claude Code binary (`claude` or `claude.exe`), so other installs stay on subagents with the `claude_version_unknown` line.
 
 ### REQ-TA-15 실제 터미널 확인
 Priority: Must · EARS: Ubiquitous
@@ -211,7 +211,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 - key: `workflow.auto_team`, `[NEW] config.WorkflowConf.AutoTeam *bool` (`yaml:"auto_team,omitempty"`)과 `[NEW] (WorkflowConf).AutoTeamEnabled() bool`(nil·true면 true). `removedConfigKeys`·`reservedConfigKeys`에는 넣지 않는다.
 - 값: 없음 → on, `true` → on, `false` → off. yaml.v3 v3.0.1의 `*bool` decode는 `yes`·`"off"` 같은 YAML 1.1 문자열을 bool로 바꾸고 `null`·`~`·빈 값을 오류 없이 nil로 둔다(evidence Y). 그래서 `[NEW] pkg/config/schema_workflow_auto_team.go`의 raw node 검사를 `decodeStrict`(`pkg/config/loader_strict.go`, `Load`·`LoadPreview`가 함께 쓰는 strict decode)에서 decode 전에 돌린다. `workflow.auto_team` node가 있으면 ShortTag가 `!!bool`이어야 하고(`true`·`True`·`TRUE`·`false`·`False`·`FALSE`, `!!bool "false"`), 아니면 `workflow.auto_team: must be true or false (line <n>)`로 거부한다.
 - 쓰기: `auto init`, `auto update`, 모든 typed Save는 값이 nil이면 key를 쓰지 않는다(nil marshal 결과 `workflow: {}`, evidence Y). 사용자가 둔 값은 `auto update --yes`와 config 저장을 지나도 같은 bool로 남는다.
-- 옛 바이너리(A3): v0.50.125는 값과 상관없이 key가 든 파일을 거부한다(`true`도 같다. 원인은 모르는 key다. `auto update --yes` 종료 1, `field auto_team not found in type config.WorkflowConf`). 바이너리는 key를 스스로 쓰지 않으므로 사용자가 이 key를 쓰지 않은 프로젝트는 v0.50.125에서 그대로 읽힌다(F3). key를 쓴 프로젝트를 옛 auto로 열면 그 줄을 지우거나 올려야 한다(REQ-TA-14). 기본값이 on이라 `true`를 적을 이유는 없다.
+- 옛 바이너리(A3, F5): strict decode가 들어간 v0.50.113부터 v0.50.125까지는 값과 상관없이 key가 든 파일을 거부한다(`true`도 같다. 원인은 모르는 key다. v0.50.125 `auto update --yes` 종료 1, `field auto_team not found in type config.WorkflowConf`). v0.50.112 이하는 key를 무시하고, 그 `auto update --yes`는 종료 0이며 typed Save가 그 줄을 지운다(F5). 그래서 끈 설정이 말없이 사라지고 새 바이너리에서 다시 on이 된다. 바이너리는 key를 스스로 쓰지 않으므로 사용자가 이 key를 쓰지 않은 프로젝트는 옛 바이너리에서도 그대로 읽힌다(F3). key를 쓴 프로젝트를 옛 auto로 열면 그 줄을 지우거나 올려야 한다(REQ-TA-14). 기본값이 on이라 `true`를 적을 이유는 없다.
 - 버린 대안은 `research.md` `## 설계 결정` D3이다.
 
 ### Topology Facts Contract
@@ -276,7 +276,7 @@ rm -f "$FACTS"
 - 이 branch로 `auto update`를 해도 `autopus.yaml`은 바뀌지 않는다. key는 쓰지 않는다.
 - 이미 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`을 켠 대화형 Claude Code 사용자는 다음 `/auto go`부터 조건이 맞는 Phase 2를 팀으로 돌린다. teammate마다 별도 Claude 세션이라 토큰이 늘어난다. 이유 한 줄과 CHANGELOG가 이를 알린다. 끄려면 `workflow.auto_team: false`, 한 run만이면 `--solo`다.
 - 팀 기능을 켜지 않은 사용자, 비 Claude 플랫폼, 명시 topology flag run은 이유 한 줄(Claude Code의 flag 없는 run만) 말고는 지금과 같다.
-- `workflow.auto_team`을 적은 프로젝트는 auto 0.50.125 이하에서 load되지 않는다(값과 무관). 그 줄을 지우면 다시 읽힌다.
+- `workflow.auto_team`을 적은 프로젝트는 auto 0.50.113–0.50.125에서 load되지 않는다(값과 무관). 그 줄을 지우면 다시 읽힌다. auto 0.50.112 이하는 key를 무시하고 그 `auto update`가 그 줄을 지운다.
 
 ## Existing Test Changes
 

@@ -136,8 +136,9 @@ Otherwise the run stays on subagents and says why in one line.
 - Cost: every teammate is a separate Claude session, so a team run uses more
   tokens than subagents, and the feature is experimental. Turn it off with
   `workflow.auto_team: false` in `autopus.yaml`, or pass `--solo` for one run.
-  auto 0.50.125 and older refuse an `autopus.yaml` that contains the key with
-  any value.
+  auto 0.50.113 through 0.50.125 refuse an `autopus.yaml` that contains the
+  key with any value; auto 0.50.112 and older ignore it, and their
+  `auto update` deletes it.
 - Version source: the version is read from the running binary named by
   `CLAUDE_CODE_EXECPATH`, never from a `claude` on `PATH`. An install whose
   executable is not named `claude` or `claude.exe` stays on subagents with the

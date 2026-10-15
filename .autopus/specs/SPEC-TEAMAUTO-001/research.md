@@ -19,7 +19,8 @@
 ## Probe 결과 (`evidence/probe-teamauto-capability.md`)
 
 - A1(PASS): Bash tool child에서 `CLAUDECODE=1`, `CLAUDE_CODE_ENTRYPOINT=cli`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_CHILD_SESSION=1`(subagent 안). EXECPATH `2.1.288 (Claude Code)`, PATH `claude` `2.1.299`. TTY 아님.
-- A3(PASS): v0.50.125는 `workflow.auto_team`을 거부하고(update 종료 1), key 없는 파일은 그대로 읽고, `--topology`를 모른다(`unknown flag`).
+- A3(PASS): v0.50.125는 `workflow.auto_team`을 거부하고(update 종료 1), key 없는 파일은 그대로 읽고, `--topology`를 모른다(`unknown flag`). strict decode(`KnownFields(true)`)는 v0.50.113부터 있다(그 commit을 담은 첫 tag).
+- F5(review, 2026-10-15): tag v0.50.112를 offline 빌드해 `auto_team: false`를 둔 project에서 `auto update --yes`를 돌렸다. 종료 0이고 그 줄이 지워졌다.
 - Y(review round 1): yaml.v3 v3.0.1 `*bool`은 `yes`·`"off"`·`y`·`no`를 bool로, `null`·`~`·빈 값을 nil로 오류 없이 받고 `"false"`·`1`만 거부한다. R: root 오류는 `Error: <msg>\n`, 종료 1이다.
 
 ## 생성 surface 영향 (T9, 2026-10-15)
@@ -32,7 +33,7 @@
 
 - D1 판단 위치: `pkg/taskroute`의 새 순수 함수 + `auto workflow triage --topology`. 기존 `Decide`의 parallel을 그대로 쓰지 않는다. 그 gate는 planned route(파일 수·변경 줄 수로도 켜짐)에 묶여 있어 "File count … never decide this"(Route A 문구)와 어긋난다. prose만으로 두면 조합을 test할 수 없다.
 - D2 감지: env(CLAUDECODE, AGENT_TEAMS, ENTRYPOINT + ATTENDED, CHILD_SESSION) + EXECPATH `--version`. PATH `claude`는 세션 버전이 아니고(A1), TTY는 Bash tool 안에서 늘 거짓이다. 대화형은 ENTRYPOINT와 ATTENDED를 둘 다 요구한다. 거짓 음성은 현재 동작(subagent)이라 안전하고, 거짓 양성(headless에서 팀)은 위험해서 보수적으로 고른다. schema 로드는 세션만 알 수 있어 세션 쪽 fallback(REQ-TA-07)이다.
-- D3 설정: `workflow.auto_team`(`*bool`, `omitempty`, 없음 = on). 버린 대안: (a) `future_extension.auto_team`은 옛 typed Save가 지워(SPEC-REA-001 probe V2) 끈 설정이 말없이 사라진다. (b) `workflow.team_default` 재사용은 옛 의미(`--team` → Workflow)가 있고 `pkg/config/workflow_cutover_test.go`의 무시 계약을 깨며 옛 Save가 지운다. (c) env 변수만은 오타가 말없이 무시돼 strict loader 원칙과 맞지 않고 사용자가 고른 "설정"도 아니다. 남는 비용: key를 쓴 사용자(값이 `true`여도)가 옛 auto를 쓰면 load가 막힌다(A3). 바이너리가 key를 쓰지 않으니 key를 쓰지 않은 프로젝트에는 비용이 없다. `*bool`만으로는 bool이 아닌 값을 막지 못해(Y) raw node `!!bool` 검사를 `decodeStrict`에 둔다.
+- D3 설정: `workflow.auto_team`(`*bool`, `omitempty`, 없음 = on). 버린 대안: (a) `future_extension.auto_team`은 옛 typed Save가 지워(SPEC-REA-001 probe V2) 끈 설정이 말없이 사라진다. (b) `workflow.team_default` 재사용은 옛 의미(`--team` → Workflow)가 있고 `pkg/config/workflow_cutover_test.go`의 무시 계약을 깨며 옛 Save가 지운다. (c) env 변수만은 오타가 말없이 무시돼 strict loader 원칙과 맞지 않고 사용자가 고른 "설정"도 아니다. 남는 비용: key를 쓴 사용자(값이 `true`여도)가 auto 0.50.113–0.50.125를 쓰면 load가 막히고(A3), 0.50.112 이하를 쓰면 key가 무시되고 그 `auto update`가 key를 지워 끈 설정이 사라진다(F5). 바이너리가 key를 쓰지 않으니 key를 쓰지 않은 프로젝트에는 비용이 없다. `*bool`만으로는 bool이 아닌 값을 막지 못해(Y) raw node `!!bool` 검사를 `decodeStrict`에 둔다.
 - D4 규칙 순서: 명시 flag → 설정 → slice → 능력. 설정과 plan이 팀을 막으면 실험 env를 권하지 않고, 유일한 실행인 버전 probe는 마지막이다.
 - D5 범위: Phase 2의 준비된 wave 하나. 다른 phase는 의존 관계라 subagent 그대로라는 사용자 결정이다. 남은 unit은 Route A다.
 - D6 비 Claude 플랫폼: 공유 content를 건드리지 않아 bytes가 같다(가정 AS-1).

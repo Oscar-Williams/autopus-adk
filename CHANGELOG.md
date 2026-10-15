@@ -88,9 +88,9 @@ All notable changes to this project will be documented in this file.
   - 끄기: `autopus.yaml`의 `workflow.auto_team: false`(계속), 한 run만이면 `--solo`. 값은 YAML bool만 받고 `yes`,
     `"false"`, `null` 같은 값은 `workflow.auto_team: must be true or false (line <n>)`로 로드에 실패한다. auto는 이
     key를 스스로 쓰지 않는다.
-  - 호환: `workflow.auto_team`이 든 `autopus.yaml`은 값과 상관없이(`true`도) auto 0.50.125 이하가 읽지 못한다
-    (`field auto_team not found in type config.WorkflowConf`). 그 줄을 지우면 다시 읽힌다. key를 쓰지 않은 프로젝트는
-    그대로다.
+  - 호환: `workflow.auto_team`이 든 `autopus.yaml`은 값과 상관없이(`true`도) auto 0.50.113–0.50.125가 읽지 못한다
+    (`field auto_team not found in type config.WorkflowConf`). 그 줄을 지우면 다시 읽힌다. auto 0.50.112 이하는 key를
+    무시하고, 그 버전의 `auto update`는 그 줄을 지운다. key를 쓰지 않은 프로젝트는 그대로다.
   - 버전 확인: 버전은 `CLAUDE_CODE_EXECPATH`가 가리키는 실행 중인 바이너리의 `--version`으로만 읽고 PATH의
     `claude`는 보지 않는다. 그 실행 파일 이름이 `claude`나 `claude.exe`가 아닌 설치는 `claude_version_unknown` 줄과
     함께 subagent로 남는다.

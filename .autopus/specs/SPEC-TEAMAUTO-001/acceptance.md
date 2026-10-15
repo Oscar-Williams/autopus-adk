@@ -166,7 +166,7 @@ And (e)의 최상위 세션은 `cli`, `1`, CHILD 없음이고 `claude -p`는 (`c
 Priority: Should
 Given branch README, CHANGELOG, `auto workflow triage --help`가 있다
 When 읽는다
-Then README 설정 표에 `workflow.auto_team`(기본: 없음 = on) 행이 있고 CHANGELOG v0.50.126 항목은 기본 on, teammate마다 별도 Claude 세션(토큰 증가), 실험 기능, 끄는 법, 값과 무관한 auto 0.50.125 이하의 거부, `CLAUDE_CODE_EXECPATH`가 Claude Code 바이너리가 아닌 설치의 유지를 적는다
+Then README 설정 표에 `workflow.auto_team`(기본: 없음 = on) 행이 있고 CHANGELOG v0.50.126 항목은 기본 on, teammate마다 별도 Claude 세션(토큰 증가), 실험 기능, 끄는 법, 값과 무관한 auto 0.50.113–0.50.125의 거부와 auto 0.50.112 이하가 key를 무시하고 `auto update`에서 지우는 점, `CLAUDE_CODE_EXECPATH`가 Claude Code 바이너리가 아닌 설치의 유지를 적는다
 And help에 `--topology`가 있다
 
 ## Oracle Acceptance Notes
