@@ -2,142 +2,150 @@
 
 **Status**: draft
 **Created**: 2026-10-15
+**Revised**: 2026-10-15 (review round 1 J-001–J-021 반영: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. `evidence/review-rounds.md`)
 **Domain**: REVMODEL
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, SPEC-TEAMAUTO-001, redline capability와 함께). 작업 branch는 `feat/revmodel-001`이고 기준은 `feat/rea-001`(ee811e2e)이다. SPEC-REA-001이 구성 UI의 에이전트 수를 17개로 바꿨기 때문이다.
-**Predecessor**: SPEC-MODELUX-002(폼 흐름, Form Flow Contract, Write Safety Contract), SPEC-MODELUX-003(OMP Autopus Tab의 증명된 model 목록). 그 정의를 그대로 쓰고 다르면 이 SPEC이 우선한다.
-**Source PRD**: `prd.md`. 근거, probe, 결정은 `research.md`와 `plan.md` `## Risk-First Integration Probe`에 있다.
+**Predecessor**: SPEC-MODELUX-002(폼 흐름, 확인 Select, Write Safety Contract), SPEC-MODELUX-003(OMP Autopus Tab의 증명된 model 목록과 thinking 규칙). 다르면 이 SPEC이 우선한다.
+**Source PRD**: `prd.md`. 근거, probe, 결정은 `research.md`와 `plan.md` `## Risk-First Integration Probe`, review 반영은 `evidence/review-rounds.md`에 있다.
 
 ## 목적
 
-멀티프로바이더 리뷰(`auto spec review`)와 orchestra 명령이 어느 provider를 쓰고 provider마다 어느 model·thinking으로 돌며 누가 judge인지는 지금 `autopus.yaml`을 손으로 고쳐야만 바뀐다. init wizard에는 Review Gate 예/아니오 단계만 있다(`internal/cli/tui/wizard_steps.go` `buildReviewGateStep`).
+`auto spec review`가 어느 provider를 쓰고, provider마다 어느 model·thinking으로 돌며, 누가 judge인지는 지금 `autopus.yaml`을 손으로 고쳐야만 바뀐다. init wizard에는 Review Gate 예/아니오 단계만 있다(`internal/cli/tui/wizard_steps.go` `buildReviewGateStep`). 2026-10-15 실측에서 OMP catalog는 `google-antigravity/gemini-3.1-pro`를 보였지만 한 번 호출하면 HTTP 404였다. 그날의 SPEC 리뷰는 gemini 없이 돌았고, quorum이 차서 receipt의 `degraded_reasons`는 비어 있었다. catalog에 있다는 것만으로는 model이 실제로 답한다고 볼 수 없다.
 
-2026-10-15 실측에서 OMP catalog는 `google-antigravity/gemini-3.1-pro`를 보였지만 한 번 호출하면 HTTP 404였다. 그래서 그날의 SPEC 리뷰는 gemini 없이 돌았고 receipt의 `degraded_reasons`는 비어 있었다. catalog에 있다는 것만으로는 model이 실제로 답한다고 볼 수 없다.
-
-이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭에서 정하는 것은 다섯 가지다: (1) 리뷰에 참여하는 provider(켜기·끄기), (2) OMP backend provider의 model과 thinking(증명된 선택지만), (3) judge(참여 provider만), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 호출. 쓰는 key는 v0.50.125가 이미 읽는 key뿐이다.
+이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭이 정하는 것은 다섯 가지다: (1) `auto spec review`에 참여하는 provider(`spec.review_gate.providers`), (2) OMP backend provider의 model·thinking(증명된 선택지만), (3) judge(`spec.review_gate.judge`, 참여 provider 또는 지금의 judge 없음), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 요청. 쓰는 key는 v0.50.125가 이미 읽는 세 경로뿐이다.
 
 ## Outcome Boundary
 
 - Outcome Lock 원문은 `research.md` `## Outcome Lock`이다.
-- Mandatory requirements: REQ-RVM-01 ~ REQ-RVM-15, REQ-RVM-19 (Must). REQ-RVM-16 ~ 18은 Should다.
+- Mandatory requirements: REQ-RVM-01 ~ 15, 19, 20 (Must). REQ-RVM-16 ~ 18은 Should다.
 - Explicit non-goals:
-  - strategy, timeout, `enabled`, `max_revisions`, `min_providers`, `verdict_threshold` 같은 리뷰 정책 key 편집
-  - 참여 여부에서 따라 나오는 것 말고 명령별 provider 목록이나 judge를 따로 편집하는 것
-  - CLI backend provider(`backend` 없음)의 model·effort·args·`model_policy` 편집과 CLI→OMP backend 전환(Evolution Idea)
+  - `orchestra.commands.*.providers`와 `orchestra.judge`·`orchestra.commands.*.judge` 쓰기. 명령 목록은 load할 때 `MigrateOrchestraConfig` Migration 3이 `orchestra.providers`의 모든 key로 다시 채운다(`pkg/config/migrate.go:75-88`, probe A2). 그래서 끄기는 orchestra 명령과 `--multi`에 효과가 없고, 미리보기가 그렇게 알린다
+  - Migration 3 변경, `--multi`·`--providers` 의미 변경
+  - 리뷰 정책 key(strategy, timeout, `enabled`, `max_revisions`, `min_providers`, `verdict_threshold`) 편집
+  - CLI backend provider(`backend` 없음)의 model·effort·args·`model_policy` 편집과 CLI→OMP backend 전환(Gate 1 범위 결정, Evolution Idea)
   - `orchestra.providers` 항목 추가·삭제, `backend`·`binary`·`tools`·`subprocess` 변경
-  - `--multi`·`--providers` flag 의미 변경, review receipt `degraded_reasons` 규칙 변경(Evolution Idea), `auto doctor --provider-smoke` 변경
-  - 확인 호출 자동 실행, 결과 저장(receipt·cache), 새 YAML key
-- Completion evidence: Must S1–S12와 S15 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
+  - review receipt `degraded_reasons` 규칙과 `auto doctor --provider-smoke` 동작 변경(Evolution Idea)
+  - 확인 요청 자동 실행, 결과 저장(receipt·cache), 새 YAML key
+- Completion evidence: Must S1–S12, S15–S17 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
 
 ## Trust Model
 
-- SPEC-MODELUX-001·002 Trust Model을 그대로 따른다. `autopus.yaml`은 반쯤 신뢰한다. writer는 loader가 환경 변수를 펼친 값을 쓰기 원천으로 쓰지 않고 raw YAML node를 고친다.
-- 새 비신뢰 입력은 셋이다. (1) OMP catalog 출력은 기존 `readInstalledOMPModelChoices`의 정규화만 거쳐 쓴다. (2) 확인 호출 응답은 `classifyProviderSmokeResult`가 판정하고 표시 문자열에는 `terminalSafe`를 거친 첫 줄 200 rune까지만 쓴다. (3) provider 이름과 model 문자열은 폼 라벨에 넣기 전에 `terminalSafe`를 거친다.
-- 확인 호출은 provider마다 model 호출 1회이고 비용이 든다. 그래서 사용자가 고를 때만 돈다. 새 secret, 승인 단계, 유료 CI는 없다.
+- SPEC-MODELUX-001·002 Trust Model을 그대로 따른다. `autopus.yaml`은 반쯤 신뢰한다. writer는 loader가 환경 변수를 펼친 값을 쓰기 원천으로 쓰지 않고 raw 줄과 raw node를 쓴다.
+- 새 비신뢰 입력은 셋이다. (1) OMP catalog 출력은 기존 `readInstalledOMPModelChoices`의 정규화만 거친다. (2) 확인 요청의 응답과 오류는 `classifyProviderSmokeResult`가 판정하고 결과 줄에는 `terminalSafe`를 거친 첫 줄 200 rune까지만 쓴다. (3) provider 이름과 model 문자열은 폼 라벨·결과 줄에 넣기 전에 `terminalSafe`를 거친다.
+- 확인 요청 동안 터미널에 닿는 다른 출력도 같은 경계 안에 둔다. OMP review backend가 stderr에 직접 쓰는 두 줄은 provider·model·tools·사유를 `terminalSafe`로 감싼다(REQ-RVM-20). 이름이 `terminalSafe`로 바뀌는 provider가 하나라도 있으면 확인 요청을 시작하지 않는다(REQ-RVM-10).
+- 확인 요청은 model 호출이라 비용이 든다. OMP backend는 일시 오류에 한 요청을 최대 3회 시도한다(`ompReviewMaxAttempts`). 그래서 기본값은 호출 없음이고 선택지 라벨이 최대 호출 수를 적는다. 새 secret, 승인 단계, 유료 CI는 없다.
 
 ## Requirements
 
 ### REQ-RVM-01 탭 진입
 Priority: Must · EARS: EventDriven
 
-WHEN the operator chooses 구성 편집 in auto init, auto update, or auto quality and the run's config holds at least two `orchestra.providers` entries, THEN THE SYSTEM SHALL list `멀티프로바이더 리뷰` as the last option of the tool tab select and run the Review Tab Contract when it is chosen.
+WHEN the operator chooses 구성 편집 in auto init, auto update, or auto quality while `spec.review_gate.enabled` is true, the config holds at least two `orchestra.providers` entries, and `composeCITruthy(composeCIEnv())` is false, THEN THE SYSTEM SHALL list `멀티프로바이더 리뷰` as the last option of the tool tab select and run the Review Tab Contract when it is chosen, and SHALL otherwise not list it.
 
-- 진입점은 `chooseTab`(`internal/cli/quality_compose_form_driver.go:155`)과 `edit`(`:133`)의 분기 몇 줄이다. 290줄 파일이라 흐름은 `[NEW] internal/cli/quality_compose_review.go`에 둔다.
-- 선택지가 하나뿐이면 tab Select를 건너뛰는 지금 규칙은 그대로다. 이 탭이 더해져 두 개가 되는 fixture의 폼 입력은 Existing Test Changes를 따른다.
+- 진입점은 `chooseTab`(`internal/cli/quality_compose_form_driver.go:155`)과 `edit`(`:133`)의 분기다. 290줄 파일이라 선택지 조립은 `[NEW] composeReviewTabOption`(`quality_compose_review.go`)이 하고 driver에는 호출 두 줄만 더한다.
+- CI 조건은 이 탭만의 규칙이다. update는 이미 CI에서 구성 단계를 열지 않고(`quality_compose_driver_gate.go:66-70`), quality는 CI가 아무것도 정하지 않으며(`quality_compose_entry.go:82-84`, REQ-MUX-16), init은 `!yes && composeTTYProbe()`만 본다(`init.go:100`). 그 gate들은 바꾸지 않는다.
 
-### REQ-RVM-02 참여 켜기·끄기
+### REQ-RVM-02 참여와 두 값
 Priority: Must · EARS: EventDriven
 
-WHEN the review tab starts, THEN THE SYSTEM SHALL ask one participation select per `orchestra.providers` entry in `sortedProviderKeys` order, defaulting to 그대로, where a provider is on exactly when `spec.review_gate.providers` names it.
+WHEN the review tab starts, THEN THE SYSTEM SHALL take the baseline from the run's config and the raw document, start the working value equal to the baseline, and ask one participation select per `orchestra.providers` entry in `sortedProviderKeys` order whose default and 그대로 label come from the working value, where a provider takes part exactly when the working `spec.review_gate.providers` names it.
 
-### REQ-RVM-03 provider 목록 쓰기
+- baseline은 탭 진입 때의 값이고 변경 줄, `변경 없음`, 쓰기는 늘 baseline과 비교한다. working은 이번 편집 값이고 `다시 편집`은 working을 기본값으로 다시 묻는다. 검증 오류 뒤에는 working을 baseline으로 되돌린다. SPEC-MODELUX-002 planner의 시작 값·편집 값 분리와 같다.
+
+### REQ-RVM-03 참여 쓰기
 Priority: Must · EARS: EventDriven
 
-WHEN the operator confirms a review tab edit that turns providers on or off, THEN THE SYSTEM SHALL remove every turned-off provider from `spec.review_gate.providers` and from the `providers` list of every existing `orchestra.commands` entry, append every turned-on provider to the end of each of those lists that lacks it, and leave the membership of every untouched provider unchanged in every list.
+WHEN the operator applies an edit whose participation differs from the baseline, THEN THE SYSTEM SHALL write `spec.review_gate.providers` as the baseline list without the turned-off providers followed by the turned-on providers in `sortedProviderKeys` order, and SHALL write no `orchestra.commands` key.
 
-- 근거: `auto spec review`는 `--multi`가 없으면 `spec.review_gate.providers`만 쓴다(probe A2, `spec_review_providers.go:39-51`). `--multi`는 계속 `orchestra.commands.review.providers`, `orchestra.providers` key, 기본 provider를 합친다(non-goal).
+- 근거: `auto spec review`는 `--multi`가 없으면 이 목록만 쓰고, 이 목록은 실제 loader(`loadHarnessConfigForFlags`)와 update의 persist migration을 지나도 그대로다(probe A2). `auto doctor` readiness도 이 목록을 본다(`doctor_provider_readiness.go:36`).
 
 ### REQ-RVM-04 judge
 Priority: Must · EARS: EventDriven
 
-WHEN the participation selects are answered, THEN THE SYSTEM SHALL ask the judge among the participating providers only, offer 그대로 only when the current `spec.review_gate.judge` still takes part, otherwise print the judge-off note and default to the first participating provider, and SHALL write the judge by the judge rows of the Config Write Contract.
+WHEN the participation passes the count check, THEN THE SYSTEM SHALL ask the judge select of the Review Tab Contract, offering 그대로 first when the working judge still takes part or is empty (`그대로 — judge 없음`), otherwise printing the judge-off note and offering only the participating providers with the first as default, and SHALL write `spec.review_gate.judge` only when the chosen judge differs from the baseline.
+
+- 빈 judge는 judge 없는 리뷰라 지원 구성이다(`spec_review_loop.go:78` `NoJudge: p.gate.Judge == ""`). 탭은 judge가 있는 구성을 judge 없음으로 바꾸는 선택지를 내지 않는다.
 
 ### REQ-RVM-05 편집 검증
 Priority: Must · EARS: Unwanted
 
-IF a review tab edit leaves fewer than two participating providers, names a judge that does not take part, or holds a model or thinking that the attested choices of REQ-RVM-06 do not contain, THEN THE SYSTEM SHALL print the exact error line of the Form Text table, write nothing, and return to the tab's first select.
+IF the participation selects leave fewer than two participating providers, or a planned edit names a judge that does not take part, or a model or thinking that differs from the baseline and is not among the attested choices of REQ-RVM-06, THEN THE SYSTEM SHALL print the exact error line of the Form Text table, reset the working value to the baseline, write nothing, and ask the participation selects again.
 
-- 검증은 `[NEW] planReviewComposition`(순수 함수)에 있다. 폼은 이런 값을 내놓지 않지만 같은 함수가 init 메모리 경로와 test 입력도 판정한다. 두 개 이상 규칙은 init이 provider가 둘보다 적으면 Review Gate를 끄는 규칙(`init.go:154-157`)과 같다.
+- 수 검사는 참여 Select 바로 뒤에 한다. 그래서 0개·1개에서도 judge Select가 열리지 않는다. 검증은 `[NEW] planReviewComposition`(순수 함수)이다. baseline과 같은 model(`그대로`)은 catalog와 대조하지 않는다. 두 개 이상 규칙은 init이 provider가 둘보다 적으면 Review Gate를 끄는 규칙(`init.go:154-157`)과 같다.
 
 ### REQ-RVM-06 증명된 model 선택지
 Priority: Must · EARS: EventDriven
 
-WHEN the tab asks the model of a participating provider whose entry has `backend: omp`, THEN THE SYSTEM SHALL offer 그대로 followed by exactly the attested installed models whose `orchestra.ModelFamilyForSelector` family equals the provider's `providerModelFamily` (every attested model when that family is empty), ordered by selector, and SHALL mark 그대로 with `(catalog에 없음)` when the current model is not among them.
+WHEN the tab asks the model of a participating provider whose entry has `backend: omp`, THEN THE SYSTEM SHALL offer 그대로 followed by exactly the attested installed models that report at least one thinking level and whose `orchestra.ModelFamilyForSelector` family equals the provider's `providerModelFamily` (every attested model when that family is empty), ordered by selector, mark 그대로 with `(catalog에 없음)` when the working model is not among them, and, when the catalog cannot be read, print the catalog note once and ask no model select.
 
-- 증명 목록은 SPEC-MODELUX-003의 `installedOMPAttestedModelChoices`(`quality_omp_attested_choices.go:17-37`)를 그대로 쓴다. strict catalog면 보고된 model, metadata 없는 catalog면 built-in 선언에 있는 model만이고 안내 1줄을 쓴다. catalog를 못 읽으면 model Select 없이 안내 1줄을 쓰고 참여·judge 편집은 계속한다.
-- family는 런타임이 쓰는 두 함수로 맞춘다: `providerModelFamily`(`orchestra_brainstorm_judge.go:67-79`, claude→anthropic, codex→openai, gemini→google)와 `ModelFamilyForSelector`(`pkg/orchestra/model_family.go:31-43`).
+- 증명 목록은 `installedOMPAttestedModelChoices`(`quality_omp_attested_choices.go:17-37`)를 탭 진입당 1회 부른 결과다. strict catalog는 thinking이 없는 model을 빼고(`quality_omp_custom.go:159`), 명시된 빈 thinking 배열은 catalog 전체를 `catalog_invalid`로 만든다. 그 경우는 읽지 못한 catalog와 같다.
+- family는 런타임이 쓰는 두 함수로 맞춘다: `providerModelFamily`(`orchestra_brainstorm_judge.go:67-79`)와 `ModelFamilyForSelector`(`pkg/orchestra/model_family.go:31-43`).
 
 ### REQ-RVM-07 thinking과 model 쓰기
 Priority: Must · EARS: EventDriven
 
-WHEN the operator picks a model other than 그대로, THEN THE SYSTEM SHALL ask a thinking select over exactly the levels that model reports, defaulting to the current thinking when reported and otherwise to the first reported level, skip the select when the model reports one level or none, and write `orchestra.providers.<p>.model` as `<provider>/<model>:<thinking>`, or `<provider>/<model>` when the model reports no level.
+WHEN the operator picks a model other than 그대로, THEN THE SYSTEM SHALL ask its thinking by the OMP Autopus tab rule, offering the levels in the order the normalized catalog reports them, defaulting to the working thinking when reported and otherwise to the first level, and skipping the select when only one level is reported, and SHALL write `orchestra.providers.<p>.model` as `<provider>/<model>:<thinking>`.
 
-- 근거: OMP backend 런타임은 이 값을 그대로 selector로 쓴다(`omp_review_backend.go:40-44`). Codex 항목이 `backend: omp`이고 `model_policy`가 없으면 `CodexOrchestraProfile`은 적용되지 않는다(probe A1).
+- 규칙은 `quality_compose_omp_autopus.go:159-171`과 같다. catalog 정규화는 thinking을 `sort.Strings`로 정렬한다(`pkg/adapter/omp/omp_model_catalog_normalize.go:188-200`). 그래서 `[low, medium, high]`는 `high`, `low`, `medium` 순서로 보인다.
+- 근거: OMP backend 런타임은 이 값을 그대로 selector로 쓴다(`omp_review_backend.go:40-44`). codex 항목이 `backend: omp`면 `CodexOrchestraProfile`은 적용되지 않는다(probe A1). 이 key는 그 provider의 모든 실행(`auto spec review`, `--multi`, orchestra 명령)이 쓴다.
 
 ### REQ-RVM-08 CLI backend provider
 Priority: Must · EARS: StateDriven
 
-WHERE a provider entry has no `backend: omp`, THEN THE SYSTEM SHALL ask no model or thinking select for it, print the CLI-backend note once per provider, and leave its `backend`, `binary`, `args`, `model_policy`, and `model` unchanged, while its participation and judge selects stay available.
+WHERE a participating provider entry has no `backend: omp`, THEN THE SYSTEM SHALL ask no model or thinking select for it, print the CLI-backend note for it once per pass, and leave its `backend`, `binary`, `args`, `model_policy`, and `model` unchanged.
 
 - 근거: CLI codex의 model은 `model_policy: quality`일 때 런타임에 `CodexOrchestraProfile`이 args를 덮어 정하고(`orchestra_run_runtime.go:27-35`, `codex_profile.go:93-95`), 기본 gemini(`agy --print`)에는 model flag가 없다(`defaults.go:119`).
 
 ### REQ-RVM-09 미리보기
 Priority: Must · EARS: EventDriven
 
-WHEN the tab's selects are answered, THEN THE SYSTEM SHALL print the after table and the change lines of the Review Tab Contract in its fixed order before any confirmation, and SHALL print the existing 변경 없음 line and write nothing when the edit equals the start.
+WHEN the tab's selects are answered and pass validation, THEN THE SYSTEM SHALL print, against the baseline, the after table, the change lines in the order of the Review Tab Contract, and its fixed notes, or the existing 변경 없음 line when the working value equals the baseline.
 
-### REQ-RVM-10 확인 호출 (opt-in)
+### REQ-RVM-10 확인 요청 (opt-in)
 Priority: Must · EARS: EventDriven
 
-WHEN the preview of a changed edit has been printed, THEN THE SYSTEM SHALL ask the live check select whose default is 확인 호출 없이 계속, and only when the operator picks 확인 호출 SHALL run the Live Check Contract once per provider of the candidate's review set and print one result line per provider.
+WHEN the preview or the 변경 없음 line has been printed, THEN THE SYSTEM SHALL ask the live check select whose default is 확인 호출 없이 계속, and only when the operator picks 확인 호출 SHALL refuse with the name line if any participating provider name differs from its `terminalSafe` form and otherwise run the Live Check Contract on the candidate and print one result line per result.
 
-### REQ-RVM-11 확인 호출 실패
+### REQ-RVM-11 확인 요청 실패
 Priority: Must · EARS: Unwanted
 
-IF any live check result is not 통과, THEN THE SYSTEM SHALL print the live-check failure note, keep the confirmation default on 취소, and write nothing unless the operator explicitly picks 적용.
+IF any live check result is not 통과, THEN THE SYSTEM SHALL print the live-check failure note and, for a changed edit, keep the confirmation default on 취소 and write nothing unless the operator explicitly picks 적용.
+
+- 바뀐 것이 없으면 확인 Select 없이 메뉴로 돌아간다. 그래서 편집 없이도 지금 구성을 확인할 수 있다(S5(2), S15).
 
 ### REQ-RVM-12 쓰기 안전
 Priority: Must · EARS: EventDriven
 
-WHEN the operator applies a review tab edit in auto update or auto quality, THEN THE SYSTEM SHALL write only the keys of the Config Write Contract in one atomic replace of `autopus.yaml` built from the raw document, refuse with the write-refused line and leave the file unchanged when a target node is an alias, a merge key, or holds a `${` placeholder, keep every byte outside the `orchestra` and `spec` sections identical, and then set the run's `cfg.Orchestra` and `cfg.Spec.ReviewGate` from the re-read file.
+WHEN the operator applies a review tab edit in auto update or auto quality, THEN THE SYSTEM SHALL write it by the Line Splice Writer Contract in one atomic replace, refuse with the write-refused line and leave the file and the run's config unchanged when a target is unsafe, keep every byte outside the replaced spans identical, and then set the run's `cfg.Orchestra` and `cfg.Spec.ReviewGate` from the re-read file.
 
-- writer는 `[NEW] saveReviewComposition`이다. raw document는 `parseAutopusConfigDocument`(`platform_omp_config.go:45`)로 읽고 node만 고친 뒤 `encodeAutopusConfigRewrite`(`:145`)의 parse-back·load 동등성·placeholder 검사를 지난다. 다시 읽기와 cfg 동기화는 OMP 탭의 `ompApply`(`quality_compose_omp.go:263`)와 같다. 그래서 같은 run의 뒤 저장이 이전 구성을 되쓰지 않는다.
+- 다시 읽기와 cfg 동기화는 OMP 탭의 `ompApply`(`quality_compose_omp.go:263`)와 같다. 그래서 같은 run의 뒤 저장이 이전 구성을 되쓰지 않는다.
 
 ### REQ-RVM-13 init 메모리 경로
 Priority: Must · EARS: EventDriven
 
-WHEN the operator applies a review tab edit during interactive auto init, THEN THE SYSTEM SHALL apply it to init's in-memory config, which init's save writes, and SHALL apply the wizard's Review Gate answer and the detected provider names before the compose step so that no later init step overwrites `spec.review_gate.providers`.
+WHEN the operator applies a review tab edit during interactive auto init, THEN THE SYSTEM SHALL apply it to init's in-memory config, which init's save writes, and SHALL apply the wizard's Review Gate answer and the detected provider names before the compose step so that no later init step overwrites `spec.review_gate.providers` or `spec.review_gate.judge`.
 
-- 지금 init은 compose 단계 뒤에 `cfg.Spec.ReviewGate.Providers = providerNames`를 한다(`init.go:122-129`). 이 대입을 compose 단계 앞으로 옮긴다. 비대화형 init(`init.go:150-157`)은 그대로다.
+- 지금 init은 compose 단계(`init.go:122`) 뒤에 `cfg.Spec.ReviewGate.Providers = providerNames`를 한다(`:126-129`). 이 대입을 compose 단계 앞으로 옮긴다. 그 뒤의 `MigrateOrchestraConfig`(`init.go:161`)는 review gate key를 건드리지 않는다(probe A2). 비대화형 init(`init.go:150-157`)은 그대로다.
 
 ### REQ-RVM-14 비대화형 실행
 Priority: Must · EARS: Unwanted
 
-IF auto init, auto update, or auto quality runs non-interactively (`--yes`, a non-terminal stdin or stdout, or CI), THEN THE SYSTEM SHALL ask no review tab select, read no OMP catalog for the tab, make no live check call, and write nothing to `autopus.yaml` through this tab.
+IF an entry point runs without its interactive compose gate (auto update with `--yes`, `--check`, a non-terminal stdin, or a truthy CI; auto quality or auto init without a terminal; auto init with `--yes`) or `composeCITruthy(composeCIEnv())` is true, THEN THE SYSTEM SHALL list no review tab, ask no review select, read no OMP catalog for the tab, make no live check request, and write nothing to `autopus.yaml` through this tab.
 
-- 구성 폼은 지금도 `composeFormsTerminal`(`quality_compose_form.go:50-54`)이 참일 때만 열린다. 이 SPEC은 그 gate 밖에 새 입력 경로를 만들지 않는다.
+- 폼은 지금도 `composeFormsTerminal`(`quality_compose_form.go:50-54`)이 참일 때만 열린다. 이 SPEC은 그 gate 밖에 새 입력 경로를 만들지 않고, CI만 REQ-RVM-01이 탭 단위로 더 막는다.
 
 ### REQ-RVM-15 옛 바이너리 호환
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL write only keys that v0.50.125 loads (`orchestra.judge`, `orchestra.providers.<p>.model`, `orchestra.commands.<c>.providers`, `orchestra.commands.<c>.judge`, `spec.review_gate.providers`, `spec.review_gate.judge`), add no key outside the v0.50.125 schema, and write only model values that pass `validOMPModelSelector`.
+THE SYSTEM SHALL write only `orchestra.providers.<p>.model`, `spec.review_gate.providers`, and `spec.review_gate.judge`, which v0.50.125 loads, add no other key, and write only model values that pass `validOMPModelSelector`.
 
 - probe A3: v0.50.125(dd6d6ea2)로 만든 `auto`가 이 모양의 파일을 읽었고(`config get usage_profile` exit 0), 대조군인 모르는 key와 잘못된 selector는 거부했다.
 
 ### REQ-RVM-16 메뉴 요약
 Priority: Should · EARS: StateDriven
 
-WHERE the review tab is offered, THEN THE SYSTEM SHALL print the review summary line under the composition table each time the menu is drawn.
+WHERE the review tab is listed, THEN THE SYSTEM SHALL print the review summary line under the composition table each time the menu is drawn.
 
 - ledger의 `brownfield_impact`가 assumed라 Should다. 표 칸은 늘리지 않고 줄 하나만 더한다.
 
@@ -149,12 +157,19 @@ THE SYSTEM SHALL render every new title, option, note, and line of the Form Text
 ### REQ-RVM-18 문서
 Priority: Should · EARS: Ubiquitous
 
-THE SYSTEM SHALL document the review tab, the keys it writes, the live check and its cost, and the CLI-backend limit in init, update, and quality help, README, and the v0.50.126 CHANGELOG, without removing sentences existing tests check.
+THE SYSTEM SHALL document the review tab, the three keys it writes, the live check with its maximum call count, the CLI-backend limit, and that orchestra commands and `--multi` keep every provider, in init, update, and quality help, README, and the v0.50.126 CHANGELOG, without removing sentences existing tests check.
 
 ### REQ-RVM-19 test seam과 수동 smoke
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL run every new path through the existing seams (composeRunForm, composeFormsProbe, ompCLIFakeRunner, providerSmokeBackendFactory) and SHALL record the real-terminal smoke S15 in `evidence/manual-smoke-revmodel.txt`.
+THE SYSTEM SHALL run every new path through the existing seams (composeRunForm, composeFormsProbe, composeTTYProbe, composeCIEnv, ompCLIFakeRunner, providerSmokeBackendFactory) and SHALL record the real-terminal smoke S15 in `evidence/manual-smoke-revmodel.txt`.
+
+### REQ-RVM-20 OMP review backend 진단 줄
+Priority: Must · EARS: Ubiquitous
+
+THE SYSTEM SHALL pass the provider, the model selector, the tools, and the retry reason through `terminalSafe` in the two stderr lines the OMP review backend writes (`omp_review_backend.go:52`, `:72-73`), leaving their text unchanged for strings without control characters.
+
+- 이 두 줄은 `auto spec review`와 `auto doctor --provider-smoke`에서도 같다. 제어 문자가 없는 이름에서는 출력이 지금과 같다.
 
 ## Contracts
 
@@ -162,18 +177,21 @@ THE SYSTEM SHALL run every new path through the existing seams (composeRunForm, 
 
 | 단계 | 규칙 |
 |---|---|
-| 진입 | tool tab Select의 마지막 선택지 `멀티프로바이더 리뷰`(REQ-RVM-01). 시작 값은 run의 cfg다: update·quality는 파일에서 읽은 값, init은 wizard 답을 넣은 메모리 값 |
-| 참여 | provider마다 Select 하나. 켜짐이면 `그대로 — 켜짐`·`끄기`, 꺼짐이면 `그대로 — 꺼짐`·`켜기`. 순서는 `sortedProviderKeys`(`spec_review_helpers.go:49`). `orchestra.providers` 항목이 없는 목록 이름은 보이지 않고 바뀌지 않는다 |
-| model | 참여하는 `backend: omp` provider만. `그대로 — <selector>`(지금 값이 증명 목록에 없으면 ` (catalog에 없음)`) 뒤에 같은 family의 증명된 model. catalog 읽기는 탭 진입당 1회이고 모든 provider가 그 결과를 쓴다 |
-| thinking | model을 바꿨을 때만, 그 model이 보고한 단계만(REQ-RVM-07) |
-| judge | 참여 provider만. 지금 judge가 꺼졌으면 안내 1줄 뒤 `그대로` 없이 첫 참여 provider가 기본이다 |
-| 검증 | `planReviewComposition`. 오류면 그 줄을 쓰고 참여 Select로 돌아간다(REQ-RVM-05) |
-| 미리보기 | 아래 after 표, 그 뒤 바뀌는 설정 줄. 순서: `spec.review_gate.providers` → `orchestra.commands.<c>.providers`(명령 이름순) → `orchestra.providers.<p>.model`(provider 순) → `spec.review_gate.judge` → `orchestra.judge` → `orchestra.commands.<c>.judge 지움`. 줄 모양은 `<key> <before> → <after>`이고 목록은 `[a, b]`로 쓴다 |
-| 확인 호출 | `확인 호출 없이 계속`(기본) · `확인 호출 — 참여 provider <n>개에 model 호출 1회씩`(Live Check Contract) |
-| 확인 | 기존 `review`(`quality_compose_form_driver.go:213`)와 같은 `취소`(기본) · `적용` · `다시 편집`. `다시 편집`은 이번 편집 값을 시작 값으로 참여 Select부터 다시 묻는다 |
-| 적용 | update·quality는 REQ-RVM-12 writer, init은 REQ-RVM-13 메모리 경로. 성공하면 기존 `적용했습니다` 줄 |
+| 진입 | REQ-RVM-01의 세 조건을 모두 만족할 때 tool tab Select의 마지막 선택지 |
+| 값 | baseline(탭 진입: run의 cfg, 그리고 raw document에서 `spec.review_gate.judge` key가 있는지와 그 raw 값)과 working(이번 편집). Select 기본값과 `그대로 — <값>`은 working, 변경 판정과 쓰기는 baseline 기준. 검증 오류 → working = baseline |
+| 참여 | provider마다 Select. 켜짐이면 `그대로 — 켜짐`·`끄기`, 꺼짐이면 `그대로 — 꺼짐`·`켜기`. `orchestra.providers` 항목이 없는 목록 이름은 보이지 않고 바뀌지 않는다 |
+| 수 검사 | 참여 Select 바로 뒤. 둘보다 적으면 오류 줄 → 참여 Select부터 다시 |
+| model | 참여하는 `backend: omp` provider만(REQ-RVM-06). catalog 읽기는 탭 진입당 1회 |
+| thinking | model을 바꿨을 때만(REQ-RVM-07) |
+| CLI 안내 | 참여하는 CLI backend provider마다 그 pass에 1줄(REQ-RVM-08) |
+| judge | working judge가 참여하면 `그대로 — <j>` 뒤 다른 참여 provider. working judge가 비었으면 `그대로 — judge 없음` 뒤 참여 provider. working judge가 꺼졌으면 안내 1줄 뒤 참여 provider만, 첫 provider가 기본 |
+| 검증 | `planReviewComposition`(REQ-RVM-05) |
+| 미리보기 | after 표, 바뀌는 설정 줄(순서: `spec.review_gate.providers` → `orchestra.providers.<p>.model`(provider 순) → `spec.review_gate.judge`, 모양 `<key> <before> → <after>`, 목록은 `[a, b]`, 빈 judge는 `judge 없음`), 고정 안내(provider를 끈 편집이면 명령 안내, model을 바꾼 편집이면 model 안내). 같으면 `변경 없음` |
+| 확인 요청 | 미리보기나 `변경 없음` 뒤 `확인 호출 없이 계속`(기본) · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)`. `<n>`은 후보의 참여 provider 수 |
+| 확인 | 바뀐 편집만: 기존 `review`(`quality_compose_form_driver.go:213`)와 같은 `취소`(기본) · `적용` · `다시 편집`. 바뀐 것이 없으면 확인 없이 메뉴로 |
+| 적용 | update·quality는 Line Splice Writer Contract, init은 메모리 경로. 성공하면 기존 `적용했습니다` 줄 |
 
-after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞춘다. 바뀐 칸 끝에 `*`):
+after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞추고 바뀐 칸 끝에 `*`, CLI backend의 model 칸은 `CLI backend`):
 
 ```text
 provider  리뷰   model                                    judge
@@ -182,41 +200,47 @@ codex     켜짐   openai-codex/gpt-6-luna:high *
 gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 ```
 
-CLI backend provider의 model 칸은 `CLI backend`다.
-
 ### Config Write Contract
 
 | 선택 | 쓰는 key | 바뀌는 소비처 |
 |---|---|---|
-| provider 끄기 | `spec.review_gate.providers`와 있는 `orchestra.commands.<c>.providers` 모두에서 그 이름을 지운다 | `auto spec review`(A2), `auto spec review --multi`의 합집합 원천 중 둘, orchestra 명령 brainstorm·plan·review·secure(이 repo 기준, 있는 항목 모두) |
-| provider 켜기 | 같은 목록 중 그 이름이 없는 목록 끝에 붙인다 | 같다 |
-| 손대지 않은 provider | 어느 목록에서도 바뀌지 않는다(명령별로 다른 지금 구성 유지) | 없음 |
-| model (`backend: omp`) | `orchestra.providers.<p>.model` = `<provider>/<model>:<thinking>` | OMP backend로 도는 모든 리뷰·orchestra 호출(A1) |
-| judge | `spec.review_gate.judge` = J. `orchestra.judge`는 편집 전 값이 `spec.review_gate.judge`와 같았거나 꺼진 provider면 J로 바꾸고, 그 밖에는 두고, key가 없으면 더하지 않는다 | `auto spec review` judge, debate 명령의 기본 judge |
-| 꺼진 provider를 가리키는 `orchestra.commands.<c>.judge` | 그 key를 지운다(`orchestra.judge`로 돌아간다) | 그 명령 |
-| 쓰지 않음 | strategy, timeout, `enabled`, `max_revisions`, `min_providers`, `backend`, `binary`, `args`, `model_policy`, `tools`, `subprocess`, provider 항목 추가·삭제, `orchestra.commands` 항목 추가 | — |
+| 참여 | `spec.review_gate.providers` = baseline 순서에서 끈 provider를 뺀 것 + 켠 provider(`sortedProviderKeys` 순) | `auto spec review`(`--multi` 없음), `auto doctor` readiness |
+| model (`backend: omp`) | `orchestra.providers.<p>.model` = `<provider>/<model>:<thinking>` | 그 provider의 모든 OMP backend 실행: `auto spec review`, `--multi`, orchestra 명령 |
+| judge | `spec.review_gate.judge` = j. baseline에 key가 없으면 review_gate mapping 끝에 더하고, `""`면 그 값만 바꾼다 | `auto spec review` judge |
+| 쓰지 않음 | `orchestra.commands.*`(Migration 3 소유), `orchestra.judge`, 리뷰 정책 key, `backend`, `binary`, `args`, `model_policy`, `tools`, `subprocess`, provider 항목 추가·삭제 | — |
 
-- 목록 node나 `spec.review_gate.judge`가 파일에 없으면 v0.50.125 schema에 있는 그 key만 그 mapping에 더한다. 쓰는 목록은 flow sequence(`[a, b]`)다. 이 repo와 `config.Save`가 쓰는 모양이다(`schema_spec.go:14`, `schema_orchestra.go:50`의 `flow` tag).
-- 바뀌지 않는 값은 node도 쓰지 않는다. 편집이 시작 값과 같으면 파일을 열어 쓰지도 않는다.
+- 바뀌지 않는 값은 쓰지 않는다. working이 baseline과 같으면 파일을 열어 쓰지도 않는다.
+
+### Line Splice Writer Contract
+
+| 항목 | 규칙 |
+|---|---|
+| 원천 | 디스크의 bytes. `saveQualityBlock`처럼 먼저 `pruneRetiredConfig`(`config_retired_keys.go:37`)를 거친다(SPEC-PANERM-001 REQ-10). 대상 위치는 raw document(`parseAutopusConfigDocument`, `platform_omp_config.go:45`, 환경 변수 펼침 없음)의 node `Line`·`Column`으로 찾는다 |
+| 바꾸는 span | scalar(`judge`, `model`): 그 key 줄의 값 token(plain, `'…'`, `"…"`)만. 같은 줄의 inline 주석은 남는다. flow 목록: 같은 줄의 `[`부터 짝 `]`까지. block 목록: 항목 줄들을 같은 들여쓰기의 `- <name>` 줄로 바꾼다. 없는 `judge` key: review_gate mapping의 마지막 줄 뒤에 그 mapping 들여쓰기로 `judge: <j>` 한 줄. 새 값은 `OMPYAMLScalar`(`pkg/content/agent_transformer_omp.go:25`)로 encode한다 |
+| 거부 | 대상 key·값 node나 span 안의 node가 anchor 또는 alias, 부모 mapping에 merge key, 대상 값에 `${`, 부모가 flow mapping, 값이 block scalar(`|`, `>`)이거나 목록 항목이 scalar가 아님, block 목록 span 안의 주석 줄. 문구는 Form Text의 쓰기 거부 줄이고 `<key>`는 첫 거부 경로다 |
+| 검사 | `[NEW] verifyReviewLineEdit`: `verifyQualityLineEdit`(`quality_config_verify.go:20`)처럼 대상 경로를 뺀 두 문서가 같은 data(alias는 가리키는 data로)이고, 대상 경로가 계획 값이며, strict load와 `Validate`를 지나 load 결과가 baseline cfg에 계획 값만 바꾼 것과 같아야 한다. 하나라도 어긋나면 쓰지 않는다 |
+| 쓰기 | `atomicWriteQualityConfig`(`quality_config.go:258`)와 같은 atomic replace. 파일 mode는 그대로다 |
+| bytes | retired key가 없는 파일에서 span 밖 bytes는 원본과 같다. retired key가 있으면 `pruneRetiredConfig` 결과와 같다 |
 
 ### Live Check Contract
 
 | 항목 | 규칙 |
 |---|---|
-| 언제 | 미리보기 뒤 사용자가 `확인 호출`을 고를 때만. 비대화형 실행에서는 탭 자체가 열리지 않는다(REQ-RVM-14) |
-| 대상 | 후보 구성(메모리, 파일 아님)을 `assembleSpecReviewProviders`(`spec_review_readonly.go:53`)에 넣어 나온 provider 집합. `auto spec review`가 실제로 돌릴 집합이고 read-only 정책과 설치 확인을 거친다. 설치되지 않은 provider는 기존 경고 줄을 쓰고 호출하지 않는다 |
-| 호출 | provider마다 1회, 위 순서대로 하나씩. backend는 `providerSmokeBackendFactory`(`doctor_provider_smoke.go:27`, 기본 `selectRoutedBackend`)라 OMP provider는 `ompReviewSession.run`(`omp_review_backend_session.go:31`), CLI provider는 그 binary·args 그대로다. 확인 호출이 더하는 flag는 없다. `OutputFormat`은 `auto doctor --provider-smoke`처럼 `text`다 |
-| prompt | `providerSmokePrompt()`(`doctor_provider_smoke.go:123-125`)의 글자 그대로: `Return ONLY this exact token and no other text: AUTOPUS_PROVIDER_SMOKE_OK` |
-| timeout | provider마다 60초(`[NEW] composeReviewCheckTimeout`). doctor의 30초 기본값(`doctor.go:106`)은 바꾸지 않는다 |
-| 판정 | `classifyProviderSmokeResult`(`doctor_provider_smoke.go:127-144`): `pass`는 통과, `warn`(표시 문자열 없음)과 `fail`은 통과가 아니다 |
-| 결과 줄 | `확인 호출 <p> (<model>): 통과` · `확인 호출 <p> (<model>): 응답에 확인 문자열이 없습니다` · `확인 호출 <p> (<model>): 실패 — <detail>`. `<model>`은 OMP면 selector, CLI면 `CLI backend`. `<detail>`은 `terminalSafe`를 거친 첫 줄 200 rune까지 |
-| 실패 뒤 | 안내 1줄, 확인 기본값 `취소`(REQ-RVM-11). 결과는 저장하지 않는다 |
+| 언제 | 미리보기나 `변경 없음` 뒤 사용자가 `확인 호출`을 고를 때만(REQ-RVM-10). 비대화형·CI에서는 탭이 없다(REQ-RVM-14) |
+| 엔진 | `runProviderTransportSmoke(ctx, candidate, 60초)`(`doctor_provider_smoke.go:87-121`)를 그대로 부른다. candidate는 run의 cfg 사본에 working을 넣은 것이고 파일은 아니다. 조립 오류나 provider 0개는 그 함수가 `review_gate` 실패 결과 하나로 바꾼다 |
+| 대상 | 그 함수가 `assembleSpecReviewProviders`로 만든 집합(read-only 정책, 설치 확인). 실제 리뷰는 readiness 필터(`planSpecReviewProviders`, `spec_review_readiness.go:59`)를 더 거치므로 통과는 "그 provider가 답했다"이지 "모든 다음 리뷰에 들어간다"가 아니다 |
+| 요청 수 | 집합의 provider마다 `Execute` 1회, 차례로. OMP backend는 일시 오류면 한 요청을 최대 3회 시도한다(`omp_review_backend_session.go:13, 57-63`). 그래서 model 호출은 최대 3n회이고 라벨이 그 수를 적는다 |
+| prompt | `providerSmokePrompt()`의 글자 그대로: `Return ONLY this exact token and no other text: AUTOPUS_PROVIDER_SMOKE_OK`. 확인 요청이 더하는 flag는 없다. OMP provider는 `ompReviewSession.run`(`omp_review_backend_session.go:31`), CLI provider는 그 binary·args 그대로다 |
+| timeout | 요청마다 60초(`[NEW] composeReviewCheckTimeout`). doctor 기본 30초(`doctor.go:106`)는 바꾸지 않는다 |
+| 결과 줄 | `pass` → `확인 호출 <p> (<model>): 통과`, `warn` → `확인 호출 <p> (<model>): 응답에 확인 문자열이 없습니다`, `fail` → `확인 호출 <p> (<model>): 실패 — <detail>`. `<model>`은 candidate의 selector, CLI면 `CLI backend`, `review_gate` 결과면 ` (<model>)` 없이 쓴다. `<detail>`은 `terminalSafe`를 거친 첫 줄 200 rune까지 |
+| 실패 뒤 | 안내 1줄. 바뀐 편집이면 확인 기본값 `취소`(REQ-RVM-11). 결과는 저장하지 않는다 |
+| 터미널 | 이름 검사(REQ-RVM-10)와 backend 진단 줄(REQ-RVM-20). CLI subprocess가 provider stderr를 터미널에 넘기는지는 T6이 먼저 확인하고, 넘기면 그 출력도 `terminalSafeMultiline`을 거친다 |
 
 ### Forward-compat Contract
 
 | 항목 | 규칙 |
 |---|---|
-| key | REQ-RVM-15의 여섯 경로뿐이다. 모두 v0.50.125 `pkg/config/schema_orchestra.go`·`schema_spec.go`에 같은 yaml tag로 있다(`git show v0.50.125:...`로 확인) |
+| key | REQ-RVM-15의 세 경로뿐이다. 모두 v0.50.125 `pkg/config/schema_orchestra.go`·`schema_spec.go`에 같은 yaml tag로 있다(`git show v0.50.125:...`) |
 | 값 | model은 `validOMPModelSelector`(`schema_provider_backend.go:56-75`)를 지나는 값만. 아니면 v0.50.125가 `provider_model_required: <p>`로 파일 전체를 거부한다(A3 대조군) |
 | 검증 | S7이 이 branch가 쓴 파일을 v0.50.125 바이너리로 읽는다 |
 
@@ -230,53 +254,60 @@ CLI backend provider의 model 칸은 `CLI backend`다.
 | thinking | `<p> thinking (<provider>/<model>)` | 같다 |
 | CLI 안내 | `<p>는 CLI backend라 이 탭에서 model을 바꾸지 않습니다` | `<p> runs on a CLI backend; this tab leaves its model unchanged` |
 | catalog 안내 | `OMP catalog를 읽지 못해 model은 그대로입니다` | `The OMP catalog is unreadable; models stay unchanged` |
-| judge | `judge` · `judge <j>가 꺼져 judge를 다시 고릅니다` | `judge` · `judge <j> was turned off; choose a new judge` |
+| judge | `judge` · `그대로 — judge 없음` · `judge <j>가 꺼져 judge를 다시 고릅니다` | `judge` · `keep — no judge` · `judge <j> was turned off; choose a new judge` |
 | 오류 | `리뷰에는 provider가 두 개 이상 필요합니다 (지금 <n>개)` · `judge <j>는 리뷰에 참여하지 않는 provider라 고를 수 없습니다` · `<p> model <selector>는 설치된 OMP catalog가 증명하지 않습니다` · `<p> thinking <t>는 <selector>가 보고하지 않는 단계입니다` | `The review needs at least two providers (now <n>)` · `judge <j> does not take part in the review and cannot be chosen` · `The installed OMP catalog does not attest <p> model <selector>` · `<selector> reports no thinking level <t> for <p>` |
-| 확인 호출 | `확인 호출` · `확인 호출 없이 계속` · `확인 호출 — 참여 provider <n>개에 model 호출 1회씩` · 결과 줄(Live Check Contract) · `확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.` | `Live check` · `continue without a live check` · `live check — one model call for each of <n> providers` · `live check <p> (<model>): passed` / `: the reply lacks the check token` / `: failed — <detail>` · `A live check failed; if you apply, that provider keeps failing in reviews.` |
+| 명령 안내 | `꺼진 provider도 orchestra 명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속 돕니다` | `Turned-off providers still run in orchestra commands (brainstorm, plan, review, secure) and in auto spec review --multi` |
+| model 안내 | `바뀐 model은 auto spec review와 orchestra 명령 모두에 쓰입니다` | `A changed model applies to auto spec review and to orchestra commands` |
+| 확인 요청 | `확인 호출` · `확인 호출 없이 계속` · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)` · 결과 줄 · `확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.` · `확인 호출을 할 수 없습니다: provider 이름 <terminalSafe(p)>에 터미널 제어 문자가 있습니다` | `Live check` · `continue without a live check` · `live check — one request for each of <n> providers (at most <3n> model calls with retries)` · `live check <p> (<model>): passed` / `: the reply lacks the check token` / `: failed — <detail>` · `A live check failed; if you apply, that provider keeps failing in reviews.` · `Cannot run the live check: provider name <terminalSafe(p)> holds terminal control characters` |
 | 쓰기 거부 | `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: <key>` | `The review settings in autopus.yaml cannot be edited safely; nothing was written: <key>` |
-| 메뉴 요약 | `멀티프로바이더 리뷰: claude · codex · gemini(꺼짐) · judge claude` | `Multi-provider review: claude · codex · gemini (off) · judge claude` |
+| 메뉴 요약 | `멀티프로바이더 리뷰: claude · codex · gemini(꺼짐) · judge claude` (빈 judge는 `judge 없음`) | `Multi-provider review: claude · codex · gemini (off) · judge claude` (`no judge`) |
 
 ## Existing Test Changes
 
-1. tool tab Select가 선택지 하나라 건너뛰던 폼 test 중 fixture에 `orchestra.providers`가 둘 이상인 것은 이제 그 Select가 열린다. 입력에 그 Select의 기존 기본값을 고르는 Enter(`\n`) 하나를 더한다. 기존 줄 단언은 바꾸지 않는다.
-2. init test 중 compose 단계 뒤 `spec.review_gate.providers`를 단언하는 것은 값이 같으므로 바뀌지 않는다(대입 순서만 바뀐다). 바뀌면 T1 목록에 이유를 적는다.
-3. 그 밖의 test는 바꾸지 않는다. T1이 파일마다 분류한다.
+1. tool tab Select가 선택지 하나라 건너뛰던 폼 test 중 fixture가 REQ-RVM-01 조건을 만족하는 것은 이제 그 Select가 열린다. 입력에 그 Select의 기본값을 고르는 Enter(`\n`) 하나를 더한다. 기존 줄 단언은 바꾸지 않는다.
+2. tool tab Select의 선택지 목록 전체를 단언하는 test는 마지막에 `멀티프로바이더 리뷰`를 더한다.
+3. init test 중 compose 단계 뒤 `spec.review_gate.providers`를 단언하는 것은 값이 같아 바뀌지 않는다(대입 순서만 바뀐다).
+4. OMP review backend stderr 줄을 bytes로 단언하는 test가 있으면 제어 문자가 없는 입력이라 그대로다. 그 밖의 test는 바꾸지 않는다. T1이 파일마다 분류한다.
 
 ## 생성 파일 상세
 
-- `internal/cli`: `[NEW] quality_compose_review.go`(+test, 탭 흐름), `[NEW] quality_compose_review_plan.go`(+test, `planReviewComposition`·시작 값·변경 줄·after 표), `[NEW] quality_compose_review_choices.go`(+test, family로 거른 증명 목록), `[NEW] quality_compose_review_write.go`(+test, `saveReviewComposition`·init 메모리 적용), `[NEW] quality_compose_review_check.go`(+test, 확인 호출), `quality_compose_form_driver.go`(분기 몇 줄), `quality_compose_form_text.go`(문구), `init.go`(대입 순서). 메뉴 요약은 `f.draw()` 뒤 한 줄이다.
+- `internal/cli`: `[NEW] quality_compose_review.go`(+test, 탭 흐름·`composeReviewTabOption`), `[NEW] quality_compose_review_plan.go`(+test, baseline·working, `planReviewComposition`, 변경 줄, after 표), `[NEW] quality_compose_review_choices.go`(+test, family로 거른 증명 목록, thinking 규칙), `[NEW] quality_compose_review_write.go`(+test, `saveReviewComposition`·span·거부·init 메모리 적용), `[NEW] quality_compose_review_verify.go`(+test, `verifyReviewLineEdit`), `[NEW] quality_compose_review_check.go`(+test, 확인 요청), `quality_compose_form_driver.go`(호출 두 줄), `quality_compose_form_text.go`(문구), `init.go`(대입 순서), `omp_review_backend.go`(두 줄에 `terminalSafe`). 메뉴 요약은 `f.draw()` 뒤 한 줄이고 driver가 300줄을 넘으면 `composeReviewTabOption`처럼 새 파일로 옮긴다.
 - 문서: README, CHANGELOG(v0.50.126), help 상수(Should). `content/`·`templates/`를 고치면 `make generate-templates`로 생성 표면을 맞춘다.
-- 증거: `[NEW] evidence/manual-smoke-revmodel.txt`. 신규·변경 소스는 300줄 이하다.
+- 증거: `evidence/review-rounds.md`, `[NEW] evidence/manual-smoke-revmodel.txt`. 신규·변경 소스는 300줄 이하다.
 
 ## Related SPECs
 
-- SPEC-MODELUX-002(v0.50.125): 폼 흐름, tool tab, 확인 Select, Write Safety Contract를 쓴다. 바뀌는 점은 tool tab 선택지가 하나 늘어난다는 것뿐이다.
-- SPEC-MODELUX-003(v0.50.126): `installedOMPAttestedModelChoices`를 그대로 쓴다. OMP 탭(에이전트 route)과 이 탭(리뷰 provider model)은 서로 다른 key를 쓴다.
-- SPEC-REVIEWRO-001: OMP review backend와 `auto doctor --provider-smoke` 경로를 확인 호출이 그대로 쓴다.
+- SPEC-MODELUX-002(v0.50.125): 폼 흐름, tool tab, 확인 Select, Write Safety Contract, 줄 writer 검사 방식을 쓴다. 바뀌는 점은 tool tab 선택지가 하나 늘어난다는 것뿐이다.
+- SPEC-MODELUX-003(v0.50.126): `installedOMPAttestedModelChoices`와 thinking 규칙을 그대로 쓴다. OMP 탭(에이전트 route)과 이 탭(리뷰 provider model)은 서로 다른 key를 쓴다.
+- SPEC-REVIEWRO-001: OMP review backend와 `auto doctor --provider-smoke` 경로를 확인 요청이 그대로 쓴다. 진단 줄 두 개만 `terminalSafe`를 더한다.
+- SPEC-PANERM-001: retired key prune 규칙(REQ-10)을 writer가 따른다.
 - SPEC-ADK-REVIEW-INTEGRITY-001: quorum과 `degraded_reasons` 규칙은 바꾸지 않는다(Evolution Idea).
 - SPEC-REA-001: 기준 branch. 이 SPEC은 에이전트 표를 바꾸지 않는다.
 - Sibling: 없다(`research.md` `## Sibling SPEC Decision`).
 
 ## Open Issues
 
-- 없음. CLI backend model 편집 제외는 근거가 있는 범위 결정이고 `research.md` `## Evolution Ideas`와 Reviewer Brief에 적었다.
+Gate 1에서 사용자가 볼 범위 결정 둘(근거는 `research.md` D2·D3):
+
+- G1-1 | scope | 참여 켜기·끄기는 `auto spec review`(`spec.review_gate.providers`)에만 효과가 있다. planning 예시("orchestra.commands.*.providers lose gemini")는 Migration 3이 load마다 되돌려 쓰기만으로는 이룰 수 없다. 명령 목록까지 바꾸려면 Migration 3 변경이 필요하고, 그것은 scope expansion이다
+- G1-2 | scope | model 편집은 OMP backend provider만 된다. CLI codex model은 `CodexOrchestraProfile`이, 기본 gemini(agy)는 model flag 없음이 정한다. CLI backend만 있는 새 init 프로젝트는 참여와 judge만 고칠 수 있다
 
 ## Traceability Matrix
 
 | Requirement | Plan Task | Acceptance Scenario | Semantic Invariant |
 |-------------|-----------|---------------------|--------------------|
-| REQ-RVM-01 | T5 | S1, S11 | INV-RVM-08 |
-| REQ-RVM-02 | T2, T5 | S1, S9 | INV-RVM-01 |
-| REQ-RVM-03 | T2, T4 | S1, S9 | INV-RVM-01, INV-RVM-08 |
+| REQ-RVM-01 | T5 | S1, S6, S10 | INV-RVM-08 |
+| REQ-RVM-02 | T2, T5 | S1, S3, S17 | INV-RVM-01, INV-RVM-09 |
+| REQ-RVM-03 | T2, T4 | S1, S11 | INV-RVM-01 |
 | REQ-RVM-04 | T2, T5 | S3, S9 | INV-RVM-02 |
-| REQ-RVM-05 | T2 | S3, S4 | INV-RVM-02, INV-RVM-03 |
+| REQ-RVM-05 | T2 | S3, S4 | INV-RVM-02, INV-RVM-03, INV-RVM-09 |
 | REQ-RVM-06 | T3 | S4 | INV-RVM-03 |
 | REQ-RVM-07 | T3, T4 | S2, S5 | INV-RVM-03, INV-RVM-04 |
 | REQ-RVM-08 | T3, T5 | S8 | INV-RVM-01 |
-| REQ-RVM-09 | T2, T5 | S1, S9, S11 | INV-RVM-08 |
-| REQ-RVM-10 | T6 | S5 | INV-RVM-05 |
+| REQ-RVM-09 | T2, T5 | S1, S2, S11, S17 | INV-RVM-08, INV-RVM-09 |
+| REQ-RVM-10 | T6 | S5, S16 | INV-RVM-05 |
 | REQ-RVM-11 | T6 | S5 | INV-RVM-05 |
-| REQ-RVM-12 | T4, T7 | S1, S11, S12 | INV-RVM-07 |
+| REQ-RVM-12 | T4, T7 | S11, S12 | INV-RVM-07 |
 | REQ-RVM-13 | T7 | S10 | INV-RVM-01 |
 | REQ-RVM-14 | T8 | S6 | INV-RVM-05 |
 | REQ-RVM-15 | T4, T8 | S7 | INV-RVM-06 |
@@ -284,3 +315,4 @@ CLI backend provider의 model 칸은 `CLI backend`다.
 | REQ-RVM-17 | T10 | S13 | - |
 | REQ-RVM-18 | T10 | S14 | - |
 | REQ-RVM-19 | T1, T11 | S15 | INV-RVM-05 |
+| REQ-RVM-20 | T6 | S16 | INV-RVM-10 |
