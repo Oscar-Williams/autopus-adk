@@ -5,6 +5,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 // Routes and reason codes of the Auto-Team Decision Contract.
@@ -202,17 +204,47 @@ func readyUnits(units []TeamUnit) []TeamUnit {
 }
 
 // firstOverlapPair returns the first pair of units, in facts order, whose
-// owned paths overlap. Each pair is judged by ownershipOverlap itself, so the
-// predicate stays the one Decide uses; only the pair identity is new.
+// owned paths overlap. The test is the formula of ownershipOverlap in Decide,
+// equal paths or one inside the other, applied to overlapKey forms.
 func firstOverlapPair(units []TeamUnit) (string, string, bool) {
-	for i, a := range units {
-		for _, b := range units[i+1:] {
-			if ownershipOverlap([]Worker{{OwnedPaths: ownedRoots(a.OwnedPaths)}, {OwnedPaths: ownedRoots(b.OwnedPaths)}}) {
-				return a.ID, b.ID, true
+	keys := make([][]string, len(units))
+	for i, unit := range units {
+		for _, value := range unit.OwnedPaths {
+			keys[i] = append(keys[i], overlapKey(value))
+		}
+	}
+	for i := range units {
+		for j := i + 1; j < len(units); j++ {
+			if keysOverlap(keys[i], keys[j]) {
+				return units[i].ID, units[j].ID, true
 			}
 		}
 	}
 	return "", "", false
+}
+
+// overlapKey is an owned path as only the overlap test compares it: one
+// trailing "/**" dropped, cleaned, then NFC-normalized and lowercased, because
+// spellings that differ only in case or Unicode normalization name one file on
+// the default macOS and Windows file systems. A false collision only keeps the
+// run on subagents. A path cleanPath refuses becomes "", which overlaps all.
+func overlapKey(value string) string {
+	cleaned, err := cleanPath(strings.TrimSuffix(value, "/**"))
+	if err != nil {
+		return ""
+	}
+	return strings.ToLower(norm.NFC.String(cleaned))
+}
+
+func keysOverlap(left, right []string) bool {
+	for _, l := range left {
+		for _, r := range right {
+			if l == "" || r == "" || l == r || strings.HasPrefix(l, r+"/") || strings.HasPrefix(r, l+"/") {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ownedRoots drops the one trailing "/**" an owned path may carry, so

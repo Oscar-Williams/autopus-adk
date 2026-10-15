@@ -239,3 +239,33 @@ func TestDecideTeamPlanPrecedesCapability(t *testing.T) {
 		t.Fatalf("%+v", d)
 	}
 }
+
+// Spellings that differ only in case or Unicode normalization name one file on
+// the default macOS and Windows file systems, so they must overlap.
+func TestFirstOverlapPairFoldsCaseAndNormalization(t *testing.T) {
+	overlapping := [][2]string{
+		{"pkg/Foo.go", "pkg/foo.go"},
+		{"internal/CLI/**", "internal/cli/x.go"},
+		{"pkg/caf\u00e9", "pkg/cafe\u0301/x.go"},
+		{"PKG/A", "pkg/a/**"},
+	}
+	for _, pair := range overlapping {
+		units := []TeamUnit{teamWorker("T1", pair[0]), teamWorker("T2", pair[1])}
+		if a, b, ok := firstOverlapPair(units); !ok || a != "T1" || b != "T2" {
+			t.Fatalf("%q %q: %s %s %v", pair[0], pair[1], a, b, ok)
+		}
+		if d := DecideTeam(TeamInput{Units: units, Capability: capOK()}); d.Reason != "ownership_overlap" {
+			t.Fatalf("%q %q: %+v", pair[0], pair[1], d)
+		}
+	}
+	// A path decoding would refuse cannot be compared, so it overlaps everything.
+	if _, _, ok := firstOverlapPair([]TeamUnit{teamWorker("T1", "../escape"), teamWorker("T2", "pkg/b")}); !ok {
+		t.Fatal("an uncomparable path must not look disjoint")
+	}
+	for _, pair := range [][2]string{{"pkg/A", "pkg/ab"}, {"pkg/Foo", "pkg/foobar"}, {"pkg/caf\u00e9", "pkg/cafe"}} {
+		units := []TeamUnit{teamWorker("T1", pair[0]), teamWorker("T2", pair[1])}
+		if _, _, ok := firstOverlapPair(units); ok {
+			t.Fatalf("%q %q must stay disjoint", pair[0], pair[1])
+		}
+	}
+}
