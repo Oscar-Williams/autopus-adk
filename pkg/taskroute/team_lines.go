@@ -10,6 +10,9 @@ import (
 // prints instead of line when the team tool schemas fail to load.
 const reasonTeamToolsUnavailable = "team_tools_unavailable"
 
+// reasonInvalidFacts is the reason of a decision for rejected facts.
+const reasonInvalidFacts = "invalid_facts"
+
 var (
 	sessionTokenPattern  = regexp.MustCompile(`^[a-z0-9-]{1,32}$`)
 	execPathTokenPattern = regexp.MustCompile(`^[A-Za-z0-9._-]{1,32}$`)
@@ -26,6 +29,7 @@ type lineValues struct {
 	execBase   string
 	version    string
 	flag       string
+	code       string
 }
 
 // teamLineText holds the Korean and English line of every reason, verbatim
@@ -67,6 +71,9 @@ var teamLineText = map[string][2]string{
 	reasonExplicitFlag: {
 		"Agent Team: 자동 선택 안 함 — {f} 지정됨",
 		"Agent Team: auto-selection skipped — {f} was given"},
+	reasonInvalidFacts: {
+		"Agent Team: 유지 — topology facts가 잘못되어({c}) subagent로 실행한다",
+		"Agent Team: off — the topology facts are invalid ({c}); running subagents"},
 }
 
 // renderTeamLine renders the line of reason, in Korean only when locale is
@@ -86,6 +93,7 @@ func renderTeamLine(locale, reason string, values lineValues) string {
 		"{x}", execPathToken(values.execBase),
 		"{v}", values.version,
 		"{f}", values.flag,
+		"{c}", values.code,
 	).Replace(line)
 }
 

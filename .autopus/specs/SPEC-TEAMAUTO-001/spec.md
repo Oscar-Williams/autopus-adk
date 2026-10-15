@@ -78,9 +78,9 @@ IF the decision route is `team` and the `SendMessage` or shared task-list schema
 ### REQ-TA-08 CLI
 Priority: Must · EARS: Event-driven
 
-WHEN `auto workflow triage --topology --facts-json <file>` runs, THEN THE SYSTEM SHALL validate the file against the Topology Facts Contract, SHALL print the decision report as JSON (default) or only the reason line (`--format human`), SHALL launch no agent or teammate, write no file, and change no gate, and SHALL return the error `invalid topology facts: <code>` for invalid facts.
+WHEN `auto workflow triage --topology --facts-json <file>` runs, THEN THE SYSTEM SHALL validate the file against the Topology Facts Contract, SHALL print the decision report as JSON (default) or only the reason line (`--format human`), SHALL launch no agent or teammate, write no file, and change no gate, and SHALL report facts that fail the contract as a `subagent` decision with reason `invalid_facts`, the failed code in `facts_error`, and a reason line that names the code.
 
-- 실제 바이너리는 root가 그 error를 `Error: invalid topology facts: <code>\n`으로 stderr에 쓰고 종료 1이다(`internal/cli/root.go:203-211`, `:173-179`, evidence R1). child process는 버전 probe 하나뿐이다.
+- 잘못된 facts는 오류가 아니라 종료 0의 decision이다. 생성 snippet이 stderr를 버리므로 오류로 내면 원인이 사용자에게 보이지 않기 때문이다(review LOW 2). 파일 guard와 설정 오류는 root가 `Error: <msg>\n`으로 stderr에 쓰고 종료 1이다(`internal/cli/root.go:203-211`, `:173-179`, evidence R1). child process는 버전 probe 하나뿐이다.
 - `--topology`가 없으면 기존 triage의 stdout·stderr·종료 코드가 기준 빌드와 같다(S11).
 
 ### REQ-TA-09 설정 key
@@ -150,8 +150,9 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 
 - 설정과 plan 사실을 능력보다 먼저 본다. 어차피 팀을 쓸 수 없는 run이 실험 환경 변수를 매번 권하지 않게 하고, 유일한 실행(버전 probe)은 나머지가 다 통과할 때만 일어난다.
 - owned path는 literal path나 끝의 `/**` 하나만 받는다(`content/skills/references/agent-pipeline/delegation.md:111`과 같다). `/**`를 떼고 기존 `cleanPath`를 적용한다. `pkg/a/**`는 `pkg/a`다.
-- 겹침 판정식은 기존 `ownershipOverlap`(`pkg/taskroute/decide.go`)과 같다. cleaned path가 같거나 한쪽이 다른 쪽 + `/`로 시작한다. `pkg/a`와 `pkg/ab`는 겹치지 않는다. 그 함수는 `[]Worker`의 유무만 돌려주므로 첫 겹침 쌍(facts 순서)은 같은 판정식의 `[NEW] firstOverlapPair`가 낸다.
+- 겹침 판정식은 기존 `ownershipOverlap`(`pkg/taskroute/decide.go`)과 같다. path가 같거나 한쪽이 다른 쪽 + `/`로 시작한다. `pkg/a`와 `pkg/ab`는 겹치지 않는다. 단 비교 값은 cleaned path를 NFC로 정규화하고 Unicode case folding(`golang.org/x/text/cases` `Fold`)한 뒤 다시 NFC로 정규화한 것이다. 기본 macOS·Windows 파일 시스템에서는 대소문자나 정규화만 다른 표기(`pkg/Foo.go`와 `pkg/foo.go`, NFC와 NFD, `ς`와 `σ`, `ß`와 `ss`)가 같은 파일이기 때문이다. 거짓 겹침은 subagent로 남을 뿐이고 `cleanPath`가 거부하는 path는 모두와 겹친다고 본다. 접기는 겹침 판정에만 쓰고 검증과 출력은 바꾸지 않는다. 첫 겹침 쌍(facts 순서의 unit 쌍)은 `[NEW] firstOverlapPair`가 낸다. 기존 `decide.go`는 바꾸지 않는다.
 - 버전 비교는 (major, minor, patch) 정수 비교다. `2.10.0` > `2.1.246`이다.
+- facts가 Topology Facts Contract를 어기면 규칙을 적용하지 않고 `route: subagent`, `reason: invalid_facts`, `facts_error: <code>`인 decision이다(`[NEW] taskroute.InvalidFactsDecision`). 능력을 읽지 않고 probe도 없다.
 
 출력(decision):
 
@@ -159,8 +160,9 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 |---|---|
 | `version` | 1 |
 | `route` | `team` / `subagent` / `solo` / `workflow` |
-| `reason` | 위 reason code |
-| `ready_units` | ready unit 수. 규칙 1이면 없다 |
+| `reason` | 위 reason code 또는 `invalid_facts` |
+| `facts_error` | reason `invalid_facts`일 때만. Topology Facts Contract 오류 code |
+| `ready_units` | ready unit 수. 규칙 1과 `invalid_facts`면 없다 |
 | `team_units` | route `team`일 때만. ready unit id, facts 순서 |
 | `followup_units` | route `team`일 때만. `team_units`에도 없고 done도 아닌 unit id(의존 worker, inline), facts 순서. 빈 배열일 수 있다 |
 | `line` | 이유 한 줄 |
@@ -180,6 +182,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | 도구 schema | 세션의 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet` | 로드됨 | CLI 밖. REQ-TA-07 |
 
 - 버전 probe guard: 값이 절대 경로이고, `os.Stat`(symlink는 따라간 결과)이 regular file이며, basename이 `claude` 또는 `claude.exe`일 때만 shell 없이 인자 `--version` 하나로 실행한다. 5초 timeout, 출력은 기존 `processprobe.OutputLimited`로 4096 bytes까지다.
+- Windows에서는 drive 문자 경로(`C:\…`, `C:/…`)이고 basename이 `claude.exe`일 때만 실행한다. 확장자 없는 `claude`는 os/exec가 PATHEXT로 옆의 `claude.cmd`·`claude.bat`을 찾아 cmd.exe로 돌릴 수 있기 때문이다. UNC(`\\server\share`), `\\?\`·`\\.\` device 경로, `:`가 든 대체 데이터 스트림은 거부한다. 판정은 `[NEW] claudeVersionProbePathAllowed(goos, path)`의 경로 문자열 규칙이라 모든 host의 test가 두 플랫폼 규칙을 판정한다.
 - TTY는 신호가 아니다. Bash tool 안에서 stdin·stdout 모두 TTY가 아니었다(A1).
 - test seam: CLI의 env 조회(`func(string) (string, bool)`)와 probe 실행(`func(path string) (string, error)`)은 package 변수로 바꿀 수 있다. 순수 함수 test는 snapshot 값만 쓴다.
 
@@ -201,10 +204,11 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | `claude_version_old` | `Agent Team: 유지 — Claude Code {v} 버전은 2.1.246보다 낮아 subagent로 실행한다` | `Agent Team: off — Claude Code {v} is older than 2.1.246; running subagents` |
 | `team_tools_unavailable` | `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` | `Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents` |
 | `explicit_flag` | `Agent Team: 자동 선택 안 함 — {f} 지정됨` | `Agent Team: auto-selection skipped — {f} was given` |
+| `invalid_facts` | `Agent Team: 유지 — topology facts가 잘못되어({c}) subagent로 실행한다` | `Agent Team: off — the topology facts are invalid ({c}); running subagents` |
 
-- `{n}`은 10진 수, `{a}`·`{b}`는 첫 겹침 쌍의 unit id(이미 `[A-Za-z0-9_.-]{1,128}`로 검증됨), `{v}`는 해석한 `X.Y.Z`, `{f}`는 `--team`·`--workflow`·`--solo`다. `{e}`·`{t}`는 값이 `[a-z0-9-]{1,32}`이면 그대로, 없으면 `unset`, 그 밖은 `unknown`이다. `{x}`는 EXECPATH의 basename이 `[A-Za-z0-9._-]{1,32}`이면 그대로, 없으면 `unset`, 그 밖은 `unknown`이다. 경로 전체는 넣지 않는다.
+- `{n}`은 10진 수, `{a}`·`{b}`는 첫 겹침 쌍의 unit id(이미 `[A-Za-z0-9_.-]{1,128}`로 검증됨), `{v}`는 해석한 `X.Y.Z`, `{f}`는 `--team`·`--workflow`·`--solo`다. `{c}`는 Topology Facts Contract 오류 code이고 그 밖의 값은 `unknown`이다. `{e}`·`{t}`는 값이 `[a-z0-9-]{1,32}`이면 그대로, 없으면 `unset`, 그 밖은 `unknown`이다. `{x}`는 EXECPATH의 basename이 `[A-Za-z0-9._-]{1,32}`이면 그대로, 없으면 `unset`, 그 밖은 `unknown`이다. 경로 전체는 넣지 않는다.
 - `explicit_flag` 줄은 CLI 단독 호출용이다. 생성 skill은 이 줄을 출력할 일이 없다.
-- 실패 줄 `Agent Team: off — auto workflow triage --topology failed; running subagents`는 생성 skill snippet에 고정된 영어다. CLI가 실패했을 때는 CLI가 줄을 만들 수 없기 때문이다.
+- 실패 줄 `Agent Team: off — auto workflow triage --topology failed; running subagents`는 생성 skill snippet에 고정된 영어다. CLI가 실패했을 때는 CLI가 줄을 만들 수 없기 때문이다. 잘못된 facts는 실패가 아니라 `invalid_facts` decision이라 그 줄이 원인 code를 보인다.
 
 ### Config Contract
 
@@ -216,7 +220,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 
 ### Topology Facts Contract
 
-명령: `auto workflow triage --topology --facts-json <file> [--format json|human]`. `--format` 처리는 기존 `singleTriageFlag`를 쓴다. 파일 guard는 기존 `readWorkflowTriageFacts`에서 `[NEW] readWorkflowTriageFile(path) ([]byte, error)`로 떼어 내고(오류 문구 `facts file must be a readable regular file at most 1 MiB`, `facts file unavailable`, `facts file changed or exceeds limit` 그대로), 기존 함수는 그 bytes를 `taskroute.Decode`에 넘기고 `invalid workflow triage facts JSON`을 그대로 낸다. topology mode는 같은 bytes를 `[NEW] taskroute.DecodeTeamFacts`에 넘긴다. 중복 key와 모르는 field는 거부한다(기존 `uniqueValue`, `DisallowUnknownFields`).
+명령: `auto workflow triage --topology --facts-json <file> [--format json|human]`. `--format` 처리는 기존 `singleTriageFlag`를 쓴다. 파일 guard는 기존 `readWorkflowTriageFacts`에서 `[NEW] readWorkflowTriageFile(path) ([]byte, error)`로 떼어 내고(오류 문구 `facts file must be a readable regular file at most 1 MiB`, `facts file unavailable`, `facts file changed or exceeds limit` 그대로), 기존 함수는 그 bytes를 `taskroute.Decode`에 넘기고 `invalid workflow triage facts JSON`을 그대로 낸다. topology mode는 같은 bytes를 `[NEW] taskroute.DecodeTeamFacts`에 넘긴다. 중복 key와 모르는 field는 거부한다(기존 `uniqueValue`, `DisallowUnknownFields`). 모든 object key는 `^[a-z_]+$`여야 한다. encoding/json은 field 이름을 대소문자와 Unicode folding으로 맞추고 뒤의 key가 이기므로 `OWNED_PATHS`나 `owned_pathſ`가 선언한 값을 말없이 바꿀 수 있기 때문이다.
 
 ```json
 {"version": 1,
@@ -226,16 +230,16 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 
 | 오류 code | 조건 |
 |---|---|
-| `json` | 해석할 수 없는 JSON, 중복 key, 모르는 field |
+| `json` | 해석할 수 없는 JSON, 중복 key, 모르는 field, `^[a-z_]+$` 밖의 key |
 | `version` | `version` ≠ 1 |
 | `topology_conflict` | flag 둘 이상이 true |
 | `unit_id` | id가 비었거나 128자 초과, `[A-Za-z0-9_.-]` 밖 글자, 중복 |
 | `unit_count` | unit 33개 이상 |
 | `execution` | `worker`·`inline`이 아님 |
-| `owned_paths` | worker의 owned path 0개, 끝 `/**` 하나를 뗀 뒤 기존 `cleanPath`가 거부하는 path(남은 `*` 등), 합계 256개 초과 |
+| `owned_paths` | worker의 owned path 0개, 끝 `/**` 하나를 뗀 뒤 기존 `cleanPath`가 거부하는 path(남은 `*` 등), `$` `` ` `` `\` `"` `'` `;` `&` `|` `<` `>` 줄바꿈이 든 path, 합계 256개 초과 |
 | `depends_on` | 없는 id나 자기 id |
 
-- 파일 guard 실패는 위 기존 문구 그대로다. 오류는 RunE가 돌려주고 root가 `Error: <msg>\n`으로 쓴다.
+- facts가 위 code 중 하나에 걸리면 오류가 아니라 `invalid_facts` decision을 출력하고 종료 0이다(REQ-TA-08). 파일 guard 실패는 위 기존 문구 그대로 RunE가 돌려주고 root가 `Error: <msg>\n`으로 쓴다(종료 1).
 
 출력(JSON, stdout):
 
@@ -246,7 +250,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
               "team_units": ["T1", "T2"], "followup_units": ["T3"], "line": "…", "tools_fallback_line": "…"}}
 ```
 
-- CLI는 실행 디렉터리의 `autopus.yaml`을 `os.Lstat`로 확인한다. 없으면 `config_source: default`(on, en)이고 load하지 않는다. 있으면 `config.LoadPreview`로 읽고, 실패하면 `config load failed: <loader 오류>`를 돌려준다(종료 1). `LoadPreview`는 파일이 없을 때도 기본값을 돌려주므로(evidence R2) 존재는 `Lstat`가 정한다.
+- CLI는 실행 디렉터리의 `autopus.yaml`을 `os.Lstat`로 확인한다. 없으면 `config_source: default`(on, en)이고 load하지 않는다. 있으면 `config.LoadPreview`로 읽고, 실패하면 `config load failed: <loader 오류>`를 돌려준다(종료 1). 설정은 facts decode 전에 읽는다. `invalid_facts` 줄의 언어를 정해야 하기 때문이다. `LoadPreview`는 파일이 없을 때도 기본값을 돌려주므로(evidence R2) 존재는 `Lstat`가 정한다.
 - `--format human`은 `line` 한 줄과 개행만 출력한다.
 
 ### Skill Surface Contract
@@ -254,7 +258,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 - 원천: `templates/claude/commands/auto-workflows.md.tmpl` `## go` → 생성 `.claude/skills/auto-go/SKILL.md`(`pkg/adapter/claude/claude_workflow_skills.go`). Route A 마지막 문단 뒤, `#### Route B` 앞에 `[NEW] #### Route A Phase 2 Entry: Agent Team Auto-Selection`을 둔다.
 - 그 절의 규칙:
   1. `TOPOLOGY_FLAG_COUNT == 0`인 run이 Phase 2에 들어갈 때 한 번. `--continue`로 Phase 2가 이미 끝난 checkpoint에서 이어지면 이 절을 건너뛰고 줄도 없다.
-  2. lead는 `FACTS="$(mktemp)"`, `TEAM_JSON="$(mktemp)"`를 만들고 Phase 1 배정 표를 facts로 옮긴다(done unit 포함, 표가 없으면, 예를 들어 compact route에서 unit을 나누지 않았으면 `units: []`이고 결과는 `fewer_than_two_ready`다). 그 다음 `WORKING_DIR`에서 아래 snippet을 그대로 실행한다.
+  2. lead는 한 Bash tool 호출 안에서 한다. Bash tool 호출끼리는 shell 변수를 나누지 않기 때문이다. 그 호출은 `WORKING_DIR`에서 `FACTS="$(mktemp)"`, `TEAM_JSON="$(mktemp)"`를 만들고, Phase 1 배정 표를 quoted heredoc(`cat >"$FACTS" <<'JSON'` … `JSON`)으로 facts에 옮기고(echo나 unquoted heredoc 금지, done unit 포함, 표가 없으면, 예를 들어 compact route에서 unit을 나누지 않았으면 `units: []`이고 결과는 `fewer_than_two_ready`다), 아래 snippet을 그대로 실행한 뒤 `cat "$TEAM_JSON"`과 `rm -f "$TEAM_JSON"`을 한다.
   3. `TEAM_JSON`이 비어 있으면 snippet이 이미 고정 실패 줄을 출력했다. lead는 줄을 더 출력하지 않고 Route A Phase 2로 간다.
   4. route가 `subagent`면 `line`을 출력하고 Route A Phase 2를 그대로 돈다.
   5. route가 `team`이면 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. 실패하면 `tools_fallback_line`을 출력하고 Route A Phase 2다. 성공하면 `line`을 출력하고 `team_units`를 Route B lifecycle(shared task, named `builder-1` … `builder-n`, receipt)로 실행한다. 모든 teammate에 shutdown을 보내 ack를 받은 뒤, decision의 `followup_units`(team_units에도 없고 done도 아닌 unit)만 Route A Phase 2 규칙으로 구현하고, done unit은 다시 돌리지 않으며, 그 다음에 Gate 2로 간다.

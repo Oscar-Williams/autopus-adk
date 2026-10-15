@@ -1652,7 +1652,8 @@ why it switched or stayed.
   (`claude` or `claude.exe`), never from `PATH`. Other installs stay on
   subagents with the `claude_version_unknown` line.
 - `auto workflow triage --topology --facts-json <file>` prints the decision
-  without launching an agent or writing a file.
+  without launching an agent or writing a file. Facts it rejects come back as
+  an `invalid_facts` decision whose line names the rejected field.
 
 ---
 

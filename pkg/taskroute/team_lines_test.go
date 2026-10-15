@@ -104,15 +104,33 @@ func TestTeamLineTokensAreNormalized(t *testing.T) {
 }
 
 func TestEveryReasonLineIsOneTaggedLine(t *testing.T) {
-	if len(teamLineText) != 12 {
-		t.Fatalf("contract has 12 reasons, table has %d", len(teamLineText))
+	if len(teamLineText) != 13 {
+		t.Fatalf("contract has 13 reasons, table has %d", len(teamLineText))
 	}
 	for reason := range teamLineText {
 		for _, locale := range []string{"ko", "en"} {
-			line := renderTeamLine(locale, reason, lineValues{n: 2, a: "T1", b: "T2", entrypoint: "x\ny", execBase: "a\nb", version: "2.1.0", flag: "--solo"})
+			line := renderTeamLine(locale, reason, lineValues{n: 2, a: "T1", b: "T2", entrypoint: "x\ny", execBase: "a\nb", version: "2.1.0", flag: "--solo", code: "owned_paths"})
 			if !strings.HasPrefix(line, "Agent Team: ") || strings.ContainsAny(line, "\r\n{}") {
 				t.Fatalf("%s/%s: %q", reason, locale, line)
 			}
 		}
+	}
+}
+
+func TestInvalidFactsDecisionNamesTheRejectedField(t *testing.T) {
+	for _, code := range []string{"json", "version", "topology_conflict", "unit_id", "unit_count", "execution", "owned_paths", "depends_on"} {
+		ko, en := InvalidFactsDecision("ko", code), InvalidFactsDecision("en", code)
+		if ko.Version != 1 || ko.Route != "subagent" || ko.Reason != "invalid_facts" || ko.FactsError != code || ko.ReadyUnits != nil || ko.TeamUnits != nil || ko.FollowupUnits != nil || ko.ToolsFallbackLine != "" {
+			t.Fatalf("%+v", ko)
+		}
+		if ko.Line != "Agent Team: 유지 — topology facts가 잘못되어("+code+") subagent로 실행한다" {
+			t.Fatalf("%q", ko.Line)
+		}
+		if en.Line != "Agent Team: off — the topology facts are invalid ("+code+"); running subagents" {
+			t.Fatalf("%q", en.Line)
+		}
+	}
+	if d := InvalidFactsDecision("en", "x\ny"); d.FactsError != "unknown" || d.Line != "Agent Team: off — the topology facts are invalid (unknown); running subagents" {
+		t.Fatalf("an unlisted code must not reach the line: %+v", d)
 	}
 }

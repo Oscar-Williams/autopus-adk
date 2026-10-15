@@ -62,9 +62,14 @@ type snippetRun struct {
 // running the test cannot leak its own Claude Code variables in.
 func runAutoTeamSnippet(t *testing.T, snippet, autoDir, project string, extraEnv ...string) snippetRun {
 	t.Helper()
+	return runAutoTeamSnippetWithFacts(t, snippet, snippetFactsUDJ, autoDir, project, extraEnv...)
+}
+
+func runAutoTeamSnippetWithFacts(t *testing.T, snippet, factsJSON, autoDir, project string, extraEnv ...string) snippetRun {
+	t.Helper()
 	tmp := t.TempDir()
 	facts, teamJSON := filepath.Join(tmp, "facts.json"), filepath.Join(tmp, "team.json")
-	require.NoError(t, os.WriteFile(facts, []byte(snippetFactsUDJ), 0o600))
+	require.NoError(t, os.WriteFile(facts, []byte(factsJSON), 0o600))
 	require.NoError(t, os.WriteFile(teamJSON, nil, 0o600))
 	cmd := exec.Command("/bin/sh", "-c", snippet)
 	cmd.Dir = project
@@ -126,6 +131,25 @@ func TestAutoTeamSnippetWithTheBranchBinary(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(run.teamJSON, &report), string(run.teamJSON))
 	assert.Equal(t, "team", report.Decision.Route)
+
+	// Rejected facts are a decision, so the line that names the field reaches
+	// the lead instead of the snippet's generic failure line.
+	rejected := runAutoTeamSnippetWithFacts(t, snippet, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/$(id)/x"]}]}`, filepath.Dir(bin), project, capOK...)
+	assert.Empty(t, rejected.stdout)
+	assert.Empty(t, rejected.stderr)
+	var invalid struct {
+		Decision struct {
+			Route      string `json:"route"`
+			Reason     string `json:"reason"`
+			FactsError string `json:"facts_error"`
+			Line       string `json:"line"`
+		} `json:"decision"`
+	}
+	require.NoError(t, json.Unmarshal(rejected.teamJSON, &invalid), string(rejected.teamJSON))
+	assert.Equal(t, "subagent", invalid.Decision.Route)
+	assert.Equal(t, "invalid_facts", invalid.Decision.Reason)
+	assert.Equal(t, "owned_paths", invalid.Decision.FactsError)
+	assert.Equal(t, "Agent Team: 유지 — topology facts가 잘못되어(owned_paths) subagent로 실행한다", invalid.Decision.Line)
 
 	broken := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(broken, "autopus.yaml"), []byte("workflow: [\n"), 0o644))

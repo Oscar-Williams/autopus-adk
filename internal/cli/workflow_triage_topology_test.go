@@ -78,6 +78,7 @@ func runTopologyArgs(t *testing.T, dir string, args ...string) topologyRun {
 type topologyDecision struct {
 	Route             string    `json:"route"`
 	Reason            string    `json:"reason"`
+	FactsError        string    `json:"facts_error"`
 	ReadyUnits        *int      `json:"ready_units"`
 	TeamUnits         []string  `json:"team_units"`
 	FollowupUnits     *[]string `json:"followup_units"`
@@ -106,11 +107,20 @@ func decodeTopology(t *testing.T, run topologyRun) topologyReport {
 	return report
 }
 
-func TestWorkflowTriageTopologyRejectsInvalidFacts(t *testing.T) {
+// Rejected facts are a subagent decision whose line names the rejected field:
+// the generated snippet discards stderr, where an error would go unseen.
+func TestWorkflowTriageTopologyReportsInvalidFactsAsSubagent(t *testing.T) {
 	ran := stubVersionProbe(t, "2.1.288 (Claude Code)\n", nil)
 	stubTeamEnv(t, capOKEnv("/opt/claude"))
 	worker := func(fields string) string {
 		return `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["a"]` + fields + `}]}`
+	}
+	owned := func(path string) string {
+		raw, err := json.Marshal(map[string]any{"version": 1, "units": []any{map[string]any{"id": "T1", "execution": "worker", "owned_paths": []string{path}}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(raw)
 	}
 	many := make([]string, 33)
 	for i := range many {
@@ -119,8 +129,8 @@ func TestWorkflowTriageTopologyRejectsInvalidFacts(t *testing.T) {
 	cases := map[string][]string{
 		"version":           {`{"version":2,"units":[]}`},
 		"depends_on":        {worker(`,"depends_on":["T9"]`), worker(`,"depends_on":["T1"]`)},
-		"json":              {worker(`,"id":"T2"`), `{"version":1,"units":[],"extra":1}`},
-		"owned_paths":       {`{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":[]}]}`, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["../x"]}]}`, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["/abs"]}]}`, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/*/x"]}]}`, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["pkg/a/**/**"]}]}`, `{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":["./**"]}]}`},
+		"json":              {worker(`,"id":"T2"`), `{"version":1,"units":[],"extra":1}`, worker(`,"OWNED_PATHS":["pkg/z"]`), `{"version":1,"flags":{"TEAM":true},"units":[]}`},
+		"owned_paths":       {`{"version":1,"units":[{"id":"T1","execution":"worker","owned_paths":[]}]}`, owned("../x"), owned("/abs"), owned("pkg/*/x"), owned("pkg/a/**/**"), owned("./**"), owned("pkg/$(id)/x"), owned("pkg/" + "`" + "id" + "`" + "/x"), owned("pkg/a;b")},
 		"execution":         {`{"version":1,"units":[{"id":"T1","execution":"parallel","owned_paths":["a"]}]}`},
 		"unit_count":        {`{"version":1,"units":[` + strings.Join(many, ",") + `]}`},
 		"unit_id":           {`{"version":1,"units":[{"id":"T 1","execution":"worker","owned_paths":["a"]}]}`},
@@ -129,11 +139,16 @@ func TestWorkflowTriageTopologyRejectsInvalidFacts(t *testing.T) {
 	project := topologyProject(t, cfgKO)
 	for code, documents := range cases {
 		for _, document := range documents {
-			run := runTopology(t, project, document)
-			if run.code != 1 || run.stdout != "" || run.stderr != "Error: invalid topology facts: "+code+"\n" {
-				t.Fatalf("%s %s: %+v", code, document, run)
+			d := decodeTopology(t, runTopology(t, project, document)).Decision
+			want := "Agent Team: 유지 — topology facts가 잘못되어(" + code + ") subagent로 실행한다"
+			if d.Route != "subagent" || d.Reason != "invalid_facts" || d.FactsError != code || d.Line != want || d.ReadyUnits != nil || d.TeamUnits != nil || d.FollowupUnits != nil || d.ToolsFallbackLine != nil {
+				t.Fatalf("%s %s: %+v", code, document, d)
 			}
 		}
+	}
+	human := runTopology(t, project, `{"version":2}`, "--format", "human")
+	if human.code != 0 || human.stderr != "" || human.stdout != "Agent Team: 유지 — topology facts가 잘못되어(version) subagent로 실행한다\n" {
+		t.Fatalf("%+v", human)
 	}
 	if len(*ran) != 0 {
 		t.Fatalf("invalid facts probed %v", *ran)

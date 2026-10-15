@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -128,6 +129,20 @@ func teamFactsViolation(facts TeamFacts) string {
 		}
 	}
 	return ""
+}
+
+// teamFactsCodes are the error codes of the Topology Facts Contract.
+var teamFactsCodes = []string{"json", "version", "topology_conflict", "unit_id", "unit_count", "execution", "owned_paths", "depends_on"}
+
+// InvalidFactsDecision is the decision for facts DecodeTeamFacts rejected. The
+// run stays on subagents, and the line names the rejected field: the generated
+// snippet discards stderr, so an error there would never reach the user.
+func InvalidFactsDecision(locale, code string) TeamDecision {
+	if !slices.Contains(teamFactsCodes, code) {
+		code = "unknown"
+	}
+	line := renderTeamLine(locale, reasonInvalidFacts, lineValues{code: code})
+	return TeamDecision{Version: 1, Route: routeSubagent, Reason: reasonInvalidFacts, FactsError: code, Line: line}
 }
 
 // lowercaseTeamKeys rejects any object key outside teamFactsKeyPattern. It

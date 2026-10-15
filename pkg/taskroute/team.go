@@ -71,12 +71,14 @@ type TeamInput struct {
 }
 
 // TeamDecision is the Auto-Team Decision. ReadyUnits is absent for an explicit
-// flag. TeamUnits, FollowupUnits, and ToolsFallbackLine belong to an automatic
-// team only, and its FollowupUnits is present even when the list is empty.
+// flag and for rejected facts, which alone carry FactsError. TeamUnits,
+// FollowupUnits, and ToolsFallbackLine belong to an automatic team only, and
+// its FollowupUnits is present even when the list is empty.
 type TeamDecision struct {
 	Version           int       `json:"version"`
 	Route             string    `json:"route"`
 	Reason            string    `json:"reason"`
+	FactsError        string    `json:"facts_error,omitempty"`
 	ReadyUnits        *int      `json:"ready_units,omitempty"`
 	TeamUnits         []string  `json:"team_units,omitempty"`
 	FollowupUnits     *[]string `json:"followup_units,omitempty"`

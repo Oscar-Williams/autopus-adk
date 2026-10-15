@@ -84,7 +84,7 @@ func TestWorkflowTriageHelpCarriesTheAutoTeamNotice(t *testing.T) {
 	if run.code != 0 {
 		t.Fatalf("%+v", run)
 	}
-	for _, item := range []string{"--topology", "on by default", "separate Claude session", "experimental", "workflow.auto_team: false", "--solo", "auto 0.50.113 through", "0.50.125 refuse", "auto 0.50.112 and older ignore the key and delete it on auto update", "CLAUDE_CODE_EXECPATH", "claude or claude.exe", "claude_version_unknown"} {
+	for _, item := range []string{"--topology", "on by default", "separate Claude session", "experimental", "workflow.auto_team: false", "--solo", "auto 0.50.113 through", "0.50.125 refuse", "auto 0.50.112 and older ignore the key and delete it on auto update", "CLAUDE_CODE_EXECPATH", "claude or claude.exe", "claude_version_unknown", "invalid_facts decision"} {
 		if !strings.Contains(run.stdout, item) {
 			t.Fatalf("help lacks %q:\n%s", item, run.stdout)
 		}

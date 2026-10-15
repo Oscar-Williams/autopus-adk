@@ -40,6 +40,7 @@
 - D7 실패 줄: CLI가 실패하면 문구를 만들 수 없어 생성 skill의 `sh` snippet이 고정 영어 한 줄을 직접 출력한다. 그래서 그 분기를 snippet 실행으로 판정한다(S14). 기존 `[workflow] fallback-class=…` 줄도 영어다.
 - D8 읽기 경로(round 1): `config.Load`는 쓰므로 `LoadPreview` + `Lstat`. 관측과 판단의 경계는 snapshot이다. CLI가 관측하고, 순수 `NeedsVersionProbe`가 probe 필요 여부를, 순수 `DecideTeam`이 결과를 정한다.
 - D9 경로 모양(round 1): Phase 1 표와 delegation 계약은 `pkg/foo/**`를 쓴다. 끝 `/**` 하나만 떼고 나머지 glob은 거부한다.
+- D10 구현 뒤 보안 점검과 리뷰(2026-10-15): 계약보다 엄격해진 네 가지를 계약에 올렸다. (a) 겹침 비교는 NFC + Unicode case folding(`cases.Fold`) 값이다. 대소문자·정규화만 다른 표기는 기본 macOS·Windows 파일 시스템에서 같은 파일이다. (b) facts key는 `^[a-z_]+$`다. encoding/json의 대소문자 무시 매칭과 뒤 key 우선 규칙이 겹침을 숨길 수 있었다. (c) owned path의 shell 특수 문자를 거부하고 facts는 한 Bash 호출의 quoted heredoc으로 쓴다. Bash 호출끼리는 변수를 나누지 않는다. (d) Windows는 drive 경로의 `claude.exe`만 probe한다. 그리고 잘못된 facts를 오류(종료 1) 대신 `invalid_facts` decision(종료 0)으로 바꿨다. snippet이 stderr를 버려 원인이 보이지 않았기 때문이다. snippet bytes와 S13·S14 실행 방식은 그대로다.
 
 ## Plan Intent Ledger
 
@@ -137,7 +138,7 @@ These are optional improvements and do not block sync completion.
 | 위 `templates/claude/…`, `content/skills/…`, `internal/cli/workflow_triage.go`, `pkg/taskroute/*`, `pkg/config/*`, `pkg/processprobe/output.go`, `pkg/adapter/claude/*` 경로·줄·symbol | existing | Read, grep(2026-10-15, `33b5bb55`) |
 | `auto 0.50.125` 동작, Claude Code 2.1.288 env·`--version`·`--disallowedTools`, yaml.v3 v3.0.1 decode, SPEC-REA-001 probe | existing (binary, runtime, library, history) | 실행(evidence C·F·Y·R), `claude --help`, `git show feat/rea-001:…` |
 | `.claude/skills/auto-go/SKILL.md`, `.claude/skills/agent-teams/SKILL.md` | generated surface (원천은 위 template·content) | `claude_workflow_skills.go`, topology test |
-| `TeamInput`, `NeedsVersionProbe`, `DecideTeam`, `firstOverlapPair`, `DecodeTeamFacts`, `TeamDecision`, `team*.go`, `readWorkflowTriageFile`, `workflow_triage_topology.go`, `workflow_triage_capability.go`, `WorkflowConf.AutoTeam`, `AutoTeamEnabled`, `schema_workflow_auto_team.go`, `--topology`, `## Automatic Entry from Route A`, `#### Route A Phase 2 Entry: Agent Team Auto-Selection`, 새 test 파일, `evidence/manual-smoke-teamauto.txt` | [NEW] planned addition | 부재 확인(grep) |
+| `TeamInput`, `NeedsVersionProbe`, `DecideTeam`, `firstOverlapPair`, `DecodeTeamFacts`, `TeamDecision`, `team*.go`, `readWorkflowTriageFile`, `workflow_triage_topology.go`, `workflow_triage_capability.go`, `WorkflowConf.AutoTeam`, `AutoTeamEnabled`, `schema_workflow_auto_team.go`, `--topology`, `## Automatic Entry from Route A`, `#### Route A Phase 2 Entry: Agent Team Auto-Selection`, `InvalidFactsDecision`, `invalid_facts`, `facts_error`, `claudeVersionProbePathAllowed`, 새 test 파일, `evidence/manual-smoke-teamauto.txt` | [NEW] planned addition | 부재 확인(grep) |
 
 ## Reviewer Brief
 

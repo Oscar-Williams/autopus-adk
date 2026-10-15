@@ -95,7 +95,9 @@ All notable changes to this project will be documented in this file.
     `claude`는 보지 않는다. 그 실행 파일 이름이 `claude`나 `claude.exe`가 아닌 설치는 `claude_version_unknown` 줄과
     함께 subagent로 남는다.
   - CLI: `auto workflow triage --topology --facts-json <file> [--format json|human]`이 판단을 보고하고 agent를
-    띄우거나 파일을 쓰지 않는다. `--team`·`--workflow`·`--solo`의 의미와 진단, 비 Claude 플랫폼의 생성 결과는 그대로다.
+    띄우거나 파일을 쓰지 않는다. facts가 계약을 어기면 오류 대신 `invalid_facts` 결정(종료 0)을 내고 이유 줄이 원인
+    code를 보인다(예: `Agent Team: off — the topology facts are invalid (owned_paths); running subagents`).
+    `--team`·`--workflow`·`--solo`의 의미와 진단, 비 Claude 플랫폼의 생성 결과는 그대로다.
 - **구성 단계 v2: 화살표·Enter 폼, 도구별 실제 모델 탭, OMP 지정, update 감지 플랫폼 열** (2026-10-12,
   SPEC-MODELUX-002): 실제 터미널에서 구성 단계가 줄 입력이라 화살표가 `^[[C`로 찍혔고, 선택지가 등급 이름뿐이라
   Claude 전용으로 읽혔으며, Codex·OMP를 따로 정할 수 없었고, update가 감지해 더한 플랫폼이 표에 없었다.

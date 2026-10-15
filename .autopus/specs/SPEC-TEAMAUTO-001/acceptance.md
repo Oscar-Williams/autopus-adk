@@ -31,6 +31,7 @@ Given CAP-OK와 UOV, UGO, 그리고 U3에 T4 worker `[internal/beta/x]`를 더�
 When 세 facts로 명령을 실행한다
 Then 셋 모두 `route: subagent`, `reason: ownership_overlap`이다
 And UOV·UGO의 `line`은 `Agent Team: 유지 — T1, T2의 owned_paths가 겹쳐 subagent로 실행한다`, U3o는 `Agent Team: 유지 — T2, T4의 owned_paths가 겹쳐 subagent로 실행한다`다
+And T1 `[pkg/Foo.go]`·T2 `[pkg/foo.go]`, `internal/CLI/**`·`internal/cli/x.go`, NFC·NFD로만 다른 두 path, `ς`·`σ`, `ß`·`ss`로만 다른 두 path도 `ownership_overlap`이고 `pkg/A`·`pkg/ab`는 겹치지 않는다(비교는 NFC + Unicode case folding)
 And `<tmp>/probe/probe.count`가 없다
 
 ### S4: 팀 가능 × 서로 다른 경로의 slice 2개
@@ -56,6 +57,7 @@ Given U3와, CAP-OK에서 아래 한 가지씩만 바꾼 환경이 있다
 When 각 환경에서 명령을 실행한다
 Then 결과는 아래 표와 같다
 And `CLAUDECODE`와 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`를 함께 뺀 환경은 `not_claude_code`다(규칙 5가 6보다 먼저다)
+And Windows 경로 규칙은 `C:\x\claude.exe`, `C:/x/claude.exe`만 받고 `C:\x\claude`, `C:\x\claude.cmd`, `\\server\share\claude.exe`, `\\?\C:\x\claude.exe`, `C:\x\claude.exe:stream`을 거부한다(경로 문자열 규칙이라 모든 host에서 판정)
 
 | 바꾼 것 | reason | line 또는 관측 |
 |---|---|---|
@@ -77,7 +79,7 @@ Priority: Must
 Given CAP-OK와 UDJ, `flags.solo: true`인 facts, `flags.workflow: true`인 facts, `flags.solo`와 `flags.team`이 모두 true인 facts가 있다
 When 세 facts로 명령을 실행하고 branch와 `33b5bb55`에서 claude-code `Generate`를 돌린다
 Then 앞의 둘은 `route: solo`·`route: workflow`, `reason: explicit_flag`, `ready_units` 없음, `line`은 `Agent Team: 자동 선택 안 함 — --solo 지정됨`·`Agent Team: 자동 선택 안 함 — --workflow 지정됨`이고 `<tmp>/probe/probe.count`가 없다
-And 셋째는 종료 1, stdout은 비어 있고 stderr bytes는 `Error: invalid topology facts: topology_conflict\n`이다
+And 셋째는 종료 0, stderr는 비어 있고 decision은 `route: subagent`, `reason: invalid_facts`, `facts_error: topology_conflict`, `line` `Agent Team: 유지 — topology facts가 잘못되어(topology_conflict) subagent로 실행한다`이며 `<tmp>/probe/probe.count`가 없다
 And 생성 `.claude/skills/auto-go/SKILL.md`의 `### Step 0` 절(`[TOPOLOGY ERROR] --team, --workflow, and --solo are mutually exclusive; choose only one.` 포함), `#### Route C` 절, `#### Route: Deterministic Workflow` 절은 기준과 bytes가 같다
 
 ### S7: 팀을 쓸 수 없을 때 --team은 기존 blocker
@@ -116,19 +118,22 @@ And 파일 없음은 `config_source: default`, CFG-EN의 U1은 `Agent Team: off 
 Priority: Must
 Given 아래 잘못된 facts, `internal/cli/workflow_triage_test.go`의 기존 facts fixture, 디렉터리 경로, 1 MiB + 1 byte 파일, `{` 한 글자 파일이 있다
 When 잘못된 facts로 명령을 실행하고, 나머지 넷으로 `--topology` 없이 `auto-branch`와 `auto-base`를 실행하고, UDJ facts로 `--topology` 없이 `auto-branch`를 실행한다
-Then 잘못된 facts는 모두 종료 1, stdout은 비어 있고 stderr bytes는 표와 같다
+Then 잘못된 facts는 모두 종료 0, stderr는 비어 있고 decision은 `route: subagent`, `reason: invalid_facts`, `facts_error`는 표의 code, `line`은 `Agent Team: 유지 — topology facts가 잘못되어(<code>) subagent로 실행한다`이며 `<tmp>/probe/probe.count`가 없다
 And 나머지 넷의 stdout·stderr bytes와 종료 코드는 두 바이너리에서 같고, UDJ facts를 `--topology` 없이 주면 종료 1과 stderr `Error: invalid workflow triage facts JSON\n`이다
 
-| facts | stderr |
+| facts | facts_error |
 |---|---|
-| `version: 2` | `Error: invalid topology facts: version\n` |
-| T1 depends_on `["T9"]`, T1 depends_on `["T1"]` | `Error: invalid topology facts: depends_on\n` |
-| unit에 `"id"` key 두 번, 최상위 `"extra": 1` | `Error: invalid topology facts: json\n` |
-| worker `owned_paths: []` | `Error: invalid topology facts: owned_paths\n` |
-| `["../x"]`, `["/abs"]`, `["pkg/*/x"]`, `["pkg/a/**/**"]`, `["./**"]` | `Error: invalid topology facts: owned_paths\n` |
-| `execution: "parallel"` | `Error: invalid topology facts: execution\n` |
-| unit 33개 | `Error: invalid topology facts: unit_count\n` |
-| id `T 1` | `Error: invalid topology facts: unit_id\n` |
+| `version: 2` | `version` |
+| T1 depends_on `["T9"]`, T1 depends_on `["T1"]` | `depends_on` |
+| unit에 `"id"` key 두 번, 최상위 `"extra": 1` | `json` |
+| `"owned_paths"` 뒤의 `"OWNED_PATHS"`, `"owned_pathſ"`, `"Done"`, flags의 `"TEAM"`처럼 `^[a-z_]+$` 밖의 key | `json` |
+| worker `owned_paths: []` | `owned_paths` |
+| `["../x"]`, `["/abs"]`, `["pkg/*/x"]`, `["pkg/a/**/**"]`, `["./**"]` | `owned_paths` |
+| `["pkg/$(id)/x"]`, `` ["pkg/`id`/x"] ``, `["pkg/a;b"]`와 `\` `"` `'` `&` `|` `<` `>` 줄바꿈이 든 path | `owned_paths` |
+| `execution: "parallel"` | `execution` |
+| unit 33개 | `unit_count` |
+| id `T 1` | `unit_id` |
+| flags `solo`·`team` 모두 true | `topology_conflict` |
 
 ### S12: 출력 형식과 쓰기 없음
 Priority: Must
@@ -142,7 +147,7 @@ And 실행 뒤 `<tmp>/proj`의 파일 목록과 SHA-256이 실행 전과 같고(
 Priority: Must
 Given branch에서 claude-code `Generate`를 돌린 결과와 `33b5bb55` 결과가 있다
 When `.claude/skills/auto-go/SKILL.md`와 `.claude/skills/agent-teams/SKILL.md`를 읽는다
-Then auto-go의 `#### Route A: Supervisor-Led Pipeline`과 `#### Route B: Native Agent Team` 사이에 `#### Route A Phase 2 Entry: Agent Team Auto-Selection`이 있고, 그 절에 `TOPOLOGY_FLAG_COUNT == 0`, `--continue` 건너뛰기 문장, Skill Surface Contract의 `sh` snippet 다섯 줄 그대로, `TEAM_JSON` 빈 경우 규칙, `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`, `tools_fallback_line`이 이 순서로 나온다
+Then auto-go의 `#### Route A: Supervisor-Led Pipeline`과 `#### Route B: Native Agent Team` 사이에 `#### Route A Phase 2 Entry: Agent Team Auto-Selection`이 있고, 그 절에 `TOPOLOGY_FLAG_COUNT == 0`, `--continue` 건너뛰기 문장, 한 Bash tool 호출과 quoted heredoc(`<<'JSON'`, echo·unquoted heredoc 금지) 문장, Skill Surface Contract의 `sh` snippet 다섯 줄 그대로, `cat "$TEAM_JSON"` 문장, `TEAM_JSON` 빈 경우 규칙, `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`, `tools_fallback_line`이 이 순서로 나온다
 And 그 뒤에 shutdown·ack 문장, `team_units`에 없는 Phase 2 unit을 Route A로 구현하는 문장, Gate 2로 가는 문장이 이 순서로 나온다
 And 기준과의 diff는 추가 줄뿐이고 모두 그 절 안이며, agent-teams skill에는 `## Automatic Entry from Route A`가 있고 `--topology`는 없다
 
