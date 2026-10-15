@@ -26,13 +26,13 @@ func writeGeneratedAutopusOMPWorkspace(t *testing.T) string {
 	return root
 }
 
-// S15: a generated autopus project projects the 16 canonical agents and task;
+// S15: a generated autopus project projects the 17 canonical agents and task;
 // a generated definition under its own name is never a shadow.
 func TestOMPAgentCatalog_ProjectsTheAutopusAgents(t *testing.T) {
 	root := writeGeneratedAutopusOMPWorkspace(t)
 	projection := buildOMPPlatformProjection(context.Background(), root, &ompCLIFakeRunner{}, configTimeForOMPAgentCatalog())
 
-	assert.Equal(t, 17, projection.Models.ExpectedAgents)
+	assert.Equal(t, 18, projection.Models.ExpectedAgents)
 	assert.Zero(t, projection.Models.ShadowedAgents)
 	assert.Equal(t, "ready", projection.Models.AgentCatalogStatus)
 	assert.Equal(t, "autopus_agent_registry", projection.Models.AgentCatalogReason)

@@ -91,7 +91,7 @@ func TestInstalledOMPAttestedModelChoices_ListsOnlyAttestableModels(t *testing.T
 	require.NoError(t, err)
 	assert.False(t, strictLight)
 	assert.Empty(t, out.String())
-	require.Len(t, strict, 4)
+	require.Len(t, strict, 6)
 	assert.Equal(t, "anthropic", strict[0].Family)
 	assert.NotEmpty(t, strict[0].Capabilities)
 }
