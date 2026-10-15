@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
@@ -70,8 +71,8 @@ func (a *Adapter) prepareModelIntegration(
 	if err != nil {
 		return nil, err
 	}
-	a.reportDegradedModelRoutes(joinOMPNotices(ompReaFallbackNotice(reaFallback),
-		ompDegradedRoutesNotice(probe.Catalog, routes, routing)))
+	adapter.ReportReaFallbacks(ctx, ompReaFallbackFacts(reaFallback)...)
+	a.reportDegradedModelRoutes(ompDegradedRoutesNotice(probe.Catalog, routes, routing))
 	projection, err := CompileOMPModelProjection(OMPModelProjectionInput{Agents: projected, AgentSource: profile.AgentSource})
 	if err != nil {
 		return nil, err

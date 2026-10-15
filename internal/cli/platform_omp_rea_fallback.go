@@ -1,10 +1,8 @@
 package cli
 
 import (
-	"fmt"
-
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/adapter/omp"
-	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 // ompProfileStatusSessionModel marks a plan row that runs on the OMP session
@@ -13,19 +11,12 @@ import (
 // blocker; generation drops the same route.
 const ompProfileStatusSessionModel = "session_model"
 
-// applyOMPReaFallbackToRow turns an unavailable row into a session-model
-// fallback when config.OMPReaAnalysisFallback allows it for the route's single
-// candidate verdict, and reports whether it did. Every other unavailable row
-// stays a blocker.
-func applyOMPReaFallbackToRow(
-	profile config.RoleModelProfileConf,
-	row *ompProfileAgentPreviewPayload,
-	resolution omp.OMPModelRouteResolution,
-) bool {
-	if row.Availability != ompProfileAvailabilityUnavailable || len(resolution.FallbackAttempts) != 1 {
-		return false
-	}
-	if !config.OMPReaAnalysisFallback(profile, row.Agent, resolution.FallbackAttempts[0].Reason) {
+// applyOMPReaFallbackToRow turns the row of a route the doctor compilation
+// marked as the analysis-rung fallback (omp.MarkOMPReaAnalysisFallbacks, from
+// config.OMPReaAnalysisFallback) into a session-model row, and reports whether
+// it did. Every other unavailable row stays a blocker.
+func applyOMPReaFallbackToRow(row *ompProfileAgentPreviewPayload, resolution omp.OMPModelRouteResolution) bool {
+	if row.Availability != ompProfileAvailabilityUnavailable || resolution.Status != omp.OMPReaSessionModelStatus {
 		return false
 	}
 	row.Status = ompProfileStatusSessionModel
@@ -42,8 +33,9 @@ func ompReaFallbackWarnings(rows []ompProfileAgentPreviewPayload, blockers []str
 	var warnings []string
 	for _, row := range rows {
 		if row.Status == ompProfileStatusSessionModel {
-			warnings = append(warnings, fmt.Sprintf("%s: %s not in catalog → session model",
-				row.Agent, row.RequestedSelector))
+			warnings = append(warnings, reaFallbackLine(adapter.ReaFallback{
+				Catalog: "OMP", Agent: row.Agent, Requested: row.RequestedSelector,
+			}, composeLanguage()))
 		}
 	}
 	return warnings

@@ -1,9 +1,7 @@
 package omp
 
 import (
-	"fmt"
-	"strings"
-
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
@@ -31,24 +29,35 @@ func dropOMPReaAnalysisFallbackRoutes(
 	return []string{request.Candidates[0].Selector}
 }
 
-// ompReaFallbackNotice is the Form Text fallback line for each selector the
-// analysis rung gave up, or "" when none was.
-func ompReaFallbackNotice(selectors []string) string {
-	lines := make([]string, 0, len(selectors))
+// ompReaFallbackFacts is the structured fallback fact of each selector the
+// analysis rung gave up; the CLI prints them in the run's language.
+func ompReaFallbackFacts(selectors []string) []adapter.ReaFallback {
+	facts := make([]adapter.ReaFallback, 0, len(selectors))
 	for _, selector := range selectors {
-		lines = append(lines, fmt.Sprintf("  [omp] %s: %s not in catalog → session model",
-			config.ReverseEngineerAgent, selector))
+		facts = append(facts, adapter.ReaFallback{
+			Catalog: "OMP", Agent: config.ReverseEngineerAgent, Requested: selector,
+		})
 	}
-	return strings.Join(lines, "\n")
+	return facts
 }
 
-// joinOMPNotices joins the non-empty notices one per line.
-func joinOMPNotices(notices ...string) string {
-	kept := make([]string, 0, len(notices))
-	for _, notice := range notices {
-		if notice != "" {
-			kept = append(kept, notice)
+// OMPReaSessionModelStatus is the routing status of the route generation
+// drops for the analysis-rung fallback, in a compilation that keeps it.
+const OMPReaSessionModelStatus = "session_model"
+
+// MarkOMPReaAnalysisFallbacks rewrites, in a compilation that kept every
+// route, each unresolved route config.OMPReaAnalysisFallback lets generation
+// drop, so doctor and plan rows report the session-model fallback instead of
+// a blocked route. Every other resolution is left as compiled.
+func MarkOMPReaAnalysisFallbacks(profile config.RoleModelProfileConf, compilation *OMPModelRoutingCompilation) {
+	for index := range compilation.Resolutions {
+		resolution := &compilation.Resolutions[index]
+		if resolution.Status == "selected" || len(resolution.FallbackAttempts) != 1 {
+			continue
+		}
+		if config.OMPReaAnalysisFallback(profile, resolution.Agent, resolution.FallbackAttempts[0].Reason) {
+			resolution.Status = OMPReaSessionModelStatus
+			resolution.Reason = "rea_analysis_fallback"
 		}
 	}
-	return strings.Join(kept, "\n")
 }

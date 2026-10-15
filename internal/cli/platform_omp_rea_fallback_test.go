@@ -2,12 +2,16 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/insajin/autopus-adk/pkg/adapter/omp"
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 const ompReaFallbackLine = "reverse-engineer: openai-codex/gpt-6.1-sol not in catalog → session model"
@@ -57,9 +61,18 @@ func TestOMPProfilePlan_ServedAnalysisRungRoutesReverseEngineer(t *testing.T) {
 	assert.Equal(t, "xhigh", row.EffectiveThinking)
 }
 
+// useComposeLanguage pins the run's language for one test.
+func useComposeLanguage(t *testing.T, lang string) {
+	t.Helper()
+	original := composeLanguage
+	t.Cleanup(func() { composeLanguage = original })
+	composeLanguage = func() string { return lang }
+}
+
 // S11 K2 and F-002: a missing analysis model, or one without the rung's
 // thinking level, prints the fallback line once instead of a blocker.
 func TestOMPProfilePlan_UnservedAnalysisRungFallsBackToTheSessionModel(t *testing.T) {
+	useComposeLanguage(t, "en")
 	for name, catalog := range map[string][]byte{
 		"model absent": ompCLICatalogWithout(t, ompCLIProfileNativeCatalogJSON(), "openai-codex/gpt-6.1-sol"),
 		"thinking unsupported": bytes.Replace(ompCLIProfileNativeCatalogJSON(),
@@ -109,4 +122,35 @@ func TestOMPProfilePlan_ExistingRungKeepsTheBlocker(t *testing.T) {
 			assert.NotContains(t, text, ompReaFallbackLine)
 		})
 	}
+}
+
+// REQ-REA-18: the fallback line follows the run's language.
+func TestOMPProfilePlan_FallbackLineFollowsTheLanguage(t *testing.T) {
+	useComposeLanguage(t, "ko")
+	root, runner := writeOMPBalancedProject(t)
+	runner.catalog = ompCLICatalogWithout(t, ompCLIProfileNativeCatalogJSON(), "openai-codex/gpt-6.1-sol")
+
+	payload := planOMPProfileJSON(t, root, runner, "balanced", "--family", "gpt")
+
+	assert.Equal(t, []string{"reverse-engineer: openai-codex/gpt-6.1-sol이 OMP catalog에 없어 세션 모델을 씁니다"},
+		payload.Warnings)
+}
+
+// Doctor keeps the route generation drops and reads it as the session-model
+// fallback, not as a blocked role (SPEC-REA-001 S11).
+func TestOMPDoctorRouting_ReadsTheAnalysisRungFallbackAsSessionModel(t *testing.T) {
+	policy := config.RoleModelPolicyConf{Version: config.RoleModelPolicyVersionV1, Profile: "balanced", Family: "openai"}
+	_, profile, ok := policy.SelectedRoleModelProfileForQuality(config.DefaultFullConfig("rea-doctor").Quality)
+	require.True(t, ok)
+	runner := &ompCLIFakeRunner{catalog: ompCLICatalogWithout(t, ompCLIProfileNativeCatalogJSON(), "openai-codex/gpt-6.1-sol")}
+	probe, err := probeInstalledOMPCatalogForProfile(context.Background(), runner, profile)
+	require.NoError(t, err)
+
+	statuses := map[string]string{}
+	for _, resolution := range compileOMPModelDoctorRouting(profile, probe.Catalog).Resolutions {
+		statuses[resolution.Agent] = resolution.Status
+	}
+	assert.Equal(t, omp.OMPReaSessionModelStatus, statuses["reverse-engineer"])
+	assert.Equal(t, "selected", statuses["planner"])
+	assert.Equal(t, "selected", statuses["executor"])
 }

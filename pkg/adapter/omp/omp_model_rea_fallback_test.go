@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
@@ -108,10 +109,61 @@ func TestOMPReaFallback_ExistingRungsAndPinsKeepTheBlocker(t *testing.T) {
 	require.ErrorContains(t, err, "reverse-engineer")
 }
 
-func TestOMPReaFallbackNotice_FormText(t *testing.T) {
+// The adapter reports a structured fact; the CLI prints it in the run's
+// language, and a run that another route blocks reports none.
+func TestOMPReaFallback_ReportsAStructuredFactOnlyOnSuccess(t *testing.T) {
 	t.Parallel()
-	assert.Empty(t, ompReaFallbackNotice(nil))
-	assert.Equal(t, "  [omp] reverse-engineer: openai-codex/gpt-6.1-sol not in catalog → session model",
-		ompReaFallbackNotice([]string{"openai-codex/gpt-6.1-sol"}))
-	assert.Equal(t, "a\nb", joinOMPNotices("a", "", "b"))
+	collect := func(edit func(string) string) ([]adapter.ReaFallback, error) {
+		cfg := builtinIntegrationConfigForFamily("balanced", "openai")
+		runner := newBuiltinTierIntegrationRunner()
+		runner.catalog = []byte(edit(string(runner.catalog)))
+		var facts []adapter.ReaFallback
+		ctx := adapter.WithReaFallbackSink(context.Background(), func(fact adapter.ReaFallback) {
+			facts = append(facts, fact)
+		})
+		_, err := NewWithRoot(t.TempDir()).WithModelIntegrationRunner(runner).prepareModelIntegration(ctx, cfg)
+		return facts, err
+	}
+	facts, err := collect(withoutCatalogModel(config.CodexSolModel))
+	require.NoError(t, err)
+	assert.Equal(t, []adapter.ReaFallback{{
+		Catalog: "OMP", Agent: "reverse-engineer", Requested: "openai-codex/" + config.CodexSolModel,
+	}}, facts)
+
+	facts, err = collect(func(catalog string) string {
+		return withoutCatalogModel(config.CodexLunaModel)(withoutCatalogModel(config.CodexSolModel)(catalog))
+	})
+	require.ErrorContains(t, err, "required_route_unresolved")
+	require.ErrorContains(t, err, "omp_profile_candidate_unavailable")
+	require.ErrorContains(t, err, "openai-codex/"+config.CodexLunaModel)
+	assert.Empty(t, facts)
+}
+
+// Doctor keeps every route; the one generation drops reads as the
+// session-model fallback, which does not block the role summary.
+func TestMarkOMPReaAnalysisFallbacks_DoctorReportsTheSessionModel(t *testing.T) {
+	t.Parallel()
+	profile, ok := config.BuiltinRoleModelProfile("balanced", config.QualityConf{}, "openai", "")
+	require.True(t, ok)
+	runner := newBuiltinTierIntegrationRunner()
+	runner.catalog = []byte(withoutCatalogModel(config.CodexSolModel)(string(runner.catalog)))
+	probe, err := NewWithRoot(t.TempDir()).WithModelIntegrationRunner(runner).
+		probeIntegratedModelCatalog(context.Background(), profile)
+	require.NoError(t, err)
+	routes, err := bridgeOMPIntegrationRoutes(profile)
+	require.NoError(t, err)
+	compilation := CompileOMPModelRouting(OMPModelRoutingInput{
+		Catalog: probe.Catalog, CatalogReason: "catalog_ready", Routes: routes, AgentSource: profile.AgentSource,
+	})
+	MarkOMPReaAnalysisFallbacks(profile, &compilation)
+	rows := projectOMPModelDoctorRoles(compilation.Resolutions)
+	for _, row := range rows {
+		if row.Agent == "reverse-engineer" {
+			assert.Equal(t, OMPReaSessionModelStatus, row.Status)
+		} else {
+			assert.NotEqual(t, OMPReaSessionModelStatus, row.Status, row.Agent)
+		}
+	}
+	status, _ := ompModelDoctorRoleSummary(rows)
+	assert.NotEqual(t, "blocked", status)
 }
