@@ -88,7 +88,7 @@ orchestra:
                 timeout: 900
         gemini:
             backend: omp
-            model: google-antigravity/gemini-3.1-pro:high
+            model: google-antigravity/gemini-3.8-flash:high
             subprocess:
                 timeout: 900
     commands:
