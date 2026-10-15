@@ -23,7 +23,7 @@ And (4)의 update 뒤 세 파일에 `rea-agents` 문자열이 없고 autopus.yam
 Priority: Must
 Given N24, HOME sandbox, 빈 temp dir 7개, `features.rea.enabled: false`이고 rea 항목이 없는 기존 project E와 그 사본 E2가 있다
 When (1) `auto init --yes --platforms claude-code,codex,antigravity-cli`, (2) 대화형 init에서 `runInitWizard` stub이 `Rea: true`, (3) stub이 `Rea: false`, (4) `--yes --no-rea`, (5) `--yes --rea --no-rea`, (6) N20으로 (1), (7) `auto init --yes --platforms opencode,omp`, (8) E에서 `auto init --yes`, (9) E2에서 `auto init --yes --rea`를 실행하고, tui test에서 REA 단계 form을 accessible 입력 `\n`과 `n\n`으로 돌린다
-Then (1)·(2)는 세 파일에 `rea` 항목이 정확히 1개씩이고 각각 MCP Entry Shape Contract의 managed 모양과 같으며, autopus.yaml에 `rea:` 줄이 없고, 출력에 `REA 역공학 MCP를 등록했습니다`가 1번, 옛 바이너리 줄이 0번이다
+Then (1)·(2)는 세 파일에 `rea` 항목이 정확히 1개씩이고 각각 MCP Entry Shape Contract의 managed 모양과 같으며, `.gitignore`가 `.autopus/reverse/`를 정확히 1번 담고, autopus.yaml에 `rea:` 줄이 없고, 출력에 `REA 역공학 MCP를 등록했습니다`가 1번, 옛 바이너리 줄이 0번이다
 And (3)·(4)는 세 파일에 `rea-agents`가 없고 autopus.yaml이 `features.rea.enabled: false`를 담으며 `features.rea는 v0.50.126보다 오래된 auto가 읽지 못합니다`가 정확히 1번 있다. (5)는 0이 아닌 종료 코드와 `--rea와 --no-rea는 함께 쓸 수 없습니다`로 끝나고 dir에 autopus.yaml과 `.mcp.json`이 없다
 And (6)은 rea 항목이 없고 autopus.yaml이 `enabled: true`를 담으며 `node v20.11.0은 ^22.19.0 || ^24.11.0 || >=26.0.0 범위가 아닙니다`와 옛 바이너리 줄이 1번씩 있다. (7)은 REA 질문·hint·`features.rea`가 없고 OMP·OpenCode 안내 줄이 정확히 1번 있다
 And (8)은 `enabled: false`를 그대로 두고 rea 항목이 없으며 옛 바이너리 줄이 0번이다. (9)는 `enabled: true`와 managed 항목 1개씩을 남기고 옛 바이너리 줄이 0번이다
@@ -139,7 +139,7 @@ Priority: Must
 Given `DefaultFullConfig`로 다섯 플랫폼을 `Generate`한 project가 있다
 When router, `.gemini/commands/auto/reverse.toml`, 다섯 `auto-reverse` detail, `.claude/agents/autopus/executor.md`, `tester.md`를 읽는다
 Then Claude root router(`.claude/skills/auto/SKILL.md`)는 `.claude/skills/auto-reverse/SKILL.md`를 정확히 1번 담고 8192 bytes 이하다. Antigravity router와 `.gemini/commands/auto/reverse.toml`은 `.gemini/skills/autopus/auto-reverse/SKILL.md`를 담는다. Codex router 설명의 예상 값은 `Autopus 명령 라우터 — setup/status/goal/update/plan/go/fix/review/sync/idea/map/why/verify/secure/test/qa/dev/canary/doctor/reverse 서브커맨드를 해석합니다`다
-And 다섯 detail은 각각 `## Runtime Capture Request`, `Runtime capture consent:`, `허용 / 거절`, `확인 / 수정 / 중단`, `--auto도 이 확인 gate를 건너뛰지 않습니다`, slug 예 `로그인 화면` → `feature`, `.autopus/reverse/<slug>/behaviour-spec.md`, `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, `Phase: Test Scaffold`, `Phase: Testing`, `dispatch prompt에 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다`를 담는다
+And 다섯 detail은 각각 `--runtime`, `Runtime capture wanted: yes`, `## Runtime Capture Request`, `Runtime capture consent:`, `허용 / 거절`, `확인 / 수정 / 중단`, `--auto도 이 확인 gate를 건너뛰지 않습니다`, slug 예 `로그인 화면` → `feature`, `.autopus/reverse/<slug>/behaviour-spec.md`, `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, `Phase: Test Scaffold`, `Phase: Testing`, `dispatch prompt에 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다`를 담는다
 And executor.md·tester.md는 `SPEC: N/A`이고 `Behaviour Spec:` 경로가 있으면 그 파일이 요구사항 원천이라는 문장을 담고, frozen 목록에 `reverse`를 더한 Claude·Antigravity router·command test와 Update·Generate parity test가 통과한다
 
 ### S14: 사전 승인 없음
@@ -166,18 +166,18 @@ Given 이 branch와 기준 commit 4d73aa91의 test가 있다
 When `go test ./...`를 필터 없이 돌리고, `git diff --stat 4d73aa91 -- '*_test.go' '*.golden' 'evals/'`를 T2 분류와 맞추며, `auto eval harness run`, `GOOS=windows GOARCH=amd64 go build ./...`, 신규·변경 `.go` 줄 수 확인, `make generate-templates` 뒤 `git status --porcelain`을 실행한다
 Then 모든 test가 통과하고 바뀐 기존 test는 T2 목록과 Existing Test Changes 규칙 1–8대로이며, eval harness 실패 0, Windows build 성공, 신규·변경 `.go`는 모두 300줄 이하(`update.go` 포함), generate 뒤 반영 안 된 diff 0이다
 
-### S18: 실제 터미널 smoke (모델 호출 없음)
+### S18: 실제 터미널 smoke (모델 호출 없음, Codex 먼저)
 Priority: Must
-Given macOS 실제 터미널, 이 branch의 `auto`, Node v24.x, 버전을 기록한 Claude Code·Codex·Antigravity CLI, `git init`한 빈 temp dir, scratch `CODEX_HOME`, 빈 `npm_config_cache`, `script -q` 기록이 있다
-When `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter로 넘기고, `claude`에서 project MCP 승인 질문에 rea를 승인한 뒤 `/mcp`만 보고, trusted로 연 `codex`에서 메시지 없이 rea 도구가 보일 때까지의 시간을 재고, Antigravity CLI의 MCP 목록을 본다
-Then Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며, Codex는 차가운 cache에서 30초 안에 rea 도구를 보이고(A2 시작 절반 PASS, 넘으면 시간을 적고 FAIL), Antigravity 목록에 rea가 connected다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
+Given macOS 실제 터미널, 이 branch의 `auto`, Node v24.x, 버전을 기록한 Claude Code·Codex·Antigravity CLI, `git init`한 빈 temp dir, 도구마다 새로 만든 빈 cache 디렉터리 `<scratch>/npm-codex`·`npm-claude`·`npm-agy`, Codex용 새 scratch HOME과 CODEX_HOME, `script -q` 기록이 있다
+When `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter로 넘기고, 다른 도구를 띄우기 전에 `npm_config_cache=<scratch>/npm-codex`와 scratch HOME으로 trusted `codex`를 메시지 없이 열어 rea 도구가 보일 때까지의 시간을 잰 뒤, `npm_config_cache=<scratch>/npm-claude`로 `claude`를 열어 project MCP 승인 질문에서 rea를 승인하고 `/mcp`만 보고, `npm_config_cache=<scratch>/npm-agy`로 Antigravity CLI의 MCP 목록을 본다
+Then Codex 실행 전 `<scratch>/npm-codex`와 scratch HOME의 `.npm`에 rea-agents가 없고 실행 뒤 그중 하나에 `rea-agents@6.5.0`이 생기며(cold 증명), 30초 안에 rea 도구가 보인다(A2 시작 절반 PASS). cold를 증명하지 못하거나 30초를 넘으면 시간과 cache 상태를 적고 FAIL이다. Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며 Antigravity 목록에 rea가 connected다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
 
 ### S19: 동의 뒤 live `/auto reverse`
 Priority: Must
-Given S18 project, 사용자의 모델 호출 동의, 외부 디컴파일러가 필요 없는 작은 로컬 정적 대상(JS 또는 Electron 앱 하나), `--no-rea`로 REA를 끈 사본이 있다
-When Claude Code에서 (a) `/auto reverse <대상> <기능>` → 확인, (b) 수정 한 번 뒤 중단, (c) runtime capture가 필요한 기능으로 요청이 나오면 거절, (d) 끈 사본에서 `/auto reverse`를 실행하고, Antigravity와 Codex에서 각각 `/auto reverse`를 gate까지 실행한 뒤 중단한다
-Then (a)에서 reverse-engineer subagent가 `mcp__rea__` 도구를 1번 이상 부르고(A1 Claude PASS), 결과가 다섯 절·`B-`·`A-` ID·evidence_id 1개 이상을 담고 의사코드·assembly가 없다. 새 project 파일은 `.autopus/reverse/<slug>/behaviour-spec.md`와 gate에서 확인한 경로 아래 파일뿐이고, 세 dispatch prompt는 `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, ID, 경로, Phase를 담고 REA 결과 텍스트가 없으며, tester Testing은 `A-`마다 판정을 남긴다
-And (b)의 수정은 분석을 한 번 다시 보내고 중단 뒤에는 파일이 생기지 않고 dispatch가 더 없다. (c)는 거절 뒤 runtime capture 도구 호출이 0번이고 `## Unknowns`에 빈 곳이 적힌다. (d)는 미등록 문장으로 끝나고 파일과 dispatch가 없다
+Given S18 project, 사용자의 모델 호출 동의, 외부 디컴파일러가 필요 없는 작은 로컬 정적 대상(JS 또는 Electron 앱 하나), 실행하면 계산한 한 줄을 출력하는 로컬 fixture `fixture/hello.js`, `--no-rea`로 REA를 끈 사본이 있다
+When Claude Code에서 (a) `/auto reverse <대상> <기능>` → 확인, (b) 수정 한 번 뒤 중단, (c) `/auto reverse fixture/hello.js "실행 출력" --runtime` → 동의 질문에서 거절, (e) 같은 명령 → 허용 → 확인, (d) 끈 사본에서 `/auto reverse`를 실행하고, Antigravity와 Codex에서 각각 `/auto reverse`를 gate까지 실행한 뒤 중단한다
+Then (a)에서 reverse-engineer subagent가 `mcp__rea__` 도구를 1번 이상 부르고(A1 Claude PASS), 결과가 다섯 절·`B-`·`A-` ID·evidence_id 1개 이상을 담고 의사코드·assembly가 없다. 새 project 파일은 `.autopus/reverse/<slug>/behaviour-spec.md`와 gate에서 확인한 경로 아래 파일뿐이고 `git status --porcelain`은 `.autopus/reverse/`를 보이지 않으며, 세 dispatch prompt는 `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, ID, 경로, Phase를 담고 REA 결과 텍스트가 없으며, tester Testing은 `A-`마다 판정을 남긴다
+And (b)의 수정은 분석을 한 번 다시 보내고 중단 뒤에는 파일이 생기지 않고 dispatch가 더 없다. (c)와 (e)의 첫 결과는 `## Runtime Capture Request`이고 그때까지 runtime capture 도구 호출은 0번이다. (c)는 거절 뒤에도 호출이 0번이고 `## Unknowns`에 빈 곳이 적힌다. (e)는 허용 뒤 다시 보낸 dispatch prompt가 `Runtime capture consent: <tool> on fixture/hello.js`를 담고 그 뒤 runtime capture 도구 호출이 1번 이상이다(REQ-REA-21 허용 경로). (d)는 dispatch가 정확히 1번(reverse-engineer)이고 그 결과가 미등록 문장으로 끝나며 executor·tester dispatch와 새 파일이 0이다
 And Antigravity의 reverse-engineer는 `mcp_rea_*`로 해석된 REA 도구를 1번 이상 부르고(A1 Antigravity PASS), Codex의 reverse-engineer는 REA 도구 호출 1번 이상을 60초 안에 끝낸다(A2 도구 절반 PASS). 결과를 `evidence/manual-smoke-rea.txt`에 남기고, 동의가 없거나 하나라도 FAIL이면 PASS로 닫지 않고 CD-2를 남긴다
 
 ### S20: locale

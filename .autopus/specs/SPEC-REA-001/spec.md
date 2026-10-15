@@ -2,7 +2,7 @@
 
 **Status**: draft
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1 J-01–J-29, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-15 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -33,7 +33,7 @@
 - `.mcp.json`, `.codex/config.toml`, `.gemini/settings.json`은 사용자 파일이고 그 안의 Autopus managed 항목만 바꾼다. managed 판정은 MCP Entry Shape Contract의 정확한 모양뿐이다. REA add·remove가 바꾸는 쓰기는 `adapter.SafeWorkspacePath`로 확인해 symlink를 건너지 않고 project root 밖에 쓰지 않는다.
 - Node probe 출력은 비신뢰 입력이다. 종료 상태와 마지막 비지 않은 줄을 엄격한 형식으로만 읽고 안내에는 판정된 version만 쓴다(`terminalSafe`).
 - REA 결과와 그로부터 만든 명세의 문자열은 분석 대상에서 온 비신뢰 데이터다. 명세 안의 지시문은 요구사항이 아니라 인용이다. 동의와 확인은 메인 세션의 질문으로만 받는다. subagent에는 AskUserQuestion이 없고 permissionMode는 메인 세션 모드에 덮일 수 있어 도구 권한 질문을 동의로 보지 않는다.
-- 새 artifact는 확인된 `.autopus/reverse/<slug>/behaviour-spec.md` 하나다. 대상 유래 문자열을 담는 사용자 소유 문서이고 디컴파일 텍스트는 담지 않는다. 생성 `.gitignore`는 바꾸지 않으므로 `.autopus/specs/`처럼 commit 후보다(`internal/cli/init_gitignore_policy_test.go:20-24`). Autopus는 그 파일을 덮거나 지우지 않고 같은 slug는 `-2`, `-3`으로 새로 쓴다. 증거 파일은 커밋 전에 `$HOME`, scratch 경로, 사용자 이름을 placeholder로 바꾼다.
+- 새 artifact는 확인된 `.autopus/reverse/<slug>/behaviour-spec.md` 하나다. 대상 유래 문자열을 담는 사용자 소유 문서이고 디컴파일 텍스트는 담지 않는다. 제3자 대상에서 나온 문서라 로컬 전용이다: 생성 `.gitignore` 목록(`internal/cli/init_helpers.go:68`)에 `.autopus/reverse/`를 더해 단일·module·meta 저장소 어디서도 추적되지 않는다. `auto sync verify`의 `rootTrackedPrefixes`(`internal/cli/sync_verify_policy.go:26-29`)는 `.autopus/project/`·`.autopus/specs/`뿐이고 이 문서를 공유 저장소에 올리는 정책은 이 SPEC 밖이다. Autopus는 그 파일을 덮거나 지우지 않고 같은 slug는 `-2`, `-3`으로 새로 쓴다. 증거 파일은 커밋 전에 `$HOME`, scratch 경로, 사용자 이름을 placeholder로 바꾼다.
 
 ## Requirements
 
@@ -158,6 +158,8 @@ Priority: Must · EARS: EventDriven
 
 WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL have the main session ask the operator once naming the target, the tool, and what will run, re-dispatch the agent with that consent only after an explicit yes, and on no or no answer continue without any runtime-capture call and record the gap under `## Unknowns`.
 
+- `/auto reverse … --runtime`은 dispatch prompt에 `Runtime capture wanted: yes`를 붙여 에이전트의 첫 결과가 Runtime Capture Request가 되게 한다(동의 경로를 결정적으로 일으키는 입구). `--runtime`이 없으면 에이전트는 정적 증거로 닫히지 않는 항목에서만 요청한다. 어느 쪽이든 허용 전 capture 호출은 0이다.
+
 ## Contracts
 
 ### Decision State Contract
@@ -253,7 +255,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | Codex `.codex/agents/reverse-engineer.toml` | balanced `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`. Autopus Codex 에이전트 형식에는 도구 칸이 없어(`pkg/content/agent_transformer.go:113`) 세션 도구를 상속한다. clean-room은 developer_instructions, 메인 세션 gate, handoff 입력 제한이 맡는다(한계, `research.md` Open Risks R4) |
 | OMP `.omp/agents/reverse-engineer.md` | `tools` = `glob`, `grep`, `read`(정렬), `mcp_`로 시작하는 값 없음. override가 없으면 `thinkingLevel: high` |
 | OpenCode `.opencode/agents/reverse-engineer.md` | `"*": deny` 아래 allow는 `glob`, `grep`, `question`, `read`, `skill`, `task`뿐이고 `mcp__` key가 없다 |
-| 본문 | (1) 입력은 대상 경로, 기능 이름, 있으면 메인 세션이 기록한 runtime capture 동의 줄이다. (2) 대상을 실행하거나 붙거나 계측하는 REA 도구는 그 도구와 대상에 맞는 동의 줄이 없으면 부르지 않고 `## Runtime Capture Request`(target, tool, will run, why)를 돌려주고 멈춘다. (3) 결과는 `## Behaviour`(`B-1`…), `## Inputs and Outputs`, `## Evidence`(evidence_id 목록), `## Unknowns`, `## Acceptance Items`(`A-1`…) 다섯 절의 행동 명세뿐이다. (4) 디컴파일된 의사코드, assembly, 대상 소스 발췌를 넣지 않는다. (5) REA 도구가 없으면 Form Text의 플랫폼별 미등록 문장으로 끝낸다. (6) 사용자에게 직접 묻지 않는다 |
+| 본문 | (1) 입력은 대상 경로, 기능 이름, 있으면 `Runtime capture wanted: yes`와 메인 세션이 기록한 동의 줄이다. `Runtime capture wanted: yes`가 있고 동의 줄이 없으면 첫 결과는 Runtime Capture Request다. (2) 대상을 실행하거나 붙거나 계측하는 REA 도구는 그 도구와 대상에 맞는 동의 줄이 없으면 부르지 않고 `## Runtime Capture Request`(target, tool, will run, why)를 돌려주고 멈춘다. (3) 결과는 `## Behaviour`(`B-1`…), `## Inputs and Outputs`, `## Evidence`(evidence_id 목록), `## Unknowns`, `## Acceptance Items`(`A-1`…) 다섯 절의 행동 명세뿐이다. (4) 디컴파일된 의사코드, assembly, 대상 소스 발췌를 넣지 않는다. (5) REA 도구가 없으면 Form Text의 플랫폼별 미등록 문장으로 끝낸다. (6) 사용자에게 직접 묻지 않는다 |
 
 - Bash를 빼는 이유: REA는 CLI(`npx rea-agents …`)로도 같은 분석과 runtime capture를 돌릴 수 있어 Bash가 있으면 MCP 경로와 동의 요청을 우회하고 파일을 쓸 수 있다. 대가로 `file`·`strings` 같은 빠른 확인은 REA 도구가 대신한다.
 - 실행 모드: subagent는 fork·background로 돌 수 있고 Claude가 foreground를 고를 수 없을 수 있다(review round 1의 문서 근거). 이 계약은 실행 모드에 기대지 않는다. 에이전트는 사용자와 대화하지 않고 동의·확인은 메인 세션이 받는다. background에서도 MCP 도구와 Read·Grep·Glob은 남는다.
@@ -264,11 +266,11 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 
 | 단계 | 규칙 |
 |---|---|
-| 진입 | `/auto reverse <대상> <기능>`(Codex `$auto reverse`, 다른 플랫폼은 그 문법). 인자가 없으면 메인 세션이 묻는다 |
+| 진입 | `/auto reverse <대상> <기능> [--runtime]`(Codex `$auto reverse`, 다른 플랫폼은 그 문법). 인자가 없으면 메인 세션이 묻는다. `--runtime`이면 dispatch prompt에 `Runtime capture wanted: yes`를 붙인다 |
 | 1 분석 | 메인 세션이 reverse-engineer를 보낸다. 실행 모드는 정하지 않는다. REA가 없으면 그 에이전트의 미등록 문장으로 끝내고 아무것도 쓰지 않으며 다른 에이전트를 보내지 않는다 |
 | 2 동의 | 결과가 `## Runtime Capture Request`면 메인 세션이 Form Text의 동의 질문(허용 / 거절)을 한 번 묻는다. 허용이면 동의 줄 `Runtime capture consent: <tool> on <target>`을 붙여 1을 다시 보내고, 거절이나 무응답이면 동의 줄 없이 정적 분석만 이어 가고 빈 곳을 `## Unknowns`에 남긴다. `--auto`도 묻는다 |
 | 3 확인 gate | 메인 세션이 명세와 제안한 소유 경로·테스트 경로를 보이고 `확인 / 수정 / 중단`을 묻는다. 수정은 1로 돌아가고 중단은 아무것도 쓰지 않고 어떤 에이전트도 보내지 않는다. `--auto`도 멈춘다 |
-| 4 저장 | 확인 뒤 메인 세션이 명세만 `.autopus/reverse/<slug>/behaviour-spec.md`에 쓴다. slug: 기능 이름을 소문자로 바꾸고 `[a-z0-9]` 밖의 문자 묶음을 하이픈 하나로 바꾼 뒤 양끝 하이픈을 지운다. 비면 `feature`. 그 디렉터리가 있으면 `-2`, `-3`을 붙인다(`Login Flow!` → `login-flow`, `로그인 화면` → `feature`, 두 번째 `Login Flow!` → `login-flow-2`) |
+| 4 저장 | 확인 뒤 메인 세션이 명세만 `.autopus/reverse/<slug>/behaviour-spec.md`에 쓴다. slug: 기능 이름을 소문자로 바꾸고 `[a-z0-9]` 밖의 문자 묶음을 하이픈 하나로 바꾼 뒤 양끝 하이픈을 지운다. 비면 `feature`. 그 디렉터리가 있으면 `-2`, `-3`을 붙인다(`Login Flow!` → `login-flow`, `로그인 화면` → `feature`, 두 번째 `Login Flow!` → `login-flow-2`). `.autopus/reverse/`는 생성 `.gitignore`가 무시하는 로컬 artifact다 |
 | 5 구현 | Reverse Handoff Contract대로 tester(Test Scaffold) → executor → tester(Testing)를 보낸다 |
 | 금지 | dispatch prompt에 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않는다. `export_evidence_bundle`을 프로젝트 안 경로로 부르지 않는다. 디컴파일 텍스트를 어떤 파일에도 쓰지 않는다 |
 
@@ -340,6 +342,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 6. CLI test 바이너리의 `TestMain`(`internal/cli/pipeline_backend_omp_rpc_test.go:36`)이 `reaNodeExec`를 `v24.11.0`·종료 0으로 고정한다. 새 init 출력이나 `.mcp.json` bytes를 통째로 비교하는 test는 등록 줄과 managed 항목만 더해진다.
 7. OMP catalog fixture `ompCLIBalancedCatalogJSON`(`internal/cli/platform_omp_profile_flags_test.go:74`), `ompCLIProfileNativeCatalogJSON`(`:87`), `composeOMPCatalogML`(`quality_compose_omp_autopus_test.go:29`)에 `anthropic/claude-opus-5-5`와 `openai-codex/gpt-6.1-sol` 행을 더한다. 그 목록을 단언하는 자리(`quality_compose_omp_autopus_test.go:113-115`)는 두 model만 더해진다.
 8. 대화형 update·init 통합 test에서 REA 질문이 새로 열리는 실행은 입력에 Enter 하나를 더한다(SPEC-MODELUX-003 규칙 3과 같은 방식). 단언은 바꾸지 않는다.
+9. 생성 `.gitignore` 정책 test(`internal/cli/init_gitignore_policy_test.go`의 required 목록)와 gitignore 갱신 test에는 `.autopus/reverse/` 한 줄만 더해진다.
 
 ## 생성 파일 상세
 
@@ -347,7 +350,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - `[NEW] pkg/reamcp`: `shape.go`(+test, 모양·pin·분류·JSON과 Codex 변환), `node.go`(+test, exec 결과 판정). Go 의존성은 늘지 않는다.
 - adapter: `[NEW] pkg/adapter/claude/claude_rea_mcp.go`(+test), `claude_files.go`, `claude_clean.go`, `[NEW] claude_reverse_route.go`, `claude_workflow_skills.go`; `[NEW] pkg/adapter/codex/codex_rea_mcp.go`(+test), `codex_settings.go`, `codex_clean_merge.go`, `codex_workflow_specs.go`, `codex_workflow_custom.go`; `[NEW] pkg/adapter/antigravity/antigravity_rea_mcp.go`(+test), `antigravity.go`, `antigravity_settings.go`, `antigravity_lifecycle_clean.go`; `pkg/adapter/omp/omp_specs.go`, `omp_workflow_render.go`; `pkg/adapter/opencode/opencode_specs.go`, `opencode_workflow_custom.go`.
 - content·templates: `[NEW] content/agents/reverse-engineer.md`, `content/agents/executor.md`, `content/agents/tester.md`, `content/skills/adaptive-quality.md`, `pkg/content/agent_transformer.go`, `agent_transformer_omp_render.go`, `agent_transformer_opencode.go`, `skill_transformer_replace_mcp.go`, `[NEW] templates/shared/auto-reverse-contract.md.tmpl`, `[NEW] templates/gemini/skills/auto-reverse/SKILL.md.tmpl`, `[NEW] templates/gemini/commands/auto/reverse.toml.tmpl`, `templates/shared/omp-agent-pipeline.md.tmpl`, `templates/claude/commands/auto-router.md.tmpl`, Antigravity root router 템플릿.
-- `internal/cli`: `[NEW] rea_decision.go`, `[NEW] rea_node_probe.go`, `[NEW] init_rea.go`, `[NEW] update_rea.go`, `[NEW] doctor_rea.go`, `[NEW] tui/wizard_rea_step.go`(모두 +test), `init.go`, `update.go`(292줄 → 300줄 이하), `update_preview.go`(clone이 `Runtime.ReaMCP`를 옮김), `tui/wizard_steps.go`, `doctor_json.go`, `doctor_text.go`, `quality_compose_groups.go`, `quality_help.go`, `init_help.go`, `update_help.go`, `platform_omp_agent_migration.go`, `quality_compose_form_edit.go`(주석).
+- `internal/cli`: `[NEW] rea_decision.go`, `[NEW] rea_node_probe.go`, `[NEW] init_rea.go`, `[NEW] update_rea.go`, `[NEW] doctor_rea.go`, `[NEW] tui/wizard_rea_step.go`(모두 +test), `init.go`, `init_helpers.go`(`gitignorePatterns`에 `.autopus/reverse/` 1줄), `update.go`(292줄 → 300줄 이하), `update_preview.go`(clone이 `Runtime.ReaMCP`를 옮김), `tui/wizard_steps.go`, `doctor_json.go`, `doctor_text.go`, `quality_compose_groups.go`, `quality_help.go`, `init_help.go`, `update_help.go`, `platform_omp_agent_migration.go`, `quality_compose_form_edit.go`(주석).
 - 문서: README, CHANGELOG(v0.50.126), help 상수. 증거: `evidence/probe-rea-forward-compat.md`, `evidence/review-rounds.md`(있음), `[NEW] evidence/test-classification.md`, `[NEW] evidence/manual-smoke-rea.txt`. 신규·변경 소스는 300줄 이하이고 `update.go`·`update_workspace.go`(300)·`doctor_json_checks.go`(293)·`wizard_steps.go`(268)에는 호출 몇 줄만 더하거나 손대지 않는다.
 
 ## Related SPECs
@@ -374,6 +377,8 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - Q1 | decision, Gate 1 확인 대상 | `features.rea` lazy 쓰기 | attempt 1 | ledger의 "features flag로 저장"을 "managed 항목이 결정을 담지 못할 때만 key를 쓴다"로 좁혔다(probe A3). "늘 쓴다"를 고르면 Decision State Contract 쓰기 표의 on 두 행을 `enabled: true`로 바꾸고 REQ-REA-17이 모든 새 init에서 한 줄을 낸다.
 - J-03 | decision, Gate 1 확인 대상 | 사용자 항목 보존 범위 | attempt 2 | PRD Story 2의 "그 항목의 bytes가 그대로다"를 JSON은 값 보존 + 기존 정규화, Codex는 bytes 보존으로 좁혔다. bytes 보존을 고르면 JSON 원문 편집기를 새로 두는 task가 하나 더 생긴다.
 - J-01 | decision, Gate 1 확인 대상 | OMP balanced fail closed | attempt 2 | catalog에 Opus 5.5·Sol이 없는 기존 OMP balanced 프로젝트는 update가 기존 blocker로 끝난다. degrade(세션 model 상속)를 고르면 새 판정 규칙과 test가 생긴다.
+- J-14 | decision | behaviour-spec 범위 | attempt 3 | 로컬 전용(`.gitignore`)으로 정했다. 공유 저장소에 올리려면 사용자가 ignore 줄을 지우거나 별도 정책 결정이 필요하다.
+- J-22 | decision | `--runtime` route 인자 | attempt 3 | 동의 허용 경로를 S19에서 결정적으로 일으키려고 더했다. 동의 자체는 그대로 메인 세션 질문이다.
 - J-07 | decision | handoff 순서 | attempt 2 | 사용자 흐름(확인 → executor → tester) 앞에 tester Test Scaffold를 둔다. executor가 GREEN만 맡는 기존 계약 때문이다.
 
 ## Traceability Matrix
@@ -393,7 +398,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | REQ-REA-11 | T15, T16 | S9, S10, S11 | INV-REA-06, INV-REA-07 |
 | REQ-REA-12 | T17 | S12 | INV-REA-08 |
 | REQ-REA-13 | T18 | S13 | INV-REA-09 |
-| REQ-REA-14 | T18, T20 | S13, S19 | INV-REA-09 |
+| REQ-REA-14 | T18, T20 | S3, S13, S19 | INV-REA-09 |
 | REQ-REA-15 | T19 | S14 | INV-REA-11 |
 | REQ-REA-16 | T3, T5, T6, T7 | S15 | INV-REA-10 |
 | REQ-REA-17 | T9, T11, T12 | S3, S7 | INV-REA-01 |

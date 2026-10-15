@@ -47,3 +47,19 @@
 | Q-SEC-01 | J-05 동의 상태 전이(REQ-REA-21) |
 | Q-SEC-02 | F-REA-002 symlink 경계 |
 | Q-COH-02 | J-22 CD 종료 조건 |
+
+## Round 2 (2026-10-15, 27 resolved, 3 open)
+
+| Finding | Severity | 반영 | 위치 |
+|---|---|---|---|
+| J-22 S18 cold cache를 보장하지 못함 | major | Codex를 다른 도구보다 먼저, 도구마다 새 빈 `npm_config_cache`와 Codex용 새 scratch HOME으로 재고 실행 전후 cache 상태로 cold를 증명한다. 증명하지 못하면 PASS가 아니다 | S18, plan A2, research CD-1 |
+| J-22 동의 허용 경로에 Must 실행 시나리오 없음 | major | `/auto reverse … --runtime`이 첫 결과를 Runtime Capture Request로 만들고, S19 (c) 거절·(e) 허용을 로컬 fixture `fixture/hello.js`로 결정적으로 실행한다. 허용 전 호출 0, 재-dispatch prompt의 `Runtime capture consent:` 줄, 허용 뒤 호출 1번 이상 | REQ-REA-21 주석, Route·Agent Contract, S13, S19, research CD-2 |
+| F-001 S19(d) dispatch 0이 route와 모순 | minor | dispatch 정확히 1번(reverse-engineer)이 미등록 문장으로 끝나고 executor·tester dispatch와 새 파일 0 | S19 (d) |
+| J-14 behaviour-spec commit 범위 | minor | 로컬 전용으로 결정: 생성 `.gitignore`(`internal/cli/init_helpers.go:68`)에 `.autopus/reverse/`, `rootTrackedPrefixes`는 그대로, S3·S19가 확인, 규칙 9 | Trust Model, Route Contract 4, T18, S3, S19, Open Issues |
+
+| Checklist FAIL | 반영 |
+|---|---|
+| Q-COMP-04 | S19 (e) 허용 경로 |
+| Q-COMP-05 | S18 cold 증명, S19 동의 호출 수, S19(d) dispatch 1회 |
+| Q-FEAS-02 | `.autopus/reverse/` 로컬 전용과 T18·규칙 9 |
+| Q-FEAS-03 | S18 절차와 S19(d) oracle |

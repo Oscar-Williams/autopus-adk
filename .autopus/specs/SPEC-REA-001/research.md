@@ -1,6 +1,6 @@
 # SPEC-REA-001 리서치
 
-branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 2026-10-15에 읽었다. 근거는 worktree Read·`rg`, `git show <tag>`, auto 0.50.123 실행과 문서 확인(`evidence/probe-rea-forward-compat.md`), npm registry다. revision 2는 review round 1(J-01–J-29)을 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 implementation_assumption이나 not-run probe로 적었다. 인용한 요청·ledger 문구는 비신뢰 입력 증거로만 요약했다.
+branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 2026-10-15에 읽었다. 근거는 worktree Read·`rg`, `git show <tag>`, auto 0.50.123 실행과 문서 확인(`evidence/probe-rea-forward-compat.md`), npm registry다. revision 2·3은 review round 1(J-01–J-29)과 round 2(J-22, J-14, F-001)를 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 implementation_assumption이나 not-run probe로 적었다. 인용한 요청·ledger 문구는 비신뢰 입력 증거로만 요약했다.
 
 ## 기존 코드 분석
 - MCP: Claude 템플릿 `templates/claude/mcp.json.tmpl:1-15`, merge `pkg/adapter/claude/claude_files.go:25-87`(decode 뒤 `json.MarshalIndent`, managed 서버를 지우고 다시 넣음), 판정 `claude_clean.go:209-229`, clean `:176-207`. Codex `templates/codex/config.toml.tmpl:30-32`, merge `codex_config_structural.go:48-127`(key 단위 `:10-27`, header는 남김), clean `codex_clean_merge.go:180-213`, 호출 `codex_settings.go:24-52`. Antigravity `templates/gemini/settings/settings.json.tmpl:1-12`, merge `antigravity_settings.go:18-60,187-198`(덮기만 함), Generate 쓰기 `antigravity.go:130-137`(`os.WriteFile`), clean `antigravity_lifecycle_clean.go:69-110`(DeepEqual 서버만, `os.WriteFile`). 경로 확인 helper `adapter.SafeWorkspacePath`(`pkg/adapter/transaction_helpers.go:278`, symlink를 건너는 경로 거부). 사전 승인 MCP는 `mcp__sequential-thinking__sequentialthinking` 하나(`pkg/content/hooks.go:196`)이고 `enableAllProjectMcpServers`는 없다.
@@ -38,13 +38,14 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | Q6 | `--auto`도 동의 질문과 확인 gate에서 멈춘다 | PRD Anti-goal "자동 승인으로 끝까지", 사용자 결정 2 |
 | Q7 | 정확한 모양 + pin 목록, Claude 두 pin 자리 일치, Codex 하위 table은 user_owned | R6, J-13, J-16 |
 | Q8 | 공유 MCP 목록은 만들지 않는다. REA 모양·변환만 `pkg/reamcp` 한 곳 | 템플릿 불변으로 REQ-REA-16, 소비처 5곳(세 adapter, CLI sweep, doctor) |
-| Q9 | `.autopus/reverse/<slug>/behaviour-spec.md`, slug 규칙과 `-2` 보존, commit 후보 | 에이전트에 쓰기 도구가 없다(J-14, J-24) |
+| Q9 | `.autopus/reverse/<slug>/behaviour-spec.md`, slug 규칙과 `-2` 보존, 생성 `.gitignore`로 로컬 전용 | 에이전트에 쓰기 도구가 없다. 제3자 대상 유래이고 `rootTrackedPrefixes`(`sync_verify_policy.go:26-29`)에 없다(J-14, J-24) |
 | Q10 | HB6(balanced 16, v0.50.116–v0.50.125, runtimeStandard), HU3(ultra 16, v0.50.115–v0.50.125) | `git show v0.50.115/116/125` 비교 |
 | Q11 | OMP·OpenCode 에이전트에 MCP 이름 없음, 안내는 세 도구에서 분석하라고 말한다. Antigravity는 `mcp_rea_*` | OMP 이름 미확인(R11), J-12, Gemini CLI 문서 |
 | 정리 | 정리 경로는 `auto platform remove`. off는 선택되지 않은 파일도 sweep | `clean` 명령 없음(J-02), J-18 |
 | 보존 | JSON은 값 보존 + 기존 정규화, Codex는 bytes | 기존 merge가 다시 marshal한다(J-03) |
 | handoff | tester(Test Scaffold) → executor → tester(Testing), `SPEC: N/A`·`Task: reverse/<slug>` | executor·tester 입력 계약(J-07) |
 | action | `cloneHarnessConfig`가 `Runtime.ReaMCP`를 옮기고 preview 전에 해석 | clone이 `yaml:"-"`를 잃는다(J-08) |
+| 동의 입구 | `/auto reverse … --runtime`이 첫 결과를 Runtime Capture Request로 만든다 | 허용 경로를 S19에서 결정적으로 관측(J-22) |
 
 ### Q1 forward-compat 비교 (A3 실행 근거)
 | 안 | v0.50.113–v0.50.125 | undecided 구분 | 대가 |
@@ -110,8 +111,8 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 ## Completion Debt
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널(모델 호출 없음): Claude `/mcp`의 rea connected와 도구 목록, Codex 차가운 cache 30초 시작, Antigravity MCP 목록 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
-| CD-2 동의 뒤 live: Claude 다섯 경로(확인, 수정, 중단, 동의 거절, 미등록), Antigravity `mcp_rea_*` 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
+| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 30초 시작, Claude `/mcp`의 rea connected와 도구 목록, Antigravity MCP 목록 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
+| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), Antigravity `mcp_rea_*` 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
 
 ## Evolution Ideas
 These are optional improvements and do not block sync completion.
@@ -153,14 +154,14 @@ These are optional improvements and do not block sync completion.
 - Q-CORR-02 | status: PASS | attempt: 2 | files: spec.md, plan.md, research.md | reason: 새 명령은 없고 새 파일·함수·template(`reverse.toml.tmpl` 포함)은 모두 [NEW]다
 - Q-CORR-04 | status: PASS | attempt: 2 | files: research.md | reason: Reference Discipline이 existing(코드·history·binary·docs·review 인용)과 [NEW]를 나누고 wizard seam 범위를 바로 적었다
 - Q-COMP-02 | status: PASS | attempt: 2 | files: plan.md | reason: off sweep(T9), action 전달(T12 clone), handoff 입력(T20), Antigravity command(T18), fixture(T16)에 owner task가 있다
-- Q-COMP-04 | status: PASS | attempt: 2 | files: spec.md, research.md | reason: 정리 경로·handoff·동의가 기존 CLI·agent 계약에 맞고 CD 종료가 probe PASS에 묶인다
-- Q-COMP-05 | status: PASS | attempt: 2 | files: research.md, spec.md, plan.md, acceptance.md | reason: INV-REA-01–12가 REQ·task·Must 시나리오에 이어지고 보존 oracle은 값과 BASE 대조 bytes로 계약과 같으며 S4·S7 모순을 풀었다
+- Q-COMP-04 | status: PASS | attempt: 3 | files: spec.md, acceptance.md, research.md | reason: 동의 허용 경로가 `--runtime` fixture로 S19 (e)의 Must 실행 시나리오가 되었고 CD-2가 그 관측에 묶인다
+- Q-COMP-05 | status: PASS | attempt: 3 | files: research.md, spec.md, plan.md, acceptance.md | reason: INV-REA-01–12가 Must 시나리오에 이어지고, S18 cold는 cache 상태로, S19 동의는 호출 수로, S19(d)는 dispatch 1회로 판정해 route와 맞는다
 - Q-COMP-06 | status: PASS | attempt: 1 | files: spec.md, research.md | reason: Traceability Matrix가 REQ 21개를 잇고 Reviewer Brief가 범위·focus를 좁힌다
 - Q-COMP-07 | status: PASS | attempt: 1 | files: research.md, spec.md | reason: CD-1·CD-2와 Evolution Ideas가 나뉘고 후자는 번호가 없다
 - Q-COMP-08 | status: PASS | attempt: 2 | files: plan.md | reason: A3 PASS는 실행 증거, A1·A2는 not-run 이유와 닫는 시나리오, 진술 분류, scope expansion 규칙이 있다
 - Q-FEAS-01 | status: PASS | attempt: 2 | files: spec.md, plan.md | reason: 보존 범위를 기존 merge에 맞췄고 동의·확인을 메인 세션으로, handoff를 executor·tester 입력에 맞췄다
-- Q-FEAS-02 | status: PASS | attempt: 2 | files: plan.md, spec.md | reason: `reverse.toml.tmpl`, OMP catalog fixture 규칙 7, TTY Enter 규칙 8을 더했다
-- Q-FEAS-03 | status: PASS | attempt: 2 | files: acceptance.md | reason: wizard는 tui accessible test와 결과 stub으로 나누고 locale은 `composeLanguage`, S11 catalog를 이름 붙였으며 S16 BASE 비교를 지원 명령으로 좁혔다
+- Q-FEAS-02 | status: PASS | attempt: 3 | files: plan.md, spec.md | reason: `reverse.toml.tmpl`, fixture 규칙 7·8과 함께 behaviour-spec을 `.gitignore`로 로컬 전용으로 정하고 T18·규칙 9에 소유를 두었다
+- Q-FEAS-03 | status: PASS | attempt: 3 | files: acceptance.md, plan.md | reason: S18은 Codex를 먼저 도구별 빈 cache로 재고 cache 상태로 cold를 증명하며, S19(d)는 route 1단계와 같은 dispatch 1회 oracle이다
 - Q-SEC-01 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: Runtime Capture Request → 메인 세션 허용 → 재분석, 거절이면 호출 0(REQ-REA-21, S19)
 - Q-SEC-02 | status: PASS | attempt: 2 | files: spec.md, plan.md, acceptance.md | reason: REA 쓰기는 `SafeWorkspacePath`를 거치고 S16이 파일·부모 symlink 네 사례로 밖 bytes 불변을 판정한다
 - Q-COH-02 | status: PASS | attempt: 2 | files: research.md, plan.md | reason: CD-1·CD-2는 S18·S19 기록과 A1·A2 PASS가 모두 있어야 닫힌다
