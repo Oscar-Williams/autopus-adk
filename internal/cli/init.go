@@ -23,6 +23,8 @@ func newInitCmd() *cobra.Command {
 		noReviewGate bool
 		statusLine   string
 		yes          bool
+		reaOn        bool
+		reaOff       bool
 	)
 
 	// @AX:WARN [AUTO]: RunE closure captures mutable flag vars — do not add goroutines inside RunE
@@ -32,6 +34,9 @@ func newInitCmd() *cobra.Command {
 		Short: "Initialize autopus harness in the current project",
 		Long:  initCmdLong,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := checkReaFlags(reaOn, reaOff, false); err != nil {
+				return err
+			}
 			quality := globalFlagsFromContext(cmd.Context()).Quality
 
 			if dir == "" {
@@ -67,6 +72,7 @@ func newInitCmd() *cobra.Command {
 
 			cfg := config.DefaultFullConfig(project)
 			cfg.Platforms = platformList
+			rea := prepareInitRea(dir, cfg, reaOn, reaOff)
 
 			// Detect and set stack and framework for stack-aware rule generation.
 			if stack, err := detect.DetectStack(dir); err == nil && stack != "" {
@@ -105,6 +111,7 @@ func newInitCmd() *cobra.Command {
 					Accessible:      false,
 					Providers:       providerNames,
 					ExistingProfile: existingProfile,
+					Rea:             rea.wizardPreset(),
 				})
 				if err != nil {
 					return fmt.Errorf("wizard failed: %w", err)
@@ -134,6 +141,7 @@ func newInitCmd() *cobra.Command {
 					cfg.Methodology.Mode = "none"
 					cfg.Methodology.Enforce = false
 				}
+				rea.decideInit(cmd, cfg, result.Rea)
 			} else {
 				// Non-interactive: apply flags or defaults.
 				cfg.UsageProfile = config.DefaultUsageProfile()
@@ -156,6 +164,7 @@ func newInitCmd() *cobra.Command {
 						cfg.Spec.ReviewGate.Enabled = false
 					}
 				}
+				rea.decideInit(cmd, cfg, nil)
 			}
 
 			if _, err := config.MigrateOrchestraConfig(cfg); err != nil {
@@ -189,7 +198,10 @@ func newInitCmd() *cobra.Command {
 			tui.Step(out, 3, 5, "Platform Files")
 			ctx := context.Background()
 			if err := saveConfigWithGenerationRollback(dir, cfg, func() error {
-				return generatePlatformFilesWith(ctx, dir, cfg, cmd, snapshot)
+				if err := generatePlatformFilesWith(ctx, dir, cfg, cmd, snapshot); err != nil {
+					return err
+				}
+				return rea.finish(out, dir, cfg)
 			}); err != nil {
 				return fmt.Errorf("플랫폼 설정 적용 실패: %w", err)
 			}
@@ -244,6 +256,7 @@ func newInitCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&noReviewGate, "no-review-gate", false, "Disable review gate")
 	cmd.Flags().StringVar(&statusLine, "statusline-mode", "", "Claude statusLine handling: keep, merge, replace")
 	cmd.Flags().BoolVar(&yes, "yes", false, "Non-interactive mode (use defaults)")
+	registerReaFlags(cmd, &reaOn, &reaOff)
 
 	return cmd
 }
