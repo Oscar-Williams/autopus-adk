@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -57,6 +58,16 @@ func newComposeSession(
 	}
 }
 
+// withReaFallbackNotice binds the session's tables to the run's fallback
+// notice ctx carries, so a line a table printed is not printed again by the
+// generation of the same run.
+func (s composeDriverSession) withReaFallbackNotice(ctx context.Context) composeDriverSession {
+	if s.shared != nil {
+		s.shared.reaNotice = reaFallbackNoticeFrom(ctx)
+	}
+	return s
+}
+
 // withDetected adds the platforms an update detected to the session's
 // display view (SPEC-MODELUX-002 REQ-MUX2-12): the table, the run's Codex
 // snapshot, and every plan see them, while every write and sync still
@@ -90,6 +101,18 @@ type composeSessionRun struct {
 	// snapshot is the catalog snapshot of the last table drawn. The driver
 	// draws the table before it plans anything.
 	snapshot driftGenerationSnapshot
+	// reaNotice is the run's fallback notice: a table that prints an
+	// analysis-rung fallback line claims it, so the run prints it once.
+	reaNotice *reaFallbackNotice
+}
+
+// table builds the table of cfg under the run's fallback notice.
+func (r *composeSessionRun) table(cfg *config.HarnessConfig, snapshot driftGenerationSnapshot) composeTable {
+	table := buildComposeTable(r.viewOf(cfg), snapshot, r.sources)
+	if r.reaNotice != nil {
+		table.reaFallbackFilter = r.reaNotice.fresh
+	}
+	return table
 }
 
 // view is the run's display view (Platform View Contract): a fresh shallow
@@ -119,7 +142,7 @@ type composeSessionTable struct{ run *composeSessionRun }
 
 func (t composeSessionTable) Table(out io.Writer, cfg *config.HarnessConfig, snapshot driftGenerationSnapshot) error {
 	t.run.snapshot = snapshot
-	return buildComposeTable(t.run.viewOf(cfg), snapshot, t.run.sources).render(out, t.run.lang, nil)
+	return t.run.table(cfg, snapshot).render(out, t.run.lang, nil)
 }
 
 // Preview marks every cell whose raw value differs from start's table; both
@@ -127,7 +150,7 @@ func (t composeSessionTable) Table(out io.Writer, cfg *config.HarnessConfig, sna
 func (t composeSessionTable) Preview(out io.Writer, start, candidate *config.HarnessConfig, snapshot driftGenerationSnapshot) error {
 	t.run.snapshot = snapshot
 	before := buildComposeTable(t.run.viewOf(start), snapshot, t.run.sources)
-	return buildComposeTable(t.run.viewOf(candidate), snapshot, t.run.sources).render(out, t.run.lang, &before)
+	return t.run.table(candidate, snapshot).render(out, t.run.lang, &before)
 }
 
 // composeSessionGroups presents composeRoleGroups over the driver's
