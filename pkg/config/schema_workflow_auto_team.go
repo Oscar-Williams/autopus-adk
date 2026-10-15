@@ -43,10 +43,7 @@ func yamlMappingEntries(node *yaml.Node, name string) [][2]*yaml.Node {
 		visited[node] = true
 		for i := 0; i+1 < len(node.Content); i += 2 {
 			key, value := node.Content[i], node.Content[i+1]
-			if key.Kind != yaml.ScalarNode {
-				continue
-			}
-			if key.ShortTag() == "!!merge" {
+			if isYAMLMergeKey(key) {
 				sources := []*yaml.Node{value}
 				if value.Kind == yaml.SequenceNode {
 					sources = value.Content
@@ -56,11 +53,20 @@ func yamlMappingEntries(node *yaml.Node, name string) [][2]*yaml.Node {
 				}
 				continue
 			}
-			if key.Value == name {
+			// The decoder names a field by decoding its key, which resolves an
+			// alias key and a !!binary key alike, so the key is read that way.
+			var decoded string
+			if key.Decode(&decoded) == nil && decoded == name {
 				entries = append(entries, [2]*yaml.Node{key, value})
 			}
 		}
 	}
 	walk(node)
 	return entries
+}
+
+// isYAMLMergeKey mirrors yaml.v3's isMerge: only a "<<" scalar node merges,
+// so an alias that resolves to "<<" stays an ordinary key.
+func isYAMLMergeKey(key *yaml.Node) bool {
+	return key.Kind == yaml.ScalarNode && key.Value == "<<" && (key.Tag == "" || key.Tag == "!" || key.ShortTag() == "!!merge")
 }

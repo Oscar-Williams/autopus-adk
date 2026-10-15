@@ -95,6 +95,31 @@ func TestWorkflowAutoTeamCheckFollowsAliasesAndMergeKeys(t *testing.T) {
 	assert.NoError(t, checkWorkflowAutoTeamNode(&empty))
 }
 
+// The decoder names a field by decoding its key, so an alias or a !!binary
+// key that decodes to auto_team reaches the field like the plain key does.
+func TestWorkflowAutoTeamCheckDecodesKeysLikeTheDecoder(t *testing.T) {
+	t.Parallel()
+	anchor := "future_extension:\n  k: &k auto_team\n  w: &w workflow\n"
+	for _, value := range []string{"yes", "~", "off"} {
+		for name, body := range map[string]string{
+			"alias key":         anchor + "workflow:\n  *k : " + value + "\n",
+			"binary key":        "workflow:\n  !!binary YXV0b190ZWFt: " + value + "\n",
+			"alias section key": anchor + "*w :\n  auto_team: " + value + "\n",
+		} {
+			_, err := LoadPreview(writeWorkflowConfig(t, body))
+			require.Error(t, err, "%s %s", name, value)
+			assert.Contains(t, err.Error(), "workflow.auto_team: must be true or false (line ", "%s %s", name, value)
+		}
+	}
+	_, err := LoadPreview(writeWorkflowConfig(t, anchor+"workflow:\n  *k : yes\n"))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "(line 10)", "the line is where the aliased key sits under workflow")
+	cfg, err := LoadPreview(writeWorkflowConfig(t, anchor+"workflow:\n  *k : false\n"))
+	require.NoError(t, err)
+	require.NotNil(t, cfg.Workflow.AutoTeam)
+	assert.False(t, *cfg.Workflow.AutoTeam)
+}
+
 func TestWorkflowAutoTeamIsNeverWrittenUnlessSet(t *testing.T) {
 	t.Parallel()
 	encoded, err := yaml.Marshal(DefaultFullConfig("fresh"))
