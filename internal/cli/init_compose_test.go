@@ -31,7 +31,7 @@ var composeInitCustom = map[string]string{
 	"architect": "fable", "planner": "fable", "reviewer": "fable", "security-auditor": "fable", "spec-writer": "fable",
 	"debugger": "sonnet", "deep-worker": "sonnet", "devops": "sonnet", "executor": "sonnet",
 	"frontend-specialist": "sonnet", "perf-engineer": "sonnet", "tester": "sonnet", "ux-validator": "sonnet",
-	"validator": "sonnet", "explorer": "sonnet", "annotator": "sonnet",
+	"validator": "sonnet", "explorer": "sonnet", "annotator": "sonnet", "reverse-engineer": "opus",
 }
 
 // stubInitWizard replaces the huh wizard with one that answers choice in the
@@ -111,7 +111,7 @@ func TestInitCompose_RoleGroupsConfirmSavesCustomAndGeneratesThePreview(t *testi
 	// their Codex rung.
 	preview := composeRenderedTable(t, out, "미리보기 (아직 바뀌지 않음)")
 	claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, preview)
-	assert.Equal(t, 16, claudeMarks)
+	assert.Equal(t, 17, claudeMarks)
 	assert.Equal(t, 2, codexMarks)
 	assert.Equal(t, composeTableClaudeCell{model: "sonnet", effort: "medium"}, readComposeTableClaudeProfile(t, dir, "debugger"))
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6-luna", Effort: "max"}, readComposeCodexProfile(t, dir, "debugger"))

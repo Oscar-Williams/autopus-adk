@@ -132,7 +132,8 @@ func RenderOMPAgentDefinition(src AgentSource, opts OMPAgentDefinitionOptions) (
 }
 
 // ompAgentTools starts from the canonical portable tools and adds only the
-// native capabilities the role needs. MCP tools keep their exact names.
+// native capabilities the role needs. MCP tools keep their exact names, except
+// the REA server, which Autopus does not register for OMP.
 func ompAgentTools(src AgentSource) []string {
 	seen := make(map[string]bool)
 	var tools []string
@@ -144,6 +145,9 @@ func ompAgentTools(src AgentSource) []string {
 	}
 	for _, tool := range strings.Split(src.Meta.Tools, ",") {
 		tool = strings.TrimSpace(tool)
+		if isReaMCPReference(tool) {
+			continue
+		}
 		if strings.HasPrefix(tool, "mcp__") {
 			add(tool)
 			continue

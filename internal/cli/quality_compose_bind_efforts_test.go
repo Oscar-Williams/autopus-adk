@@ -127,7 +127,7 @@ func TestPlanComposeBinding_CustomCarriesPEffortsWithTheCarryLine(t *testing.T) 
 	assert.Equal(t, 1, plan.Presets[0].Carried)
 	lines := composeBindDescribe(t, dir, cfg, plan, "ko")
 	assert.Equal(t, []string{
-		"quality.presets.custom 새로 씀 (16개 에이전트)",
+		"quality.presets.custom 새로 씀 (17개 에이전트)",
 		"quality.presets.custom.efforts 옮겨 씀 (1개 에이전트)",
 		"quality.default balanced → custom",
 	}, lines[:3])

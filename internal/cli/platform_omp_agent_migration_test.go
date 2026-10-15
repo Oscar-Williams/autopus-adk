@@ -120,10 +120,10 @@ func TestOMPAgentMigration_S12_S13_UpdateMigratesAndGoesBack(t *testing.T) {
 		assert.Contains(t, first, "    + .omp/agents/"+agent+".md\n")
 	}
 	assert.Contains(t, first, "    task.disabledAgents: scout, security-reviewer, sonic, designer, librarian\n")
-	assert.Contains(t, first, "\n    OMP는 이제 Autopus 에이전트 16개를 씁니다.")
+	assert.Contains(t, first, "\n    OMP는 이제 Autopus 에이전트 17개를 씁니다.")
 	assert.Less(t, strings.Index(first, "+ .omp/agents/planner.md"), strings.Index(first, "✓ omp updated"),
 		"the lines preview the write")
-	assert.Len(t, ompMigrationAgentFiles(t, dir), 16)
+	assert.Len(t, ompMigrationAgentFiles(t, dir), 17)
 	ompConfig, err := os.ReadFile(filepath.Join(dir, ".omp", "config.yml"))
 	require.NoError(t, err)
 	assert.Contains(t, string(ompConfig), "disabledAgents")
@@ -144,7 +144,7 @@ func TestOMPAgentMigration_S12_S13_UpdateMigratesAndGoesBack(t *testing.T) {
 	native := ompMigrationUpdate(t, dir)
 
 	assert.Contains(t, native, "    - .omp/agents/planner.md\n")
-	assert.Equal(t, 16, strings.Count(native, "    - .omp/agents/"))
+	assert.Equal(t, 17, strings.Count(native, "    - .omp/agents/"))
 	assert.Contains(t, native, "    task.disabledAgents 복원\n")
 	assert.Empty(t, ompMigrationAgentFiles(t, dir))
 	assert.NoFileExists(t, filepath.Join(dir, ".omp", "config.yml"))
@@ -183,7 +183,7 @@ func TestOMPAgentMigration_S8_UserFileLineInInitAndUpdate(t *testing.T) {
 	body, err := os.ReadFile(filepath.Join(dir, ".omp", "agents", "reviewer.md"))
 	require.NoError(t, err)
 	assert.Equal(t, userFile, body)
-	assert.Len(t, ompMigrationAgentFiles(t, dir), 16, "15 generated files and the user's")
+	assert.Len(t, ompMigrationAgentFiles(t, dir), 17, "16 generated files and the user's")
 }
 
 // The lines for every report shape, in both languages.
@@ -200,7 +200,7 @@ func TestOMPAgentSurfaceLines(t *testing.T) {
 	owned := autopus
 	owned.UserAgentFiles, owned.DisabledAgentsUserOwned = []string{"reviewer"}, true
 	lines := ompAgentSurfaceLines(owned, cfg, true, ko)
-	assert.Len(t, lines, 18)
+	assert.Len(t, lines, 19)
 	assert.Contains(t, lines, ".omp/agents/reviewer.md는 사용자 파일이라 그대로 둡니다")
 	assert.NotContains(t, lines, "+ .omp/agents/reviewer.md")
 	assert.Contains(t, lines, ko.userOwned)
@@ -274,6 +274,6 @@ func TestOMPAgentMigration_PlanPreviewShowsTheMigration(t *testing.T) {
 
 	require.NoError(t, err, out)
 	assert.Contains(t, out, "    + .omp/agents/planner.md\n")
-	assert.Contains(t, out, "    OMP는 이제 Autopus 에이전트 16개를 씁니다.")
+	assert.Contains(t, out, "    OMP는 이제 Autopus 에이전트 17개를 씁니다.")
 	assert.Empty(t, ompMigrationFileSums(t, dir))
 }

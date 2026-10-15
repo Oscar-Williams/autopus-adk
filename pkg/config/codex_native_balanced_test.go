@@ -29,6 +29,8 @@ var nativeBalancedCodexPlacement = map[string]CodexProfile{
 	"explorer":     {Model: CodexLunaModel, Effort: CodexEffortMax},
 	"ux-validator": {Model: CodexLunaModel, Effort: CodexEffortMax},
 	"validator":    {Model: CodexLunaModel, Effort: CodexEffortMax},
+
+	"reverse-engineer": {Model: CodexSolModel, Effort: CodexEffortXHigh},
 }
 
 // Weak source defaults must not lower a role's standard balanced placement.

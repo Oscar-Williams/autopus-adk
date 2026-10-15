@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/codexruntime"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -96,8 +97,34 @@ func (c codexRenderContext) resolveAgent(
 		c.adapter.reportCodexPlacementUnverified(resolution.Requested, resolution.CatalogError)
 		return resolution, nil
 	}
+	if resolution.Reason == config.CodexResolutionSessionModel {
+		c.adapter.recordReaFallback(adapter.ReaFallback{
+			Catalog: "Codex", Agent: config.NormalizeAgentName(agentName),
+			Requested: describeCodexProfile(resolution.Requested),
+		})
+		return resolution, nil
+	}
 	c.adapter.reportCodexFallback(resolution)
 	return resolution, nil
+}
+
+// recordReaFallback keeps one fact per agent and candidate: each agent
+// template resolves its profile once for the model and once for the effort.
+func (a *Adapter) recordReaFallback(fact adapter.ReaFallback) {
+	for _, recorded := range a.reaFallbacks {
+		if recorded == fact {
+			return
+		}
+	}
+	a.reaFallbacks = append(a.reaFallbacks, fact)
+}
+
+// takeReaFallbacks returns the recorded facts and clears them, so a second
+// preparation by the same adapter reports its own.
+func (a *Adapter) takeReaFallbacks() []adapter.ReaFallback {
+	facts := a.reaFallbacks
+	a.reaFallbacks = nil
+	return facts
 }
 
 // resolveSupervisor resolves the managed root session profile, answering with

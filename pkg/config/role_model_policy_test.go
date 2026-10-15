@@ -65,6 +65,7 @@ var policyContractMatrix = []struct {
 	{"frontend-specialist", "autopus_frontend_specialist", CapabilityVisionDesign},
 	{"perf-engineer", "autopus_perf_engineer", CapabilityCodingToolUse},
 	{"planner", "autopus_planner", CapabilityDeepReasoning},
+	{"reverse-engineer", "autopus_reverse_engineer", CapabilityDeepReasoning},
 	{"reviewer", "autopus_reviewer", CapabilityIndependentDissent},
 	{"security-auditor", "autopus_security_auditor", CapabilityIndependentDissent},
 	{"spec-writer", "autopus_spec_writer", CapabilityDeepReasoning},

@@ -25,7 +25,7 @@ type nativeAgentProfile struct {
 // map the adapter reads would agree with any rung reshuffle, including a
 // mistake that pushes debugger or deep-worker off the frontier model.
 func balancedNativeProfiles() map[string]nativeAgentProfile {
-	profiles := make(map[string]nativeAgentProfile, 16)
+	profiles := make(map[string]nativeAgentProfile, 17)
 	frontier := nativeAgentProfile{model: config.ClaudeFableModel, effort: "max"}
 	for _, agent := range []string{
 		"architect", "debugger", "deep-worker", "planner",
@@ -43,6 +43,7 @@ func balancedNativeProfiles() map[string]nativeAgentProfile {
 	for _, agent := range []string{"annotator", "explorer", "ux-validator", "validator"} {
 		profiles[agent] = routine
 	}
+	profiles["reverse-engineer"] = nativeAgentProfile{model: config.ClaudeOpusModel, effort: "high"}
 	return profiles
 }
 

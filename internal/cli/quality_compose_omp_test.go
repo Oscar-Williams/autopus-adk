@@ -41,7 +41,7 @@ func composeOMPDeps(catalog []byte) (ompPlatformDependencies, *composeOMPActivat
 // composeFormS8 answers S8 in `auto quality` over O3 up to its confirmation:
 // 구성 편집, OMP, 에이전트별 지정, GPT, task, openai-codex/gpt-6-astra, max,
 // 완료.
-var composeFormS8 = []string{"2\n", "4\n", "4\n", "1\n", "5\n", "3\n", "2\n", "\n"}
+var composeFormS8 = []string{"2\n", "4\n", "4\n", "1\n", "5\n", "4\n", "2\n", "\n"}
 
 const composeOMPHeader = "OMP (요청 route · catalog 확인 전)"
 

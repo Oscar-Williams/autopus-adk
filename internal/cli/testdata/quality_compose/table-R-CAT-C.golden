@@ -15,5 +15,6 @@
 검증·리뷰  ux-validator         기본값(sonnet)  sonnet · high  5.6-sol · xhigh (catalog 없음)  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 탐색·보조  explorer             opus            opus · max     5.6-sol · xhigh (catalog 없음)  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 탐색·보조  annotator            기본값(sonnet)  sonnet · high  5.6-sol · xhigh (catalog 없음)  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
+탐색·보조  reverse-engineer     기본값(opus)    opus · max     5.6-sol · xhigh (catalog 없음)  플랫폼 기본값  플랫폼 기본값  플랫폼 기본값
 Codex catalog: 읽지 못함
 Codex 기본 세션: 5.6-sol · ultra (catalog 없음)

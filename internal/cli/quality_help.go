@@ -27,7 +27,7 @@ Change the composition? takes:
            Implementation: executor, debugger, deep-worker, devops,
              frontend-specialist, perf-engineer
            Verification·Review: reviewer, validator, tester, ux-validator
-           Exploration·Support: explorer, annotator
+           Exploration·Support: explorer, annotator, reverse-engineer
   a      advanced: one agent=tier line per agent, an empty line finishes
   t      per-tool settings; global, claude-code, codex, and omp work too
 
@@ -68,7 +68,7 @@ automatic level is marked (automatic) and stores nothing. Chosen efforts are
 written to quality.presets.<provider>-custom.efforts, which auto older than
 v0.50.126 cannot read; a file without efforts generates exactly as before.
 
-OMP serves the 16 Autopus agents from .omp/agents by default and disables
+OMP serves the 17 Autopus agents from .omp/agents by default and disables
 every bundled agent but task (scout, security-reviewer, sonic, designer,
 librarian). In that mode the OMP tab asks no profile or family: from the
 current pins or profile routes it edits the 4 role groups or each agent

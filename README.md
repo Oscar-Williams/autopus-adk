@@ -1319,7 +1319,7 @@ written to `autopus.yaml`:
 | Design·Judgment | planner, architect, spec-writer, security-auditor |
 | Implementation | executor, debugger, deep-worker, devops, frontend-specialist, perf-engineer |
 | Verification·Review | reviewer, validator, tester, ux-validator |
-| Exploration·Support | explorer, annotator |
+| Exploration·Support | explorer, annotator, reverse-engineer |
 
 At `Change the composition?`, `g` picks one tier per group (Enter keeps a group, mixed ones
 included), `a` takes `agent=tier` lines, and `u` (shown only when one exists) updates

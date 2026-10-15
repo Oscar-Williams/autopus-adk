@@ -27,7 +27,7 @@ func TestOMPGenerate_UsesOnlyNativeSkillsAndCommandsWithoutBaseConfig(t *testing
 	paths := manifestPaths(t, root)
 	assert.Greater(t, countPathsWithPrefix(paths, ".omp/skills/"), 20)
 	assert.Equal(t, len(workflowSpecs), countPathsWithPrefix(paths, ".omp/commands/"))
-	assert.Equal(t, 16, countPathsWithPrefix(paths, ".omp/agents/"))
+	assert.Equal(t, 17, countPathsWithPrefix(paths, ".omp/agents/"))
 	assert.Equal(t, 14, countPathsWithPrefix(paths, ompRuleDir+"/"+ompRuleFilePrefix))
 	assert.Contains(t, paths, configFile)
 	assert.FileExists(t, filepath.Join(root, configFile))

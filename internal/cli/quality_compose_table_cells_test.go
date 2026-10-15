@@ -18,7 +18,7 @@ func TestComposeTable_CatalogB_MarksSubstitutes(t *testing.T) {
 	layout := table.layout("ko", nil)
 
 	assert.Equal(t, "6-sol · xhigh (대체)", composeTableRowTexts(t, layout, "planner")[4])
-	assert.Equal(t, []string{"Codex catalog: 읽음 · 대체 16칸", "Codex 기본 세션: 6-astra · ultra"}, layout.footer)
+	assert.Equal(t, []string{"Codex catalog: 읽음 · 대체 17칸", "Codex 기본 세션: 6-astra · ultra"}, layout.footer)
 	assert.False(t, table.codexRefused())
 }
 
@@ -57,7 +57,7 @@ func TestComposeTable_CatalogD_RefusesTopRungPlacements(t *testing.T) {
 }
 
 // S6: the after-table of D's role-group custom marks every Claude cell and
-// exactly four Codex cells, comparing raw values of the same snapshot.
+// exactly five Codex cells, comparing raw values of the same snapshot.
 func TestComposeTable_ChangedCellsCarryStar(t *testing.T) {
 	before := composeTableFor(t, "D", "CAT-A")
 	after := composeTableFor(t, "K", "CAT-A")
@@ -70,7 +70,7 @@ func TestComposeTable_ChangedCellsCarryStar(t *testing.T) {
 			codexMarked = append(codexMarked, row[1])
 		}
 	}
-	assert.ElementsMatch(t, []string{"debugger", "deep-worker", "explorer", "annotator"}, codexMarked)
+	assert.ElementsMatch(t, []string{"debugger", "deep-worker", "explorer", "annotator", "reverse-engineer"}, codexMarked)
 	assert.Equal(t, []string{"설계·판단", "planner", "fable", "fable · max*", "6-astra · max"},
 		composeTableRowTexts(t, layout, "planner"))
 	assert.Equal(t, []string{"구현", "debugger", "sonnet*", "sonnet · medium*", "6-luna · max*"},
@@ -223,7 +223,7 @@ func TestComposeTable_RuntimeDefaultNotationMatchesGeneration(t *testing.T) {
 			layout := table.layout("ko", nil)
 
 			assert.Equal(t, tc.planner, composeTableRowTexts(t, layout, "planner")[4])
-			assert.Equal(t, []string{"Codex catalog: 읽음 · 대체 16칸", tc.supervisor}, layout.footer)
+			assert.Equal(t, []string{"Codex catalog: 읽음 · 대체 17칸", tc.supervisor}, layout.footer)
 			dir, codexErr := generateComposeTableOracle(t, cfg, snapshot)
 			require.NoError(t, codexErr)
 			for _, row := range table.rows {

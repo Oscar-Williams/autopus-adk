@@ -73,7 +73,7 @@ func TestComposeEffortForms_ClaudeGroupEffortIsWrittenAndGenerated(t *testing.T)
 		assert.Equal(t, "opus · xhigh*", preview[agent]["Claude Code (개별 설정: claude-custom)"], agent)
 	}
 	assert.Contains(t, out, "바뀌는 설정:\n"+
-		"  quality.presets.claude-custom 새로 씀 (16개 에이전트)\n"+
+		"  quality.presets.claude-custom 새로 씀 (17개 에이전트)\n"+
 		"  quality.presets.claude-custom.efforts 새로 씀 (4개 에이전트)\n"+
 		"  quality.providers.claude 없음 → claude-custom\n"+
 		"  claude-custom은 balanced 표준 배치를 받지 않음\n"+

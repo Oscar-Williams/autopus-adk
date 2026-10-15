@@ -70,9 +70,9 @@ func ompReviewerGolden(t *testing.T) any {
 	return golden
 }
 
-// S7 (O3): the default source writes the 16 canonical agents, records each in
+// S7 (O3): the default source writes the 17 canonical agents, records each in
 // the manifest, and regenerates them byte for byte.
-func TestOMPGenerate_WritesTheSixteenAutopusAgents(t *testing.T) {
+func TestOMPGenerate_WritesTheSeventeenAutopusAgents(t *testing.T) {
 	root := t.TempDir()
 	cfg := configForOMP()
 	require.NoError(t, config.Save(root, cfg))
@@ -80,7 +80,7 @@ func TestOMPGenerate_WritesTheSixteenAutopusAgents(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, config.CanonicalAgentNames(), ompAgentDirNames(t, root))
-	assert.Equal(t, 16, countPathsWithPrefix(manifestPaths(t, root), ".omp/agents/"))
+	assert.Equal(t, 17, countPathsWithPrefix(manifestPaths(t, root), ".omp/agents/"))
 
 	planner := readOMPAgentFrontmatter(t, root, "planner")
 	assert.Equal(t, "planner", planner["name"])
@@ -115,7 +115,7 @@ func TestPrepareOMPAgentMappings_DeclareThinkingOnlyForUnroutedAgents(t *testing
 	t.Parallel()
 	mappings, err := prepareOMPAgentMappings(map[string]bool{"planner": true, "reviewer": true})
 	require.NoError(t, err)
-	require.Len(t, mappings, 16)
+	require.Len(t, mappings, 17)
 	byAgent := map[string]string{}
 	for _, mapping := range mappings {
 		byAgent[strings.TrimSuffix(filepath.Base(mapping.TargetPath), ".md")] = string(mapping.Content)
@@ -149,9 +149,9 @@ func TestOMPGenerateAndUpdate_LeaveAnUnrecordedAgentFileUntouched(t *testing.T) 
 		require.NoError(t, readErr)
 		assert.Equal(t, user, data, operation)
 		paths := manifestPaths(t, root)
-		assert.Equal(t, 15, countPathsWithPrefix(paths, ".omp/agents/"), operation)
+		assert.Equal(t, 16, countPathsWithPrefix(paths, ".omp/agents/"), operation)
 		assert.NotContains(t, paths, ".omp/agents/reviewer.md", operation)
-		assert.Len(t, ompAgentDirNames(t, root), 16, operation)
+		assert.Len(t, ompAgentDirNames(t, root), 17, operation)
 	}
 }
 

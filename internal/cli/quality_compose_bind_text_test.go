@@ -29,13 +29,13 @@ func TestDescribeComposeBinding_S6_ListsTheFourChangeLines(t *testing.T) {
 	plan := planComposeBinding(cfg, start, composeBindS6(t, start))
 
 	assert.Equal(t, []string{
-		"quality.presets.custom 새로 씀 (16개 에이전트)",
+		"quality.presets.custom 새로 씀 (17개 에이전트)",
 		"quality.default balanced → custom",
 		"custom은 balanced 표준 배치를 받지 않음",
 		"quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)",
 	}, composeBindDescribe(t, dir, cfg, plan, "ko"))
 	assert.Equal(t, []string{
-		"quality.presets.custom written new (16 agents)",
+		"quality.presets.custom written new (17 agents)",
 		"quality.default balanced → custom",
 		"custom does not get the balanced standard placement",
 		"the quality block is rewritten: its 0 comment lines and layout are not kept (values are)",
@@ -49,7 +49,7 @@ func TestDescribeComposeBinding_UltraToCustom_ShowsSupervisorAndEffortLadder(t *
 	plan := planComposeBinding(cfg, start, composeBindEdited(t, start, map[string]string{"planner": "sonnet"}))
 
 	assert.Equal(t, []string{
-		"quality.presets.custom 새로 씀 (16개 에이전트)",
+		"quality.presets.custom 새로 씀 (17개 에이전트)",
 		"quality.default ultra → custom",
 		"Codex 기본 세션: 6-astra · ultra → 6-astra · xhigh",
 		"custom은 ultra effort 사다리를 받지 않음",
@@ -83,7 +83,7 @@ func TestDescribeComposeBinding_PresetKinds_NameTheirKeys(t *testing.T) {
 			},
 			edits: composeBindCurrent("balanced").Agents,
 			want: []string{
-				"quality.presets.balanced 최신 기본값으로 갱신 (16개 에이전트)",
+				"quality.presets.balanced 최신 기본값으로 갱신 (17개 에이전트)",
 				"quality.default ultra → balanced",
 				"quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)",
 			},
@@ -95,7 +95,7 @@ func TestDescribeComposeBinding_PresetKinds_NameTheirKeys(t *testing.T) {
 			},
 			edits: map[string]string{"planner": "opus"},
 			want: []string{
-				"quality.presets.custom 덮어씀 (16개 에이전트)",
+				"quality.presets.custom 덮어씀 (17개 에이전트)",
 				"quality.default balanced → custom",
 				"custom은 balanced 표준 배치를 받지 않음",
 				"quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)",
@@ -109,7 +109,7 @@ func TestDescribeComposeBinding_PresetKinds_NameTheirKeys(t *testing.T) {
 			},
 			edits: map[string]string{"planner": "opus"},
 			want: []string{
-				"quality.presets.custom 고쳐 씀 (16개 에이전트)",
+				"quality.presets.custom 고쳐 씀 (17개 에이전트)",
 				"quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)",
 			},
 		},

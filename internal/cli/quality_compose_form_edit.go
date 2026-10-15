@@ -30,7 +30,7 @@ func (f *composeFormRun) groups(working map[string]string, labeler composeLabele
 	return edited, nil
 }
 
-// agents lists the 16 canonical agents in Role Group Contract order behind
+// agents lists the 17 canonical agents in Role Group Contract order behind
 // 완료, asks the picked agent's value, on a tool tab its effort, and lists
 // again with every label refreshed, since one agent's tier can move the
 // binding and with it the other agents' cells (REQ-MUX2-08). 완료 ends the

@@ -24,13 +24,13 @@ func TestInspectOMPAgentSurface_ReportsFilesAndDisabledAgentsOwnership(t *testin
 	assert.Equal(t, config.OMPAgentSourceAutopus, before.Source)
 	assert.Empty(t, before.RecordedAgents)
 	assert.Equal(t, []string{"reviewer"}, before.UserAgentFiles)
-	assert.Len(t, before.MissingAgents, 15)
+	assert.Len(t, before.MissingAgents, 16)
 	assert.True(t, before.DisabledAgentsUserOwned, "a value the user chose is theirs before any claim")
 
 	project.mustRun("generate", configForOMP())
 	after, err := InspectOMPAgentSurface(project.root, configForOMP())
 	require.NoError(t, err)
-	assert.Len(t, after.RecordedAgents, 15)
+	assert.Len(t, after.RecordedAgents, 16)
 	assert.Equal(t, []string{"reviewer"}, after.UserAgentFiles)
 	assert.Empty(t, after.MissingAgents)
 	assert.True(t, after.DisabledAgentsUserOwned)
@@ -49,7 +49,7 @@ func TestInspectOMPAgentSurface_ReportsAnADKClaim(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, report.DisabledAgentsClaimed)
 	assert.False(t, report.DisabledAgentsUserOwned)
-	assert.Len(t, report.RecordedAgents, 16)
+	assert.Len(t, report.RecordedAgents, 17)
 }
 
 // Code review LOW: a project config the managed parser refuses is not the

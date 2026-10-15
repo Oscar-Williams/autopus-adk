@@ -18,7 +18,7 @@ func TestGenerateAgents(t *testing.T) {
 
 	files, err := a.generateAgents(cfg)
 	require.NoError(t, err)
-	assert.Len(t, files, 16, "should generate 16 TOML agent files")
+	assert.Len(t, files, 17, "should generate 17 TOML agent files")
 
 	for _, f := range files {
 		fullPath := filepath.Join(dir, f.TargetPath)
@@ -123,7 +123,7 @@ func TestPrepareAgentFiles_NoDiskWrite(t *testing.T) {
 
 	files, err := a.prepareAgentFiles(cfg)
 	require.NoError(t, err)
-	assert.Len(t, files, 16)
+	assert.Len(t, files, 17)
 
 	agentsDir := filepath.Join(dir, ".codex", "agents")
 	_, err = os.Stat(agentsDir)

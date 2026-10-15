@@ -49,7 +49,7 @@ func TestOMPAcceptance_S6_RuleAndAgentCounts(t *testing.T) {
 
 	assert.Equal(t, 14, countPathsWithPrefix(paths, ompRuleDir+"/"+ompRuleFilePrefix),
 		"manifest must record 14 rules as .omp/rules/autopus-*.md")
-	assert.Equal(t, 16, countPathsWithPrefix(paths, ".omp/agents/"),
+	assert.Equal(t, 17, countPathsWithPrefix(paths, ".omp/agents/"),
 		"the default source records one generated definition per canonical agent")
 	assert.Equal(t, len(workflowSpecs), countPathsWithPrefix(paths, ".omp/commands/"))
 	assert.Greater(t, countPathsWithPrefix(paths, ".omp/skills/"), len(workflowSpecs))
@@ -166,7 +166,7 @@ func TestOMPAcceptance_S4_OwnershipBoundaryAndManifestScope(t *testing.T) {
 
 	paths := manifestPaths(t, dir)
 	assert.Equal(t, 14, countPathsWithPrefix(paths, ompRuleDir+"/"+ompRuleFilePrefix))
-	assert.Equal(t, 16, countPathsWithPrefix(paths, ".omp/agents/"))
+	assert.Equal(t, 17, countPathsWithPrefix(paths, ".omp/agents/"))
 	assert.Equal(t, len(workflowSpecs), countPathsWithPrefix(paths, ".omp/commands/"))
 	assert.Greater(t, countPathsWithPrefix(paths, ".omp/skills/"), len(workflowSpecs))
 	assert.Contains(t, paths, configFile)

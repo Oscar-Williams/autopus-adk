@@ -21,6 +21,19 @@ var mcpQueryNameRe = regexp.MustCompile(`mcp__context7__query-docs`)
 // mcpGenericRe matches any remaining mcp__ references not caught by specific patterns.
 var mcpGenericRe = regexp.MustCompile(`mcp__[\w-]+(?:__[\w-]+)*`)
 
+// isReaMCPReference reports whether an mcp__ reference addresses the REA MCP
+// server (SPEC-REA-001): its first `__`-separated segment after the prefix is
+// exactly rea. `_` is a word character, so a prefix test alone would also
+// match mcp__reader.
+func isReaMCPReference(reference string) bool {
+	rest, ok := strings.CutPrefix(reference, "mcp__")
+	if !ok {
+		return false
+	}
+	server, _, _ := strings.Cut(rest, "__")
+	return server == "rea"
+}
+
 // replaceMCPCalls converts mcp__context7__ calls into platform-neutral guidance
 // that preserves the intended Context7-first, WebSearch-fallback behavior.
 func replaceMCPCalls(line string, _ string) string {
@@ -46,8 +59,14 @@ func replaceMCPCalls(line string, _ string) string {
 	line = mcpResolveNameRe.ReplaceAllString(line, "Context7 MCP resolve-library-id tool (fallback: web search)")
 	line = mcpQueryNameRe.ReplaceAllString(line, "Context7 MCP query-docs tool (fallback: web search)")
 
-	// Replace any remaining generic mcp__ references
-	line = mcpGenericRe.ReplaceAllString(line, "Context7 MCP with WebSearch fallback")
+	// Replace any remaining generic mcp__ references. REA references name tools
+	// the generated agents really have, so they stay verbatim.
+	line = mcpGenericRe.ReplaceAllStringFunc(line, func(reference string) string {
+		if isReaMCPReference(reference) {
+			return reference
+		}
+		return "Context7 MCP with WebSearch fallback"
+	})
 
 	return line
 }

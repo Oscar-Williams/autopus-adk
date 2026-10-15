@@ -66,15 +66,17 @@ work needs:
   planning, validation, or review to it.
 
 The role a worker plays belongs in its assignment text, not in an agent name.
-{{else}}OMP serves this project's 16 Autopus agents from `.omp/agents/`:
+{{else}}OMP serves this project's 17 Autopus agents from `.omp/agents/`:
 `annotator`, `architect`, `debugger`, `deep-worker`, `devops`, `executor`,
-`explorer`, `frontend-specialist`, `perf-engineer`, `planner`, `reviewer`,
-`security-auditor`, `spec-writer`, `tester`, `ux-validator`, and `validator`.
-Select the agent of the role a worker plays:
+`explorer`, `frontend-specialist`, `perf-engineer`, `planner`,
+`reverse-engineer`, `reviewer`, `security-auditor`, `spec-writer`, `tester`,
+`ux-validator`, and `validator`. Select the agent of the role a worker plays:
 
 - `planner`, `architect`, and `spec-writer` plan and design; `executor`,
   `debugger`, `tester`, and the other implementation roles write code.
 - `explorer` is read-only exploration only. Never give it work that writes.
+- `reverse-engineer` only analyses an existing app or binary into a behaviour
+  specification; never give it implementation work.
 - `reviewer`, `validator`, and `security-auditor` review and verify; keep them
   off implementation.
 - Omitting the agent runs the bundled `task` agent, the default for work no
