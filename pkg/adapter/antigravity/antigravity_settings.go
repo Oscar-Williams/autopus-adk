@@ -28,6 +28,9 @@ func (a *Adapter) generateSettings(cfg *config.HarnessConfig) ([]adapter.FileMap
 			newSettings = mergeSettingsMaps(existing, newSettings)
 		}
 	}
+	if err := a.applyAntigravityReaMCP(newSettings, antigravityReaAction(cfg)); err != nil {
+		return nil, err
+	}
 
 	out, err := json.MarshalIndent(newSettings, "", "  ")
 	if err != nil {
