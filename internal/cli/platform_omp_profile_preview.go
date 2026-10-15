@@ -107,7 +107,7 @@ func buildOMPProfileAgentPreview(
 			continue
 		}
 		applyOMPProfileResolutionToRow(&row, resolution)
-		if row.Availability == ompProfileAvailabilityUnavailable {
+		if row.Availability == ompProfileAvailabilityUnavailable && !applyOMPReaFallbackToRow(effective.profile, &row, resolution) {
 			blockers = append(blockers, ompProfileBlocker(native, row.Reason))
 		}
 		rows = append(rows, row)
@@ -183,7 +183,7 @@ func newOMPProfileApplyPreviewPayload(
 		},
 		Agents:   resolution.agents,
 		Blockers: append([]string(nil), resolution.blockers...),
-		Warnings: ompProfileRouteWarnings(effective.profile),
+		Warnings: append(ompProfileRouteWarnings(effective.profile), ompReaFallbackWarnings(resolution.agents, resolution.blockers)...),
 	}
 }
 

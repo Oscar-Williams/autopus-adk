@@ -61,6 +61,7 @@ func (a *Adapter) prepareModelIntegration(
 	if err != nil {
 		return nil, err
 	}
+	reaFallback := dropOMPReaAnalysisFallbackRoutes(profile, probe.Catalog, routes)
 	DegradeUnservedDerivedOMPRoutes(profile, probe.Catalog, routes)
 	routing := CompileOMPModelRouting(OMPModelRoutingInput{
 		Catalog: probe.Catalog, CatalogReason: probe.Reason, Routes: routes, AgentSource: profile.AgentSource,
@@ -69,7 +70,8 @@ func (a *Adapter) prepareModelIntegration(
 	if err != nil {
 		return nil, err
 	}
-	a.reportDegradedModelRoutes(ompDegradedRoutesNotice(probe.Catalog, routes, routing))
+	a.reportDegradedModelRoutes(joinOMPNotices(ompReaFallbackNotice(reaFallback),
+		ompDegradedRoutesNotice(probe.Catalog, routes, routing)))
 	projection, err := CompileOMPModelProjection(OMPModelProjectionInput{Agents: projected, AgentSource: profile.AgentSource})
 	if err != nil {
 		return nil, err

@@ -29,6 +29,9 @@ func (f *composeFormRun) ompAutopusStart(runner omp.OMPModelCatalogRunner) (*omp
 		}
 		tab.profile = policy.Profile
 		for _, row := range pre.Agents {
+			if row.Status == ompProfileStatusSessionModel {
+				continue // the analysis-rung fallback starts on the session model
+			}
 			if row.EffectiveSelector == "" {
 				// The plan reports a degraded or missing route as a blocker, so
 				// this never happens; if it did, converting would drop the
