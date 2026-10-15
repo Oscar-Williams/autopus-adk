@@ -1,6 +1,6 @@
 # SPEC-REA-001: REA 역공학 MCP 통합 — 프로젝트 범위 등록, reverse-engineer 에이전트, `/auto reverse`
 
-**Status**: draft
+**Status**: approved
 **Created**: 2026-10-15
 **Revised**: 2026-10-15 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
