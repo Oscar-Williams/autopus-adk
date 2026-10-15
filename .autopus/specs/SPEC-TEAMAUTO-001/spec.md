@@ -1,6 +1,6 @@
 # SPEC-TEAMAUTO-001: /auto go가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행
 
-**Status**: draft
+**Status**: approved
 **Created**: 2026-10-15
 **Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`)
 **Domain**: TEAMAUTO
