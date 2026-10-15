@@ -118,14 +118,17 @@ func newInitCmd() *cobra.Command {
 				cfg.Language.Comments = result.CommentsLang
 				cfg.Language.Commits = result.CommitsLang
 				cfg.Language.AIResponses = result.AILang
+				// Before the compose step: its review tab edits these keys,
+				// and nothing after it may overwrite them (SPEC-REVMODEL-001
+				// REQ-RVM-13).
+				cfg.Spec.ReviewGate.Enabled = result.ReviewGate
+				if result.ReviewGate {
+					cfg.Spec.ReviewGate.Providers = providerNames
+				}
 				var cancelled bool
 				if snapshot, cancelled = runInitComposeStepCancellable(cmd, dir, cfg, quality, result.Quality); cancelled {
 					fmt.Fprintln(out, "  init cancelled.")
 					return nil
-				}
-				cfg.Spec.ReviewGate.Enabled = result.ReviewGate
-				if result.ReviewGate {
-					cfg.Spec.ReviewGate.Providers = providerNames
 				}
 				if result.Methodology == "tdd" {
 					cfg.Methodology.Mode = "tdd"
