@@ -22,6 +22,12 @@
 - A3(PASS): v0.50.125는 `workflow.auto_team`을 거부하고(update 종료 1), key 없는 파일은 그대로 읽고, `--topology`를 모른다(`unknown flag`).
 - Y(review round 1): yaml.v3 v3.0.1 `*bool`은 `yes`·`"off"`·`y`·`no`를 bool로, `null`·`~`·빈 값을 nil로 오류 없이 받고 `"false"`·`1`만 거부한다. R: root 오류는 `Error: <msg>\n`, 종료 1이다.
 
+## 생성 surface 영향 (T9, 2026-10-15)
+
+- T7·T8 뒤 `go test ./pkg/adapter/claude/... ./pkg/content/... -count=1`이 바꾸지 않은 test 그대로 통과했다. 깨진 Claude golden은 없고 갱신한 golden도 없다(목록: 없음).
+- `make generate-templates`는 `templates/**`를 바꾸지 않았다. `agent-teams`는 codex·gemini mirror에서 빠지고 `templates/claude/commands/auto-workflows.md.tmpl`은 생성 대상이 아니기 때문이다.
+- 기준 생성 결과의 SHA-256(auto-go `fd9c9ec2…`, agent-teams `124a1fdf…`, Step 0·Route B·Route C·Workflow 절)은 `pkg/adapter/claude/claude_auto_team_surface_test.go`가 oracle로 고정한다. 새 절을 뺀 branch 생성 결과가 기준과 bytes가 같다.
+
 ## 설계 결정
 
 - D1 판단 위치: `pkg/taskroute`의 새 순수 함수 + `auto workflow triage --topology`. 기존 `Decide`의 parallel을 그대로 쓰지 않는다. 그 gate는 planned route(파일 수·변경 줄 수로도 켜짐)에 묶여 있어 "File count … never decide this"(Route A 문구)와 어긋난다. prose만으로 두면 조합을 test할 수 없다.
