@@ -32,6 +32,9 @@ type Adapter struct {
 	codexFallbackWriter io.Writer
 	codexFallbackSeen   map[string]struct{}
 	pluginBaseVersion   *string
+	// reaFallbacks holds the REA analysis-rung fallbacks the last surface
+	// preparation took; applyPreparedFiles reports them once the files land.
+	reaFallbacks []adapter.ReaFallback
 }
 
 // Option customizes a Codex adapter.
@@ -115,6 +118,7 @@ func (a *Adapter) applyPreparedFiles(
 		return nil, fmt.Errorf("매니페스트 로드 실패: %w", err)
 	}
 	newFiles, err := a.prepareFilesWithManifest(cfg, oldManifest)
+	reaFallbacks := a.takeReaFallbacks()
 	if err != nil {
 		return nil, err
 	}
@@ -125,6 +129,7 @@ func (a *Adapter) applyPreparedFiles(
 	if _, err := adapter.ApplyTransaction(a.root, adapterName, plan); err != nil {
 		return nil, err
 	}
+	adapter.ReportReaFallbacks(ctx, reaFallbacks...)
 	return files, nil
 }
 

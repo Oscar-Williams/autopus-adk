@@ -8,6 +8,7 @@ type composeTableLabels struct {
 	tierDefault, tierInvalid                           string
 	platformDefault                                    string
 	substituted, noCatalog, unverified, refused        string
+	sessionModel                                       string
 	codexDefault, routeError                           string
 	catalogRead, catalogUnread, supervisor, codexFails string
 	noAgentModels, changedLegend                       string
@@ -19,6 +20,7 @@ var composeTableLabelsKo = composeTableLabels{
 	tierDefault: "기본값(%s)", tierInvalid: "잘못된 값→%s",
 	platformDefault: "플랫폼 기본값",
 	substituted:     "(대체)", noCatalog: "(catalog 없음)", unverified: "(미확인)", refused: "생성 거부",
+	sessionModel: "세션 모델",
 	codexDefault: "Codex 기본값", routeError: "route 오류",
 	catalogRead: "Codex catalog: 읽음 · 대체 %d칸", catalogUnread: "Codex catalog: 읽지 못함",
 	supervisor: "Codex 기본 세션: %s", codexFails: "Codex 생성이 실패합니다",
@@ -31,6 +33,7 @@ var composeTableLabelsEn = composeTableLabels{
 	tierDefault: "default(%s)", tierInvalid: "invalid→%s",
 	platformDefault: "platform default",
 	substituted:     "(substitute)", noCatalog: "(no catalog)", unverified: "(unverified)", refused: "generation refused",
+	sessionModel: "session model",
 	codexDefault: "Codex default", routeError: "route error",
 	catalogRead: "Codex catalog: read · %d substituted", catalogUnread: "Codex catalog: unreadable",
 	supervisor: "Codex default session: %s", codexFails: "Codex generation will fail",

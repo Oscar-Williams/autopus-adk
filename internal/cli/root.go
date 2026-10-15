@@ -46,7 +46,7 @@ func NewRootCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			ctx := withGlobalFlags(cmd.Context(), flags)
+			ctx := withReaFallbackNotice(withGlobalFlags(cmd.Context(), flags), cmd)
 			cmd.Root().SetContext(ctx)
 			cmd.SetContext(ctx)
 			return nil

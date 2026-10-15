@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/adapter/codex"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -144,11 +145,30 @@ func (t composeTable) codexRefused() bool {
 func (t composeTable) codexFallbacks() int {
 	count := 0
 	for _, row := range t.rows {
-		if !row.codex.refused && row.codex.resolution.Fallback {
+		if !row.codex.refused && row.codex.resolution.Fallback &&
+			row.codex.resolution.Reason != config.CodexResolutionSessionModel {
 			count++
 		}
 	}
 	return count
+}
+
+// codexReaFallbackLines is the Form Text line of every Codex cell left on the
+// session model by the analysis-rung fallback (SPEC-REA-001), in row order.
+// The cell itself reads as the session model and counts as no substitute.
+func (t composeTable) codexReaFallbackLines(lang string) []string {
+	var lines []string
+	for _, row := range t.rows {
+		resolution := row.codex.resolution
+		if row.codex.refused || resolution.Reason != config.CodexResolutionSessionModel {
+			continue
+		}
+		lines = append(lines, reaFallbackLine(adapter.ReaFallback{
+			Catalog: "Codex", Agent: row.agent,
+			Requested: resolution.Requested.Model + "/" + resolution.Requested.Effort,
+		}, lang))
+	}
+	return lines
 }
 
 // usesAgentModels reports whether any installed platform binds a model per

@@ -195,9 +195,6 @@ func TestPrepareAgentFiles_NonPlacementProfilesKeepCatalogFallback(t *testing.T)
 		a.codexFallbackWriter = nil
 		cfg := config.DefaultFullConfig("custom-tier-fallback")
 		cfg.Quality.Presets["balanced"] = withCodexAgentTier(cfg.Quality.Presets["balanced"], "executor", "opus")
-		// reverse-engineer's analysis rung pins gpt-6.1-sol, which this catalog
-		// lacks, so the fixture moves it off the placement as well.
-		cfg.Quality.Presets["balanced"] = withCodexAgentTier(cfg.Quality.Presets["balanced"], "reverse-engineer", "sonnet")
 
 		files, err := a.prepareAgentFiles(cfg)
 		require.NoError(t, err)

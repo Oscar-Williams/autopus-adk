@@ -106,7 +106,9 @@ func TestQualityComposeForms_SubstituteIsLabelledPreviewedAndGenerated(t *testin
 	assert.Contains(t, out, "3. 6-sol · xhigh (대체)  [opus]\n")
 	preview := composeRenderedTable(t, out, composeFormPreviewMarker)
 	assert.Equal(t, "6-sol · xhigh (대체)*", preview["planner"]["Codex (개별 설정: codex-custom)"])
-	assert.Contains(t, out, "Codex catalog: 읽음 · 대체 4칸\n")
+	// The four design agents and reverse-engineer, which the custom binding
+	// takes off its placement, run on the substitute.
+	assert.Contains(t, out, "Codex catalog: 읽음 · 대체 5칸\n")
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6-sol", Effort: "xhigh"}, readComposeCodexProfile(t, dir, "planner"))
 }
 

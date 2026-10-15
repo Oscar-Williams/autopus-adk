@@ -15,4 +15,6 @@
 검증·리뷰  ux-validator         sonnet  sonnet-5-5 · high  6-luna · max
 탐색·보조  explorer             sonnet  sonnet-5-5 · high  6-luna · max
 탐색·보조  annotator            sonnet  sonnet-5-5 · high  6-luna · max
+탐색·보조  reverse-engineer     opus    opus-5-5 · high    세션 모델
 Codex catalog: 읽음 · 대체 0칸
+reverse-engineer: gpt-6.1-sol/xhigh이 Codex catalog에 없어 세션 모델을 씁니다
