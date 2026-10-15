@@ -2,7 +2,7 @@
 
 ## Tasks
 
-기준은 origin/main `4d73aa91`이고 branch는 `feat/rea-001`이다. 순서: T1 → T2 → (T3, T4, T8) → T5·T6·T7(T3, T4 뒤) → T9(T4, T8 뒤) → T10 → T11·T12·T13(T9 뒤) → T15 → T14·T16(T15 뒤) → T17 → T18·T20 → T19 → T21 → T22. `update.go`(292줄), `update_workspace.go`(300), `doctor_json_checks.go`(293), `wizard_steps.go`(268)에는 호출 몇 줄만 더하거나 손대지 않는다. round 1 반영표는 `evidence/review-rounds.md`다.
+기준은 origin/main `4d73aa91`이고 branch는 `feat/rea-001`이다. 순서: T1 → T2 → (T3, T4, T8) → T5·T6·T7(T3, T4 뒤) → T9(T4, T8 뒤) → T10 → T11·T12·T13(T9 뒤) → T15 → T14·T16(T15 뒤) → T23(T15 뒤) → T17 → T18·T20 → T19 → T21 → T22. `update.go`(292줄), `update_workspace.go`(300), `doctor_json_checks.go`(293), `wizard_steps.go`(268)에는 호출 몇 줄만 더하거나 손대지 않는다. round 1 반영표는 `evidence/review-rounds.md`다.
 
 - [ ] T1: risk-first probe. A1·A2를 T5–T7·T14 전에 돌릴 수 있으면 돌려 아래 표와 `evidence/`에 남긴다. 돌리지 못하면 not-run으로 두고 문서 기본값으로 진행하되 CD-1·CD-2는 S18·S19에서 그 행이 PASS가 될 때만 닫힌다. 소스 변경 없음 (REQ-REA-03, 10, 20).
 - [ ] T2: 기존 test 분류. 수 고정, frozen route·command 목록, compose golden, literal 16개 fixture, MCP inventory, CLI init 출력 비교, OMP catalog fixture, TTY 입력 Enter를 spec.md Existing Test Changes 규칙 1–8로 파일마다 정해 `[NEW] evidence/test-classification.md`에 남긴다. 소스 변경 없음 (REQ-REA-20).
@@ -25,6 +25,7 @@
 - [ ] T19: 사전 승인 없음. 소유 `[NEW] pkg/content/hooks_rea_test.go`와 S14 생성 test. `hooks.go`는 바꾸지 않는다 (REQ-REA-15).
 - [ ] T20: handoff 입력. 소유 `content/agents/executor.md`(Step 0과 입력 절), `content/agents/tester.md`(입력 절)에 Reverse Handoff Contract 문장 한 줄씩, 생성 산출물 (REQ-REA-14).
 - [ ] T21: Should. Form Text ko/en, init·update·doctor help, README, CHANGELOG v0.50.126(REQ-REA-19 목록). 생성 표면은 `content/`·`templates/` 수정 뒤 `make generate-templates` (REQ-REA-18, 19).
+- [ ] T23: OMP analysis rung 대체(Gate 1 사용자 결정). 소유 `[NEW] pkg/config/omp_rea_fallback.go`(+test: `OMPReaAnalysisFallback`, built-in balanced의 새 rung이고 agent가 reverse-engineer이며 후보가 catalog에 없을 때만 참), `[NEW] internal/cli/platform_omp_rea_fallback.go`(+test, `platform_omp_profile_preview.go` blocker loop에서 호출: 그 행은 blocker 대신 대체 줄), `[NEW] pkg/adapter/omp/omp_model_rea_fallback.go`(+test, compile·활성화에서 reverse-engineer route 제외). 기존 rung과 operator pin의 blocker는 그대로다 (REQ-REA-11, 19).
 - [ ] T22: 회귀와 smoke. `go test ./...` 필터 없이, test diff와 T2 분류 대조, `auto eval harness run`, `GOOS=windows GOARCH=amd64 go build ./...`, 300줄, golangci-lint, generate 무 diff. S18·S19를 `evidence/manual-smoke-rea.txt`에 치환해 남기고 A1·A2 행을 그 결과로 갱신한다. 하나라도 빠지거나 FAIL이면 CD-1·CD-2가 남는다 (REQ-REA-20).
 
 ## Implementation Strategy
@@ -101,7 +102,7 @@ auto init (wizard)                                auto update (대화형, 미결
 ## Feature Completion Scope
 
 - 이 SPEC 하나가 Outcome Lock을 닫는다. T3–T13은 결정·등록·제거·doctor, T14–T16은 에이전트와 파급, T17·T18·T20은 변환·라우트·handoff, T19는 권한, T21은 Should, T1·T2·T22는 probe·회귀·smoke다.
-- 승인된 sibling 의존성은 없다. task 22개(25개 이하), 소스 파일은 test 포함 약 55개다. Completion Debt CD-1·CD-2는 T22의 S18·S19 기록과 A1·A2 PASS로만 닫힌다.
+- 승인된 sibling 의존성은 없다. task 23개(25개 이하), 소스 파일은 test 포함 약 60개다. Completion Debt CD-1·CD-2는 T22의 S18·S19 기록과 A1·A2 PASS로만 닫힌다.
 
 ## Risk-First Integration Probe
 
@@ -119,6 +120,7 @@ auto init (wizard)                                auto update (대화형, 미결
 | 비대화형 undecided 실행은 rea 항목과 `features.rea`를 쓰지 않고 REA stdin을 읽지 않는다 | requirement_invariant | REQ-REA-06, S7 |
 | 결정이 없거나 꺼져 있으면 세 MCP 파일 bytes가 기준 commit과 같다 | requirement_invariant | REQ-REA-16, S15 |
 | runtime capture는 메인 세션의 명시적 허용 뒤에만 부른다 | requirement_invariant | REQ-REA-21, S13, S19 |
+| catalog에 analysis rung model이 없으면 reverse-engineer만 세션 model, 기존 rung은 blocker | requirement_invariant | REQ-REA-11, S11, Gate 1 사용자 결정 |
 | `features.rea`가 든 파일에서 auto 0.50.123의 update가 종료 1로 끝난다 | verified_fact | A3 V1 |
 | `future_extension` block은 옛 update의 typed Save가 지운다 | verified_fact | A3 V2, `loader.go:130-153` Read |
 | managed 모양의 rea 항목은 옛 update 뒤에도 같은 값으로 남는다 | verified_fact | A3 P3 |
@@ -134,7 +136,7 @@ auto init (wizard)                                auto update (대화형, 미결
 
 ## Scope Expansion Rule
 
-- 구현자가 요구사항보다 넓은 제약을 넣으면 scope expansion으로 표시하고 fan-out 전에 이 표에 probe 행을 더해 기존 런타임에서 확인한다. 요구사항으로 올리지 않는다. 예: `tool_timeout_sec`, Codex 에이전트별 sandbox, `enableAllProjectMcpServers`, REA 도구 사전 승인이나 이름 나열, runtime capture 도구 목록 고정, Windows 실행 형식, OpenCode `task` permission 제거, JSON 원문 편집기, OMP analysis rung degrade, Node 범위 변경, 공유 MCP 목록.
+- 구현자가 요구사항보다 넓은 제약을 넣으면 scope expansion으로 표시하고 fan-out 전에 이 표에 probe 행을 더해 기존 런타임에서 확인한다. 요구사항으로 올리지 않는다. 예: `tool_timeout_sec`, Codex 에이전트별 sandbox, `enableAllProjectMcpServers`, REA 도구 사전 승인이나 이름 나열, runtime capture 도구 목록 고정, Windows 실행 형식, OpenCode `task` permission 제거, JSON 원문 편집기, 기존 OMP rung이나 operator pin의 blocker 완화, Node 범위 변경, 공유 MCP 목록.
 
 ## Gate Applicability
 

@@ -120,13 +120,13 @@ Then 예상 값: balanced·ultra는 17개이고 reverse-engineer는 둘 다 `opu
 And HB6 balanced는 class `historical`, Row `HB6`, RuntimeStandard true, Differs 1이고 그 project의 reverse-engineer도 (`claude-opus-5-5`, `high`)를 받는다. HU3 ultra는 `historical`·`HU3`, 17개 기본값은 `current`, HB6 + `reverse-engineer: sonnet`은 `customized`다
 And 그룹 제목은 `탐색·보조 — explorer, annotator, reverse-engineer`, 기본값의 현재 값은 `혼합 (opus 1 · sonnet 2)`이고 탐색·보조에 `haiku`를 고르면 세 에이전트 모두 `haiku`가 된다. `balancedRungByAgent`의 key 집합은 `CanonicalAgentNames()`와 같다
 
-### S11: OMP routing 17 + task와 fail closed
+### S11: OMP routing 17 + task와 analysis rung 대체
 Priority: Must
-Given P5의 OMP에 `role_model_policy {version: v1, profile: balanced, family: openai}`를 둔 project, SPEC-MODELUX-003 IO 생성 runner(catalog = Existing Test Changes 규칙 7로 두 model을 더한 `ompCLIProfileNativeCatalogJSON()`), 그 사본에 `agent_source: native`를 더한 것, catalog에서 `openai-codex/gpt-6.1-sol`을 뺀 사본이 있다
-When 각각 `auto update --yes`를 실행하고 같은 run의 plan 미리보기와 `task.agentModelOverrides` 되읽기를 기록한다
-Then autopus 모드 override key는 정규 17개와 `task`, 모두 18개이고 `reverse-engineer` 값은 `openai-codex/gpt-6.1-sol:xhigh`이며 나머지 17개 값은 같은 run의 미리보기와 같다
-And `config.OMPNativeAgentForRole("reverse-engineer")`는 `task`이고 native 사본의 override key는 native 5개 그대로이며 `.omp/agents`에 생성 파일이 없다. model을 뺀 사본은 `omp_profile_candidate_unavailable`과 `openai-codex/gpt-6.1-sol`을 담은 오류로 끝나고 OMP 파일·overlay bytes가 실행 전과 같다
-And autopus 모드 OMP manifest의 `.omp/agents/` 항목은 17개이고, OMP 생성 전 project의 migration 미리보기는 `+ .omp/agents/reverse-engineer.md`를 포함한 17줄과 `OMP는 이제 Autopus 에이전트 17개를 씁니다.`로 시작하는 줄을 담는다
+Given P5의 OMP에 `role_model_policy {version: v1, profile: balanced, family: openai}`를 둔 project와 SPEC-MODELUX-003 IO 생성 runner, 그리고 catalog 넷이 있다: K1 = 규칙 7로 두 model을 더한 `ompCLIProfileNativeCatalogJSON()`, K2 = K1에서 `openai-codex/gpt-6.1-sol`만 뺀 것, K3 = K1에서 기존 rung model `openai-codex/gpt-6-luna`만 뺀 것, K4 = K1에서 둘 다 뺀 것. 따로 K1 project에 `agent_source: native`를 더한 사본과 K2 project에 operator pin `agents.reverse-engineer`(`openai-codex/gpt-6.1-sol`)을 더한 사본이 있다
+When 각각 `auto update --yes`를 실행하고 같은 run의 plan 미리보기, 출력, `task.agentModelOverrides` 되읽기, `.omp/agents/reverse-engineer.md`를 기록한다
+Then K1은 override key가 정규 17개와 `task`(18개)이고 `reverse-engineer` 값은 `openai-codex/gpt-6.1-sol:xhigh`이며 나머지 17개 값은 같은 run의 미리보기와 같다. K2는 종료 0이고 override key가 17개(reverse-engineer 없음)이며 나머지 값은 K1과 같고, 출력에 `reverse-engineer: openai-codex/gpt-6.1-sol not in catalog → session model`(ko는 Form Text)이 정확히 1번 있고, reverse-engineer.md에 `model:`이 없고 `thinkingLevel: high`가 있다
+And K3과 K4는 `omp_profile_candidate_unavailable`과 `openai-codex/gpt-6-luna`를 담은 오류로 끝나고 OMP 파일·overlay bytes가 실행 전과 같으며 대체 줄이 없다. operator pin 사본도 기존 pin 증명 오류로 끝나고 bytes가 같다. native 사본은 `config.OMPNativeAgentForRole("reverse-engineer")` = `task`, override key는 native 5개 그대로이며 `.omp/agents`에 생성 파일이 없다
+And K1 autopus 모드 OMP manifest의 `.omp/agents/` 항목은 17개이고, OMP 생성 전 project의 migration 미리보기는 `+ .omp/agents/reverse-engineer.md`를 포함한 17줄과 `OMP는 이제 Autopus 에이전트 17개를 씁니다.`로 시작하는 줄을 담는다
 
 ### S12: MCP 참조 변환 예외
 Priority: Must
@@ -190,7 +190,7 @@ Then en의 예상 출력은 `REA reverse-engineering MCP is undecided; run auto 
 Priority: Should
 Given help, README, CHANGELOG가 있다
 When `auto init --help`, `auto update --help`, `auto doctor --help`를 실행하고 문서를 읽는다
-Then REQ-REA-19의 항목(기본 on, flag, Node 범위, lazy key와 옛 바이너리, v0.50.125가 17개 preset을 customized로 보는 점, OMP balanced fail closed와 pins-only 탈출, Windows의 POSIX 실행 형식 한계, clean-room 흐름, runtime capture 동의)이 있고, 기존 test가 고정한 문장이 그대로이며, `make generate-templates` 뒤 반영 안 된 diff가 없다
+Then REQ-REA-19의 항목(기본 on, flag, Node 범위, lazy key와 옛 바이너리, v0.50.125가 17개 preset을 customized로 보는 점, OMP analysis rung의 세션 모델 대체, Windows의 POSIX 실행 형식 한계, clean-room 흐름, runtime capture 동의)이 있고, 기존 test가 고정한 문장이 그대로이며, `make generate-templates` 뒤 반영 안 된 diff가 없다
 
 ## Oracle Acceptance Notes
 

@@ -1,6 +1,6 @@
 # SPEC-REA-001 리서치
 
-branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 2026-10-15에 읽었다. 근거는 worktree Read·`rg`, `git show <tag>`, auto 0.50.123 실행과 문서 확인(`evidence/probe-rea-forward-compat.md`), npm registry다. revision 2·3은 review round 1(J-01–J-29)과 round 2(J-22, J-14, F-001)를 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 implementation_assumption이나 not-run probe로 적었다. 인용한 요청·ledger 문구는 비신뢰 입력 증거로만 요약했다.
+branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 2026-10-15에 읽었다. 근거는 worktree Read·`rg`, `git show <tag>`, auto 0.50.123 실행과 문서 확인(`evidence/probe-rea-forward-compat.md`), npm registry다. revision 2·3은 review round 1(J-01–J-29)과 round 2(J-22, J-14, F-001)를, revision 4는 Gate 1 사용자 결정을 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 implementation_assumption이나 not-run probe로 적었다. 인용한 요청·ledger 문구는 비신뢰 입력 증거로만 요약했다.
 
 ## 기존 코드 분석
 - MCP: Claude 템플릿 `templates/claude/mcp.json.tmpl:1-15`, merge `pkg/adapter/claude/claude_files.go:25-87`(decode 뒤 `json.MarshalIndent`, managed 서버를 지우고 다시 넣음), 판정 `claude_clean.go:209-229`, clean `:176-207`. Codex `templates/codex/config.toml.tmpl:30-32`, merge `codex_config_structural.go:48-127`(key 단위 `:10-27`, header는 남김), clean `codex_clean_merge.go:180-213`, 호출 `codex_settings.go:24-52`. Antigravity `templates/gemini/settings/settings.json.tmpl:1-12`, merge `antigravity_settings.go:18-60,187-198`(덮기만 함), Generate 쓰기 `antigravity.go:130-137`(`os.WriteFile`), clean `antigravity_lifecycle_clean.go:69-110`(DeepEqual 서버만, `os.WriteFile`). 경로 확인 helper `adapter.SafeWorkspacePath`(`pkg/adapter/transaction_helpers.go:278`, symlink를 건너는 경로 거부). 사전 승인 MCP는 `mcp__sequential-thinking__sequentialthinking` 하나(`pkg/content/hooks.go:196`)이고 `enableAllProjectMcpServers`는 없다.
@@ -31,7 +31,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | Q | 결정 | 근거 |
 |---|---|---|
 | Q1 | `features.rea.enabled`(*bool)는 managed 항목이 결정을 담지 못할 때만 쓴다. M은 쓰기 뒤 다시 읽는다 | A3: key는 옛 auto의 모든 명령을 막고 managed 항목은 옛 update 뒤에도 남는다. `ActionSkip`(J-17) |
-| Q2 | balanced에 opus rung `balancedRungAnalysis`. OMP balanced는 두 model이 없으면 fail closed | matrix 불변식, 도구 간 같은 model. 기존 "rung마다 후보 하나" 정책(J-01) |
+| Q2 | balanced에 opus rung `balancedRungAnalysis`. OMP catalog에 그 model이 없으면 reverse-engineer만 세션 model, 기존 rung은 blocker | matrix 불변식, 도구 간 같은 model. J-01은 Gate 1에서 사용자가 "세션 모델로 대체"를 골랐다 |
 | Q3 | Codex는 `startup_timeout_sec = 30`만, `tool_timeout_sec`는 기본 60초 | Codex 문서 기본 10초·60초, A2 not-run |
 | Q4 | `tools: Read, Grep, Glob, mcp__rea`, 실행 모드에 기대지 않음, 동의·확인은 메인 세션 | Claude 문서의 server-level 이름, subagent에 AskUserQuestion 없음과 fork mode(J-05, J-06) |
 | Q5 | CLI가 실행당 1회 exec probe(POSIX login shell, Windows PATH, 5초), 127은 absent | 서버 실행 형식과 같은 shell(J-19) |
@@ -58,7 +58,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 ### Q2 balanced opus 비교
 | 안 | matrix 불변식 | 도구 간 model | 대가 |
 |---|---|---|---|
-| 새 opus rung(선택) | 지킨다 | Claude Opus 5.5·Codex Sol·OMP 같은 후보 | OMP balanced가 두 model을 새로 요구하고 없으면 fail closed(R6, Gate 1) |
+| 새 opus rung(선택) | 지킨다 | Claude Opus 5.5·Codex Sol·OMP 같은 후보 | OMP catalog에 model이 없으면 reverse-engineer만 세션 model로 내려간다(사용자 결정, 대체 줄 1개) |
 | top rung | 지킨다 | Fable·Astra | 사용자 결정 `opus`와 다르다 |
 | matrix 밖 | 깬다 | OMP만 deep_reasoning route(Fable) | 정규 집합 일치 test에 예외 |
 
@@ -97,13 +97,14 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | INV-REA-10 | "MCP files unchanged while REA is not enabled" | bytes equality | 세 파일 bytes | S15 |
 | INV-REA-11 | "never touch user-level files, no pre-approved permissions" | absence over write set, symlink 거부 | HOME sandbox, 밖 파일 bytes, permissions.allow | S14, S16 |
 | INV-REA-12 | "runtime capture runs targets with user permissions" | state transition: 요청 → 메인 세션 허용 → 호출, 거절이면 호출 0 | 동의 질문, 도구 호출 수 | S13, S19 |
+| INV-REA-13 | Gate 1 "세션 모델로 대체" | partition: 새 analysis rung 후보 부재 → reverse-engineer key 없음 + 대체 줄 1, 기존 rung·operator pin 부재 → blocker | override key 집합, 출력 줄, 종료 상태 | S11 |
 
 ## Feature Coverage Map
 | Outcome slice | Covered by | Status |
 |---------------|------------|--------|
 | Happy path: 새 init → 세 파일에 rea, 17 에이전트, `/auto reverse` | REQ-REA-02, 03, 10, 11, 13, 14 / S3, S9, S13, S18, S19 | covered |
 | Error/recovery: Node 없음·구버전, flag 충돌, off·platform remove, 사용자 항목·삭제 파일, 미등록, 동의 거절, gate 수정·중단 | REQ-REA-04–07, 10, 13, 21 / S2–S7, S9, S13, S19 | covered |
-| Integration boundary: 세 writer·Clean·sweep, symlink, OMP·OpenCode 안내, 5개 route·command, OMP 17 + task와 fail closed, preset·history, MCP 참조 변환, clone, 옛 바이너리 | REQ-REA-03, 09, 11–13, 16, 17 / S4, S5, S7, S10–S12, S15, S16, A3 | covered |
+| Integration boundary: 세 writer·Clean·sweep, symlink, OMP·OpenCode 안내, 5개 route·command, OMP 17 + task와 analysis rung 대체, preset·history, MCP 참조 변환, clone, 옛 바이너리 | REQ-REA-03, 09, 11–13, 16, 17 / S4, S5, S7, S10–S12, S15, S16, A3 | covered |
 | CLI surface: wizard, flag, update 1회 질문(CI 포함), hint, doctor, 옛 바이너리 줄, ko/en | REQ-REA-02, 06–08, 17, 18 / S3, S7, S8, S20 | covered |
 | Verification: 결정적 test, 실제 터미널, 동의한 live, Windows build, eval | REQ-REA-20 / S17–S19, A1, A2 | covered(S18·S19는 CD-1·CD-2) |
 | Docs/ops: README, CHANGELOG, help, pin, 사전 승인 없음, 한계 | REQ-REA-15, 19 / S14, S21 | covered |
@@ -122,7 +123,6 @@ These are optional improvements and do not block sync completion.
 | OMP·OpenCode 프로젝트 MCP writer와 그 에이전트의 REA 도구 이름 | 사용자 범위 경계, OMP 이름 미확인 | OMP·OpenCode 사용자 요청 |
 | 모든 MCP 서버의 Windows 실행 형식 | 기존 서버도 POSIX 형식이다 | Windows 사용자 보고 |
 | JSON 사용자 서식을 지키는 원문 편집기 | 기존 merge가 모든 update에서 이미 정규화한다 | 서식 보존 요청 |
-| OMP analysis rung의 세션 model degrade | 기존 fail closed 정책과 pins-only 탈출이 있다 | blocker 보고 |
 | `auto platform add`가 REA 결정을 풀어 바로 등록 | 다음 update가 더한다 | 사용자 요청 |
 | doctor의 REA 새 버전 안내, 읽기 전용 REA 도구 사전 승인, Codex 에이전트별 sandbox | 수동 pin, 도구 감사 전, 역할 설정 미확인 | 사용자 요청 |
 
@@ -142,11 +142,11 @@ These are optional improvements and do not block sync completion.
 - Intended scope: REA 결정(lazy key)·등록·제거(off sweep, `auto platform remove`), Node gate, init·update·doctor, reverse-engineer 에이전트와 17개 파급, MCP 참조 예외, `/auto reverse`의 메인 세션 동의·확인과 handoff.
 - Explicit non-goals: `spec.md` `## Outcome Boundary` 목록(새 정리 명령, JSON 서식 보존, foreground 보장, OMP·OpenCode writer, 사전 승인, Windows 형식 등).
 - Self-verified: A3 옛 바이너리 실행, yaml.v3 decode, 출하 범위, round 1이 지적한 코드 사실(clone, wizard seam, platform remove, merge 재marshal, executor·tester 입력, Antigravity command, OMP fixture), 문서 사실, npm pin.
-- Reviewer should focus on: round 1 반영의 정확성, Decision State 쓰기와 M, 보존 범위와 BASE 대조, 동의 상태 전이, handoff 입력, OMP fail closed, Completion Debt only.
+- Reviewer should focus on: round 1·2와 Gate 1 반영의 정확성, Decision State 쓰기와 M, 보존 범위와 BASE 대조, 동의 상태 전이, handoff 입력, OMP analysis rung 대체가 기존 rung을 바꾸지 않는지, Completion Debt only.
 
 ## Open Risks
 - R1 opt-out과 gate에 막힌 opt-in 프로젝트는 v0.50.113–v0.50.125가 읽지 못한다(REQ-REA-17 줄). v0.50.125는 17개 preset을 customized로 본다(J-28, REQ-REA-19 문서). R2 login shell PATH와 Codex 프로세스 PATH가 다를 수 있다. doctor가 버전을 보이고 gate는 지우지 않는다. R3 runtime capture는 사용자 권한으로 대상을 실행한다. 메인 세션 동의 뒤에만 부른다(REQ-REA-21).
-- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 기존 OMP balanced 프로젝트는 update가 `omp_profile_candidate_unavailable`로 끝난다. 탈출은 model 설치나 pins-only 변환이다(Gate 1).
+- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
 - R7 명세 문자열은 대상 유래 비신뢰 데이터다(Trust Model, 확인 gate). R8 OpenCode reverse-engineer는 기존 규칙으로 task permission을 받지만 REA 도구가 없어 증거를 만들지 못한다. R9 runtime capture 도구의 정확한 이름은 미확인이라 에이전트가 도구 설명(실행·붙기·계측)으로 판단한다(S19).
 
 ## Self-Verify Summary

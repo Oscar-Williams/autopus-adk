@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-15 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -100,7 +100,7 @@ THE SYSTEM SHALL ship `content/agents/reverse-engineer.md` by the Reverse Engine
 ### REQ-REA-11 17번째 에이전트 파급
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL add `reverse-engineer` to the canonical agent list and to every consumer in the Agent Set Contract, so that each platform generates 17 agents equal to `CanonicalAgentNames()`, OMP autopus mode routes the 17 agents and task, native OMP folds it into task, the Preset Contract holds, and an OMP balanced profile whose catalog lacks a pinned analysis-rung model fails closed with the existing named blocker.
+THE SYSTEM SHALL add `reverse-engineer` to the canonical agent list and to every consumer in the Agent Set Contract, so that each platform generates 17 agents equal to `CanonicalAgentNames()`, OMP autopus mode routes the 17 agents and task, native OMP folds it into task, the Preset Contract holds, and, when an OMP balanced profile's catalog lacks the model pinned for the analysis rung, the run leaves only reverse-engineer unrouted so it inherits the session model, prints one named fallback line, and succeeds, while every other rung keeps the existing `omp_profile_candidate_unavailable` blocker.
 
 ### REQ-REA-12 MCP 참조 변환 예외
 Priority: Must · EARS: EventDriven
@@ -146,7 +146,7 @@ THE SYSTEM SHALL render every new prompt, notice, hint, and doctor line in Korea
 ### REQ-REA-19 문서
 Priority: Should · EARS: Ubiquitous
 
-THE SYSTEM SHALL document the REA default, `--rea` and `--no-rea`, the Node range, the lazy `features.rea` write and its old-binary limit, the 17-agent presets that v0.50.125 classifies as customized, the OMP balanced fail-closed case and its pins-only escape, the POSIX-only server command on Windows, the clean-room flow, and the runtime-capture consent in init, update, and doctor help, README, and the v0.50.126 CHANGELOG, without removing sentences existing tests check.
+THE SYSTEM SHALL document the REA default, `--rea` and `--no-rea`, the Node range, the lazy `features.rea` write and its old-binary limit, the 17-agent presets that v0.50.125 classifies as customized, the OMP analysis-rung fallback to the session model, the POSIX-only server command on Windows, the clean-room flow, and the runtime-capture consent in init, update, and doctor help, README, and the v0.50.126 CHANGELOG, without removing sentences existing tests check.
 
 ### REQ-REA-20 test seam과 수동 smoke
 Priority: Must · EARS: Ubiquitous
@@ -312,7 +312,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | `defaultBalancedAgentTiers()`, ultra | 둘 다 17개, reverse-engineer `opus` |
 | Historical | `HB6` balanced 16개(7 fable + 9 sonnet, commit fbe502c0, v0.50.116–v0.50.125, runtimeStandard), `HU3` ultra 16개(7 fable + 9 opus, commit 001830fd, v0.50.115–v0.50.125) |
 | 분류 | v0.50.125 기본값 16개 map은 Historical이고 기존 `u` 갱신이 reverse-engineer `opus`를 더한다. 그 전에도 reverse-engineer는 map에 없으므로 표준 배치를 받는다(`native_balanced.go:20-24`) |
-| OMP balanced | rung마다 후보 하나를 pin하고 없는 model은 `omp_profile_candidate_unavailable`(`internal/cli/platform_omp_profile_preview.go:75`)로 막는다. 새 rung이라 balanced 프로필은 `anthropic/claude-opus-5-5`·`openai-codex/gpt-6.1-sol`을 새로 요구하고, catalog에 없으면 update가 그 blocker로 끝나며 OMP 파일은 바뀌지 않는다(fail closed, 기존 정책). 피하는 길은 model 설치나 OMP 탭의 pins-only 변환(reverse-engineer는 세션 model 상속)이다 |
+| OMP balanced | 기존 rung은 지금처럼 후보 하나를 pin하고 없는 model은 `omp_profile_candidate_unavailable`(`internal/cli/platform_omp_profile_preview.go:75`)로 막는다(SPEC-MODELUX-003 그대로). 새 analysis rung만 다르다(Gate 1 사용자 결정 "세션 모델로 대체"): 그 후보(`anthropic/claude-opus-5-5` 또는 `openai-codex/gpt-6.1-sol`)가 catalog에 없으면 reverse-engineer의 프로필 route만 버린다. `task.agentModelOverrides`에 reverse-engineer key가 없어 세션 model을 상속하고, `.omp/agents/reverse-engineer.md`는 지금처럼 `model:`이 없고 `thinkingLevel: high`를 갖는다. preview·apply·update 출력은 Form Text의 대체 줄을 1번 내고 실행은 성공한다. operator pin(`role_model_policy.agents.reverse-engineer`)의 model이 없으면 지금처럼 fail closed다. 판정은 `[NEW] config.OMPReaAnalysisFallback`(rung·agent·catalog) 한 곳이고 CLI plan과 adapter가 함께 쓴다 |
 | 탐색·보조 표시 | 기본값에서 `현재: 혼합 (opus 1 · sonnet 2)` |
 
 ### Form Text (ko / en)
@@ -323,6 +323,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - hint: `REA 역공학 MCP를 아직 정하지 않았습니다. 켜려면 auto update --rea, 끄려면 auto update --no-rea` / `REA reverse-engineering MCP is undecided; run auto update --rea to enable or auto update --no-rea to decline`
 - Node: `REA MCP를 등록하지 않았습니다: node <version>은 ^22.19.0 || ^24.11.0 || >=26.0.0 범위가 아닙니다` · `REA MCP를 등록하지 않았습니다: node를 찾지 못했습니다 (^22.19.0 || ^24.11.0 || >=26.0.0 필요)` · `REA MCP를 등록하지 않았습니다: node 버전을 확인하지 못했습니다` / `REA MCP not registered: node <version> is outside ^22.19.0 || ^24.11.0 || >=26.0.0` · `REA MCP not registered: node not found (needs ^22.19.0 || ^24.11.0 || >=26.0.0)` · `REA MCP not registered: node version unreadable`
 - 옛 바이너리: `features.rea는 v0.50.126보다 오래된 auto가 읽지 못합니다` / `auto older than v0.50.126 cannot read features.rea`
+- OMP 대체: `reverse-engineer: <selector>이 OMP catalog에 없어 세션 모델을 씁니다` / `reverse-engineer: <selector> not in catalog → session model`
 - OMP·OpenCode: `OMP·OpenCode에는 Autopus가 REA MCP를 등록하지 않습니다. /auto reverse 분석은 Claude Code·Codex·Antigravity에서 실행하세요. npx -y rea-agents@6.5.0 setup은 REA를 사용자 범위의 메인 세션에만 등록합니다` / `Autopus does not register REA MCP for OMP or OpenCode; run /auto reverse analysis in Claude Code, Codex, or Antigravity. npx -y rea-agents@6.5.0 setup registers REA for the main session only (user scope)`
 - flag: `--rea와 --no-rea는 함께 쓸 수 없습니다` · `--rea·--no-rea는 --workspace와 함께 쓸 수 없습니다. repo마다 --local로 실행하세요` / `--rea and --no-rea cannot be used together` · `--rea and --no-rea cannot be combined with --workspace; run them per repository with --local`
 - doctor text: `REA: 켜짐 (managed 항목)` · `REA: 켜짐 (autopus.yaml)` · `REA: 꺼짐 (autopus.yaml)` · `REA: 미결정` / `REA: on (managed entry)` · `REA: on (autopus.yaml)` · `REA: off (autopus.yaml)` · `REA: undecided`
@@ -340,7 +341,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 4. v0.50.125 기본값 16개를 literal로 쓴 fixture는 HB6·HU3 Historical로 분류된다. 기존 갱신 줄·`u` 선택지가 나타나는 자리만 바뀐다.
 5. MCP inventory test(`GT-SETTINGS-MCP-SERVERS.json`, `antigravity_settings_test.go`, `antigravity_clean_ownership_test.go`, `claude_lifecycle_contract_test.go`, `codex_config_test.go`, `codex_latest_v2_test.go`)는 바꾸지 않는다(REQ-REA-16).
 6. CLI test 바이너리의 `TestMain`(`internal/cli/pipeline_backend_omp_rpc_test.go:36`)이 `reaNodeExec`를 `v24.11.0`·종료 0으로 고정한다. 새 init 출력이나 `.mcp.json` bytes를 통째로 비교하는 test는 등록 줄과 managed 항목만 더해진다.
-7. OMP catalog fixture `ompCLIBalancedCatalogJSON`(`internal/cli/platform_omp_profile_flags_test.go:74`), `ompCLIProfileNativeCatalogJSON`(`:87`), `composeOMPCatalogML`(`quality_compose_omp_autopus_test.go:29`)에 `anthropic/claude-opus-5-5`와 `openai-codex/gpt-6.1-sol` 행을 더한다. 그 목록을 단언하는 자리(`quality_compose_omp_autopus_test.go:113-115`)는 두 model만 더해진다.
+7. OMP catalog fixture `ompCLIBalancedCatalogJSON`(`internal/cli/platform_omp_profile_flags_test.go:74`), `ompCLIProfileNativeCatalogJSON`(`:87`), `composeOMPCatalogML`(`quality_compose_omp_autopus_test.go:29`)에 `anthropic/claude-opus-5-5`와 `openai-codex/gpt-6.1-sol` 행을 더해 기존 OMP test가 reverse-engineer key를 갖게 한다. 그 목록을 단언하는 자리(`quality_compose_omp_autopus_test.go:113-115`)는 두 model만 더해진다. 기존 rung model을 뺀 blocker test는 바뀌지 않는다.
 8. 대화형 update·init 통합 test에서 REA 질문이 새로 열리는 실행은 입력에 Enter 하나를 더한다(SPEC-MODELUX-003 규칙 3과 같은 방식). 단언은 바꾸지 않는다.
 9. 생성 `.gitignore` 정책 test(`internal/cli/init_gitignore_policy_test.go`의 required 목록)와 gitignore 갱신 test에는 `.autopus/reverse/` 한 줄만 더해진다.
 
@@ -350,6 +351,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - `[NEW] pkg/reamcp`: `shape.go`(+test, 모양·pin·분류·JSON과 Codex 변환), `node.go`(+test, exec 결과 판정). Go 의존성은 늘지 않는다.
 - adapter: `[NEW] pkg/adapter/claude/claude_rea_mcp.go`(+test), `claude_files.go`, `claude_clean.go`, `[NEW] claude_reverse_route.go`, `claude_workflow_skills.go`; `[NEW] pkg/adapter/codex/codex_rea_mcp.go`(+test), `codex_settings.go`, `codex_clean_merge.go`, `codex_workflow_specs.go`, `codex_workflow_custom.go`; `[NEW] pkg/adapter/antigravity/antigravity_rea_mcp.go`(+test), `antigravity.go`, `antigravity_settings.go`, `antigravity_lifecycle_clean.go`; `pkg/adapter/omp/omp_specs.go`, `omp_workflow_render.go`; `pkg/adapter/opencode/opencode_specs.go`, `opencode_workflow_custom.go`.
 - content·templates: `[NEW] content/agents/reverse-engineer.md`, `content/agents/executor.md`, `content/agents/tester.md`, `content/skills/adaptive-quality.md`, `pkg/content/agent_transformer.go`, `agent_transformer_omp_render.go`, `agent_transformer_opencode.go`, `skill_transformer_replace_mcp.go`, `[NEW] templates/shared/auto-reverse-contract.md.tmpl`, `[NEW] templates/gemini/skills/auto-reverse/SKILL.md.tmpl`, `[NEW] templates/gemini/commands/auto/reverse.toml.tmpl`, `templates/shared/omp-agent-pipeline.md.tmpl`, `templates/claude/commands/auto-router.md.tmpl`, Antigravity root router 템플릿.
+- OMP 대체: `[NEW] pkg/config/omp_rea_fallback.go`(+test, `OMPReaAnalysisFallback`), `[NEW] internal/cli/platform_omp_rea_fallback.go`(+test, `platform_omp_profile_preview.go`(276줄)의 blocker loop L94-115에서 호출), `[NEW] pkg/adapter/omp/omp_model_rea_fallback.go`(+test, route compile·활성화 경로 `omp_model_routing_compile.go`·`omp_model_integration_degraded.go:21-37`에서 호출).
 - `internal/cli`: `[NEW] rea_decision.go`, `[NEW] rea_node_probe.go`, `[NEW] init_rea.go`, `[NEW] update_rea.go`, `[NEW] doctor_rea.go`, `[NEW] tui/wizard_rea_step.go`(모두 +test), `init.go`, `init_helpers.go`(`gitignorePatterns`에 `.autopus/reverse/` 1줄), `update.go`(292줄 → 300줄 이하), `update_preview.go`(clone이 `Runtime.ReaMCP`를 옮김), `tui/wizard_steps.go`, `doctor_json.go`, `doctor_text.go`, `quality_compose_groups.go`, `quality_help.go`, `init_help.go`, `update_help.go`, `platform_omp_agent_migration.go`, `quality_compose_form_edit.go`(주석).
 - 문서: README, CHANGELOG(v0.50.126), help 상수. 증거: `evidence/probe-rea-forward-compat.md`, `evidence/review-rounds.md`(있음), `[NEW] evidence/test-classification.md`, `[NEW] evidence/manual-smoke-rea.txt`. 신규·변경 소스는 300줄 이하이고 `update.go`·`update_workspace.go`(300)·`doctor_json_checks.go`(293)·`wizard_steps.go`(268)에는 호출 몇 줄만 더하거나 손대지 않는다.
 
@@ -374,12 +376,13 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 
 ## Open Issues
 
-- Q1 | decision, Gate 1 확인 대상 | `features.rea` lazy 쓰기 | attempt 1 | ledger의 "features flag로 저장"을 "managed 항목이 결정을 담지 못할 때만 key를 쓴다"로 좁혔다(probe A3). "늘 쓴다"를 고르면 Decision State Contract 쓰기 표의 on 두 행을 `enabled: true`로 바꾸고 REQ-REA-17이 모든 새 init에서 한 줄을 낸다.
-- J-03 | decision, Gate 1 확인 대상 | 사용자 항목 보존 범위 | attempt 2 | PRD Story 2의 "그 항목의 bytes가 그대로다"를 JSON은 값 보존 + 기존 정규화, Codex는 bytes 보존으로 좁혔다. bytes 보존을 고르면 JSON 원문 편집기를 새로 두는 task가 하나 더 생긴다.
-- J-01 | decision, Gate 1 확인 대상 | OMP balanced fail closed | attempt 2 | catalog에 Opus 5.5·Sol이 없는 기존 OMP balanced 프로젝트는 update가 기존 blocker로 끝난다. degrade(세션 model 상속)를 고르면 새 판정 규칙과 test가 생긴다.
-- J-14 | decision | behaviour-spec 범위 | attempt 3 | 로컬 전용(`.gitignore`)으로 정했다. 공유 저장소에 올리려면 사용자가 ignore 줄을 지우거나 별도 정책 결정이 필요하다.
-- J-22 | decision | `--runtime` route 인자 | attempt 3 | 동의 허용 경로를 S19에서 결정적으로 일으키려고 더했다. 동의 자체는 그대로 메인 세션 질문이다.
-- J-07 | decision | handoff 순서 | attempt 2 | 사용자 흐름(확인 → executor → tester) 앞에 tester Test Scaffold를 둔다. executor가 GREEN만 맡는 기존 계약 때문이다.
+- Gate 1(2026-10-15, 사용자 결정): Q1·J-03·J-14·`--runtime`·J-07은 그대로 유지, J-01은 fail closed 대신 "세션 모델로 대체"로 바꿨다(Preset Contract OMP balanced 행). 아래 항목은 모두 resolved다.
+- Q1 | resolved(Gate 1 유지) | `features.rea` lazy 쓰기 | attempt 1 | ledger의 "features flag로 저장"을 "managed 항목이 결정을 담지 못할 때만 key를 쓴다"로 좁혔다(probe A3). "늘 쓴다"를 고르면 Decision State Contract 쓰기 표의 on 두 행을 `enabled: true`로 바꾸고 REQ-REA-17이 모든 새 init에서 한 줄을 낸다.
+- J-03 | resolved(Gate 1 유지) | 사용자 항목 보존 범위 | attempt 2 | PRD Story 2의 "그 항목의 bytes가 그대로다"를 JSON은 값 보존 + 기존 정규화, Codex는 bytes 보존으로 좁혔다. bytes 보존을 고르면 JSON 원문 편집기를 새로 두는 task가 하나 더 생긴다.
+- J-01 | resolved(Gate 1 변경) | OMP analysis rung | attempt 3 | 사용자가 "세션 모델로 대체"를 골랐다. 새 analysis rung의 model이 catalog에 없으면 reverse-engineer만 세션 model을 상속하고 대체 줄 1개를 내며 update는 성공한다. 기존 rung의 blocker는 그대로다(REQ-REA-11, S11, T23).
+- J-14 | resolved(Gate 1 유지) | behaviour-spec 범위 | attempt 3 | 로컬 전용(`.gitignore`)으로 정했다. 공유 저장소에 올리려면 사용자가 ignore 줄을 지우거나 별도 정책 결정이 필요하다.
+- J-22 | resolved(Gate 1 유지) | `--runtime` route 인자 | attempt 3 | 동의 허용 경로를 S19에서 결정적으로 일으키려고 더했다. 동의 자체는 그대로 메인 세션 질문이다.
+- J-07 | resolved(Gate 1 유지) | handoff 순서 | attempt 2 | 사용자 흐름(확인 → executor → tester) 앞에 tester Test Scaffold를 둔다. executor가 GREEN만 맡는 기존 계약 때문이다.
 
 ## Traceability Matrix
 
@@ -395,7 +398,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | REQ-REA-08 | T4, T13 | S8 | INV-REA-03 |
 | REQ-REA-09 | T9, T13, T14 | S3, S8, S9 | - |
 | REQ-REA-10 | T1, T14 | S9, S19 | INV-REA-06, INV-REA-12 |
-| REQ-REA-11 | T15, T16 | S9, S10, S11 | INV-REA-06, INV-REA-07 |
+| REQ-REA-11 | T15, T16, T23 | S9, S10, S11 | INV-REA-06, INV-REA-07, INV-REA-13 |
 | REQ-REA-12 | T17 | S12 | INV-REA-08 |
 | REQ-REA-13 | T18 | S13 | INV-REA-09 |
 | REQ-REA-14 | T18, T20 | S3, S13, S19 | INV-REA-09 |
@@ -403,6 +406,6 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | REQ-REA-16 | T3, T5, T6, T7 | S15 | INV-REA-10 |
 | REQ-REA-17 | T9, T11, T12 | S3, S7 | INV-REA-01 |
 | REQ-REA-18 | T21 | S20 | - |
-| REQ-REA-19 | T21 | S21 | - |
+| REQ-REA-19 | T21 | S21 | INV-REA-13 |
 | REQ-REA-20 | T2, T8, T10, T22 | S17, S18, S19 | INV-REA-06 |
 | REQ-REA-21 | T14, T18 | S13, S19 | INV-REA-12 |

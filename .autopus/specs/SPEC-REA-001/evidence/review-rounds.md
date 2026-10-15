@@ -63,3 +63,12 @@
 | Q-COMP-05 | S18 cold 증명, S19 동의 호출 수, S19(d) dispatch 1회 |
 | Q-FEAS-02 | `.autopus/reverse/` 로컬 전용과 T18·규칙 9 |
 | Q-FEAS-03 | S18 절차와 S19(d) oracle |
+
+## Gate 1 (2026-10-15, 사용자 결정)
+
+| 항목 | 결정 | 반영 |
+|---|---|---|
+| Q1 `features.rea` lazy 쓰기 | 유지 | 변경 없음, Open Issues resolved |
+| J-03 JSON 값 보존·Codex bytes | 유지 | 변경 없음 |
+| J-14 `.autopus/reverse/` 로컬 전용, `--runtime`, tester Scaffold 먼저 | 유지 | 변경 없음 |
+| J-01 OMP balanced analysis rung | 변경: fail closed 대신 "세션 모델로 대체" | 새 analysis rung의 model이 catalog에 없으면 reverse-engineer만 override key 없음(세션 model 상속, `.omp/agents/reverse-engineer.md`는 `model:` 없음), 대체 줄 1개, 실행 성공. 기존 rung과 operator pin은 `omp_profile_candidate_unavailable`·pin 증명 오류 그대로. REQ-REA-11·19, Preset Contract, Form Text, 규칙 7, T23, S11(K1–K4), S21, INV-REA-13, Open Issues |
