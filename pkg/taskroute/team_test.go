@@ -248,6 +248,10 @@ func TestFirstOverlapPairFoldsCaseAndNormalization(t *testing.T) {
 		{"internal/CLI/**", "internal/cli/x.go"},
 		{"pkg/caf\u00e9", "pkg/cafe\u0301/x.go"},
 		{"PKG/A", "pkg/a/**"},
+		// Full case folding, which ToLower lacks: final sigma and sharp s.
+		{"pkg/\u03bf\u03b4\u03bf\u03c2", "pkg/\u039f\u0394\u039f\u03a3"},
+		{"pkg/stra\u00dfe", "pkg/STRASSE/x.go"},
+		{"pkg/\u212a", "pkg/k/x.go"},
 	}
 	for _, pair := range overlapping {
 		units := []TeamUnit{teamWorker("T1", pair[0]), teamWorker("T2", pair[1])}

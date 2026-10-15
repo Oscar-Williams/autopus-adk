@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"golang.org/x/text/cases"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -224,16 +225,18 @@ func firstOverlapPair(units []TeamUnit) (string, string, bool) {
 }
 
 // overlapKey is an owned path as only the overlap test compares it: one
-// trailing "/**" dropped, cleaned, then NFC-normalized and lowercased, because
-// spellings that differ only in case or Unicode normalization name one file on
-// the default macOS and Windows file systems. A false collision only keeps the
-// run on subagents. A path cleanPath refuses becomes "", which overlaps all.
+// trailing "/**" dropped, cleaned, then NFC-normalized and Unicode case-folded,
+// because spellings that differ only in case or normalization name one file on
+// the default macOS and Windows file systems. Full folding, unlike ToLower,
+// also joins final sigma with sigma and sharp s with ss. A false collision
+// only keeps the run on subagents. A path cleanPath refuses becomes "", which
+// overlaps all.
 func overlapKey(value string) string {
 	cleaned, err := cleanPath(strings.TrimSuffix(value, "/**"))
 	if err != nil {
 		return ""
 	}
-	return strings.ToLower(norm.NFC.String(cleaned))
+	return norm.NFC.String(cases.Fold().String(norm.NFC.String(cleaned)))
 }
 
 func keysOverlap(left, right []string) bool {
