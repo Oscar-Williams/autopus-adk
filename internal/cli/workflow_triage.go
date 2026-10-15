@@ -36,7 +36,7 @@ func newWorkflowTriageCmd() *cobra.Command {
 	facts := &singleTriageFlag{}
 	format := &singleTriageFlag{value: "json"}
 	var topology bool
-	cmd := &cobra.Command{Use: "triage", Short: "Inspect an advisory workflow route from caller-declared facts", Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
+	cmd := &cobra.Command{Use: "triage", Short: "Inspect an advisory workflow route from caller-declared facts", Long: workflowTriageLong, Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if facts.value == "" {
 				return fmt.Errorf("--facts-json is required")

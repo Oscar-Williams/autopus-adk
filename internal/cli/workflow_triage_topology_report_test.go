@@ -78,3 +78,15 @@ func TestWorkflowTriageTopologyExplicitFlagsSkipCapability(t *testing.T) {
 		t.Fatalf("explicit flags probed %v", *ran)
 	}
 }
+
+func TestWorkflowTriageHelpCarriesTheAutoTeamNotice(t *testing.T) {
+	run := runTopologyArgs(t, t.TempDir(), "workflow", "triage", "--help")
+	if run.code != 0 {
+		t.Fatalf("%+v", run)
+	}
+	for _, item := range []string{"--topology", "on by default", "separate Claude session", "experimental", "workflow.auto_team: false", "--solo", "auto 0.50.125 and older", "CLAUDE_CODE_EXECPATH", "claude or claude.exe", "claude_version_unknown"} {
+		if !strings.Contains(run.stdout, item) {
+			t.Fatalf("help lacks %q:\n%s", item, run.stdout)
+		}
+	}
+}

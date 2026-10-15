@@ -1627,6 +1627,32 @@ orchestra:
 
 </details>
 
+### Agent Team auto-selection
+
+| Setting | Default | Effect |
+|---------|---------|--------|
+| `workflow.auto_team` | absent (= on) | `false` keeps every `/auto go` Phase 2 on subagents. Only a YAML bool (`true`/`false`) loads. |
+
+In Claude Code, an `/auto go` run without `--team`, `--workflow`, or `--solo`
+decides once, when it enters Phase 2, whether the first ready wave runs as a
+native Agent Team. It switches only for an interactive top-level session that
+already has `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and runs Claude Code
+2.1.246 or newer, when the plan holds at least two ready worker units with
+disjoint owned paths. Every such run prints one `Agent Team:` line that says
+why it switched or stayed.
+
+- Each teammate is a separate Claude session, so a team run uses more tokens.
+  The feature is experimental.
+- Turn it off with `workflow.auto_team: false`, or pass `--solo` for one run.
+- auto 0.50.125 and older refuse an `autopus.yaml` that contains
+  `workflow.auto_team` with any value, `true` included. auto never writes the
+  key itself.
+- The version is read from the running binary that `CLAUDE_CODE_EXECPATH` names
+  (`claude` or `claude.exe`), never from `PATH`. Other installs stay on
+  subagents with the `claude_version_unknown` line.
+- `auto workflow triage --topology --facts-json <file>` prints the decision
+  without launching an agent or writing a file.
+
 ---
 
 ## 🏗️ Architecture

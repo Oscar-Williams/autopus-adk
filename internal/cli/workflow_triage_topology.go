@@ -12,6 +12,29 @@ import (
 	"github.com/insajin/autopus-adk/pkg/taskroute"
 )
 
+// workflowTriageLong is the `auto workflow triage --help` text. It carries the
+// auto-team cost and compatibility notice REQ-TA-14 asks every surface to give.
+const workflowTriageLong = `Inspect an advisory workflow route from caller-declared facts.
+
+With --topology, decide whether a Claude Code /auto go run without --team,
+--workflow, or --solo runs its first ready Phase 2 wave as a native Agent Team.
+The facts file lists the Phase 1 units (id, execution, owned_paths, depends_on,
+done). The decision prints as JSON, or with --format human as its one reason
+line. Auto-selection is on by default: it picks a team for an interactive
+top-level Claude Code session that has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
+and runs Claude Code 2.1.246 or newer, when at least two ready worker units own
+disjoint paths.
+
+Each teammate is a separate Claude session, so a team run uses more tokens, and
+the feature is experimental. Turn it off with workflow.auto_team: false in
+autopus.yaml, or pass --solo to /auto go for one run. auto 0.50.125 and older
+refuse an autopus.yaml that contains workflow.auto_team with any value.
+
+The version is read only from the running binary CLAUDE_CODE_EXECPATH names,
+which must be called claude or claude.exe; other installs stay on subagents
+with the claude_version_unknown line. Neither mode launches an agent, writes a
+file, or changes a gate.`
+
 // workflowTriageTopologyReport is the --topology output. The units come from
 // the caller and the capability from this process's environment; nothing was
 // launched, written, or gated.
