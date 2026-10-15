@@ -108,15 +108,15 @@ func (r *reaRun) nodeNotice(gate reamcp.NodeGate) string {
 }
 
 // finish runs after the run's platform writes. An off decision first sweeps
-// the managed entry out of the unselected target files. M is then read back
-// from the selected target files, autopus.yaml is written by the write table,
-// and the registration, old-binary, and OMP·OpenCode lines are printed once.
+// the managed entry out of the unselected target files; a refused sweep is
+// reported but still records the decision. M is then read back from the
+// selected target files, autopus.yaml is written by the write table, and the
+// registration, old-binary, and OMP·OpenCode lines are printed once.
 func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) error {
+	var sweepErr error
 	if r.active {
 		if r.state == reaOff {
-			if err := sweepReaUnselected(dir, cfg.Platforms); err != nil {
-				return err
-			}
+			sweepErr = sweepReaUnselected(dir, cfg.Platforms)
 		}
 		if files := r.registered(dir, cfg.Platforms); len(files) > 0 {
 			r.line(out, fmt.Sprintf(r.text.Registered, strings.Join(files, ", ")))
@@ -125,7 +125,7 @@ func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) er
 		if !reaSameKey(cfg.Features.Rea.Enabled, next) {
 			cfg.Features.Rea.Enabled = next
 			if err := config.Save(dir, cfg); err != nil {
-				return fmt.Errorf("features.rea 저장 실패: %w", err)
+				return errors.Join(sweepErr, fmt.Errorf("features.rea 저장 실패: %w", err))
 			}
 		}
 		if !r.heldKey && cfg.Features.Rea.Enabled != nil {
@@ -133,7 +133,7 @@ func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) er
 		}
 	}
 	r.guidance(out, cfg.Platforms)
-	return nil
+	return sweepErr
 }
 
 // registered lists the selected target files this run gave the current

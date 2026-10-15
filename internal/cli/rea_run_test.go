@@ -3,6 +3,9 @@ package cli
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -195,4 +198,32 @@ func TestReaRunFinish_OffStoresFalseAndSweeps(t *testing.T) {
 	again.decide(context.Background(), &out, reloaded, reaOff)
 	require.NoError(t, again.finish(&out, dir, reloaded))
 	assert.Empty(t, out.String())
+}
+
+// A refused off sweep is reported, the off decision is still stored, and the
+// file outside the project keeps its bytes (acceptance S16 (d)).
+func TestReaRunFinish_RefusedSweepStillStoresOff(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink fixture")
+	}
+	t.Parallel()
+	dir, cfg := reaFixture(t, "claude-code")
+	outside := t.TempDir()
+	managed := reaApplied(t, reamcp.Codex, []byte(reaCodexBase), config.ReaMCPAdd)
+	require.NoError(t, os.WriteFile(filepath.Join(outside, "config.toml"), managed, 0o644))
+	require.NoError(t, os.Symlink(outside, filepath.Join(dir, ".codex")))
+	run, _ := testReaRun(t, dir, cfg, "v24.11.0\n")
+	var out bytes.Buffer
+	run.decide(context.Background(), &out, cfg, reaOff)
+
+	err := run.finish(&out, dir, cfg)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), ".codex/config.toml")
+	reloaded, loadErr := config.Load(dir)
+	require.NoError(t, loadErr)
+	assert.Equal(t, reaBool(false), reloaded.Features.Rea.Enabled)
+	data, readErr := os.ReadFile(filepath.Join(outside, "config.toml"))
+	require.NoError(t, readErr)
+	assert.Equal(t, managed, data)
 }

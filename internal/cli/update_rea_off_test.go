@@ -1,0 +1,75 @@
+package cli
+
+// SPEC-REA-001 T12 (acceptance S2 (4), (6)): an off decision through the
+// real `auto update`, from the stored key and from --no-rea with the off
+// sweep over an unselected target file.
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/insajin/autopus-adk/pkg/config"
+	"github.com/insajin/autopus-adk/pkg/reamcp"
+)
+
+// reaQ returns acceptance fixture Q: OLD updated with --yes --rea, so the
+// three target files hold managed entries and autopus.yaml holds no key.
+func reaQ(t *testing.T) string {
+	t.Helper()
+	dir := reaOLD(t, reaAllTargets)
+	out, err := reaUpdate(t, strings.NewReader(""), dir, "--yes", "--rea")
+	require.NoError(t, err, out)
+	assertReaManagedOnce(t, dir)
+	return dir
+}
+
+// S2 (4): Q with enabled false removes every managed entry and leaves
+// autopus.yaml byte-identical.
+func TestUpdateRea_StoredOffRemovesEntries(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	stubDriverProbes(t, false, "")
+	dir := reaQ(t)
+	cfg, err := config.Load(dir)
+	require.NoError(t, err)
+	cfg.Features.Rea.Enabled = reaBool(false)
+	require.NoError(t, config.Save(dir, cfg))
+	before := reaSums(t, dir)["autopus.yaml"]
+
+	out, err := reaUpdate(t, strings.NewReader(""), dir, "--yes")
+
+	require.NoError(t, err, out)
+	assertReaAbsent(t, dir)
+	assert.Equal(t, before, reaSums(t, dir)["autopus.yaml"])
+	assert.Equal(t, [3]int{0, 0, 0}, reaCounts(out), out)
+}
+
+// S2 (6): with managed only in the unselected .codex/config.toml the project
+// is undecided; --no-rea sweeps that table, keeps every other line byte for
+// byte, and stores false.
+func TestUpdateRea_NoReaSweepsUnselectedTarget(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	stubDriverProbes(t, false, "")
+	dir := reaQ(t)
+	for _, p := range []reamcp.Platform{reamcp.Claude, reamcp.Antigravity} {
+		writeReaTarget(t, dir, p, reaApplied(t, p, readReaFile(t, dir, p), config.ReaMCPRemove))
+	}
+	cfg, err := config.Load(dir)
+	require.NoError(t, err)
+	cfg.Platforms = []string{"claude-code"}
+	require.NoError(t, config.Save(dir, cfg))
+	require.Equal(t, reaDecision{reaUndecided, reaSourceNone}, resolveReaDecision(dir, cfg))
+	codex := readReaFile(t, dir, reamcp.Codex)
+	want := reaApplied(t, reamcp.Codex, codex, config.ReaMCPRemove)
+	require.NotEqual(t, codex, want)
+
+	out, err := reaUpdate(t, strings.NewReader(""), dir, "--yes", "--no-rea")
+
+	require.NoError(t, err, out)
+	assert.Equal(t, string(want), string(readReaFile(t, dir, reamcp.Codex)))
+	assert.NotContains(t, string(readReaFile(t, dir, reamcp.Codex)), "mcp_servers.rea")
+	assert.Equal(t, reaBool(false), reaKey(t, dir))
+	assert.Equal(t, [3]int{0, 0, 1}, reaCounts(out), out)
+}
