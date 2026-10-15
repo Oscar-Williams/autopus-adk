@@ -232,11 +232,11 @@ func TestWorkflowTriageTopologyConfigValues(t *testing.T) {
 	}
 }
 
-// writeProbeTarget returns an existing regular file named claude, so the
-// guard passes and the stubbed probe seam decides the version.
+// writeProbeTarget returns an existing regular file the guard runs on this
+// host, so the stubbed probe seam decides the version.
 func writeProbeTarget(t *testing.T) string {
 	t.Helper()
-	path := filepath.Join(t.TempDir(), "claude")
+	path := filepath.Join(t.TempDir(), probeExecutableName)
 	if err := os.WriteFile(path, nil, 0o755); err != nil {
 		t.Fatal(err)
 	}

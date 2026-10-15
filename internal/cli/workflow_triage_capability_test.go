@@ -4,11 +4,16 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"testing"
 
 	"github.com/insajin/autopus-adk/pkg/taskroute"
 )
+
+// probeExecutableName is the Claude Code file name the guard runs on this
+// host: Windows runs only claude.exe, so PATHEXT never picks a sibling script.
+var probeExecutableName = map[bool]string{true: "claude.exe", false: "claude"}[runtime.GOOS == "windows"]
 
 // stubTeamEnv replaces the environment seam with a fixed map and records
 // every variable name the snapshot asks for.
@@ -113,7 +118,7 @@ func TestProbeClaudeVersionGuardRefusesBeforeExecution(t *testing.T) {
 
 func TestProbeClaudeVersionRunsTheGuardedPathOnce(t *testing.T) {
 	root := t.TempDir()
-	claude := filepath.Join(root, "claude")
+	claude := filepath.Join(root, probeExecutableName)
 	claudeExe := filepath.Join(root, "win", "claude.exe")
 	for _, path := range []string{claude, claudeExe} {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -124,7 +129,7 @@ func TestProbeClaudeVersionRunsTheGuardedPathOnce(t *testing.T) {
 		}
 	}
 	paths := []string{claude, claudeExe}
-	link := filepath.Join(root, "links", "claude")
+	link := filepath.Join(root, "links", probeExecutableName)
 	if err := os.MkdirAll(filepath.Dir(link), 0o755); err == nil && os.Symlink(claude, link) == nil {
 		paths = append(paths, link)
 	}

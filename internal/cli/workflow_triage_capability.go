@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -50,14 +52,11 @@ func observeTeamCapability() (taskroute.Capability, string) {
 
 // probeClaudeVersion returns the first stdout line of the running Claude Code
 // binary's --version, or "" when the guard refuses the path or the probe
-// fails. Only an absolute path whose os.Stat (symlinks followed) is a regular
-// file named claude or claude.exe runs. PATH is never searched, because the
-// claude found there need not be the binary running this session.
+// fails. Only a path claudeVersionProbePathAllowed accepts whose os.Stat
+// (symlinks followed) is a regular file runs. PATH is never searched, because
+// the claude found there need not be the binary running this session.
 func probeClaudeVersion(execPath string) string {
-	if !filepath.IsAbs(execPath) {
-		return ""
-	}
-	if base := filepath.Base(execPath); base != "claude" && base != "claude.exe" {
+	if !claudeVersionProbePathAllowed(runtime.GOOS, execPath) {
 		return ""
 	}
 	if info, err := os.Stat(execPath); err != nil || !info.Mode().IsRegular() {
@@ -69,6 +68,27 @@ func probeClaudeVersion(execPath string) string {
 	}
 	first, _, _ := strings.Cut(output, "\n")
 	return strings.TrimSuffix(first, "\r")
+}
+
+// claudeVersionProbePathAllowed judges the path text alone, so the rule of
+// every platform is testable on any host. Elsewhere it is an absolute path
+// named claude or claude.exe. On Windows, exec appends the PATHEXT extensions
+// to a name without one, so an extensionless claude could run a sibling
+// claude.cmd through cmd.exe: only a drive-letter path naming claude.exe runs,
+// and UNC, \\?\ and \\.\ device paths, and alternate data streams are refused.
+func claudeVersionProbePathAllowed(goos, execPath string) bool {
+	if goos != "windows" {
+		base := path.Base(execPath)
+		return strings.HasPrefix(execPath, "/") && (base == "claude" || base == "claude.exe")
+	}
+	if len(execPath) < 3 || execPath[1] != ':' || (execPath[2] != '\\' && execPath[2] != '/') {
+		return false
+	}
+	drive := execPath[0]
+	if !(drive >= 'a' && drive <= 'z' || drive >= 'A' && drive <= 'Z') || strings.Contains(execPath[2:], ":") {
+		return false
+	}
+	return execPath[strings.LastIndexAny(execPath, `\/`)+1:] == "claude.exe"
 }
 
 // execClaudeVersionProbe runs path directly, without a shell, with --version
