@@ -116,6 +116,10 @@ func TestAutoTeamSnippetWithTheBranchBinary(t *testing.T) {
 	bin := buildAutoForSnippet(t)
 	probe := filepath.Join(t.TempDir(), "claude")
 	writeExecutable(t, probe, "printf '2.1.288 (Claude Code)\\n'")
+	// The decision gives the version probe 5 seconds. Under load the first exec
+	// of a new file can spend that waiting on macOS first-run assessment, so
+	// run it once before the measured runs.
+	require.NoError(t, exec.Command(probe, "--version").Run())
 	capOK := []string{"CLAUDECODE=1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1", "CLAUDE_CODE_ENTRYPOINT=cli", "CLAUDE_CODE_SESSION_ATTENDED=1", "CLAUDE_CODE_EXECPATH=" + probe}
 
 	project := t.TempDir()
@@ -130,7 +134,7 @@ func TestAutoTeamSnippetWithTheBranchBinary(t *testing.T) {
 		} `json:"decision"`
 	}
 	require.NoError(t, json.Unmarshal(run.teamJSON, &report), string(run.teamJSON))
-	assert.Equal(t, "team", report.Decision.Route)
+	assert.Equal(t, "team", report.Decision.Route, string(run.teamJSON))
 
 	// Rejected facts are a decision, so the line that names the field reaches
 	// the lead instead of the snippet's generic failure line.

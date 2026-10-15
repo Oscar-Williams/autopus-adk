@@ -4,6 +4,7 @@ package cli
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,14 +13,22 @@ import (
 
 // fakeClaudeProbe writes an executable script called name into a fresh probe
 // directory. Every run appends one line to probe.count before body runs, so a
-// test counts real executions instead of trusting a seam.
+// test counts real executions instead of trusting a seam. The script runs once
+// before it is returned, uncounted: the decision gives the probe 5 seconds,
+// and under load the first exec of a new file can spend that on macOS
+// first-run assessment.
 func fakeClaudeProbe(t *testing.T, name, body string) (path, count string) {
 	t.Helper()
 	dir := t.TempDir()
 	count = filepath.Join(dir, "probe.count")
 	path = filepath.Join(dir, name)
-	script := "#!/bin/sh\nprintf 'run\\n' >> '" + count + "'\n" + body + "\n"
+	script := "#!/bin/sh\n[ \"${AUTOPUS_PROBE_WARMUP:-}\" = 1 ] && exit 0\nprintf 'run\\n' >> '" + count + "'\n" + body + "\n"
 	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	warm := exec.Command(path)
+	warm.Env = []string{"AUTOPUS_PROBE_WARMUP=1"}
+	if err := warm.Run(); err != nil {
 		t.Fatal(err)
 	}
 	return path, count
