@@ -10,7 +10,18 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/insajin/autopus-adk/pkg/content"
+	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
+
+// reaStaticToolSource is the source tools value M2 requires: the read tools
+// and REA's audited static analysis tools, one by one.
+func reaStaticToolSource() string {
+	tools := []string{"Read", "Grep", "Glob"}
+	for _, tool := range reamcp.StaticAnalysisTools() {
+		tools = append(tools, "mcp__rea__"+tool)
+	}
+	return strings.Join(tools, ", ")
+}
 
 // The Form Text unavailable sentences (SPEC-REA-001): one for the platforms
 // Autopus registers REA on, one for OMP and OpenCode.
@@ -25,20 +36,28 @@ func TestReverseEngineerSource_FrontmatterFollowsTheContract(t *testing.T) {
 	meta := ompAgentSource(t, "reverse-engineer").Meta
 	assert.Equal(t, content.AgentSourceMeta{
 		Name: "reverse-engineer", Description: meta.Description, Model: "opus", Effort: "high",
-		Tools: "Read, Grep, Glob, mcp__rea", PermissionMode: "default", MaxTurns: 120,
+		Tools: reaStaticToolSource(), PermissionMode: "default", MaxTurns: 120,
 	}, meta)
 	assert.NotEmpty(t, meta.Description)
-	for _, denied := range []string{"Write", "Edit", "Bash"} {
-		assert.NotContains(t, meta.Tools, denied)
+	for _, tool := range strings.Split(meta.Tools, ", ") {
+		assert.NotContains(t, []string{"Write", "Edit", "Bash", "mcp__rea"}, tool, "no write tool and no whole-server grant")
+	}
+	for _, runtime := range append(reamcp.RuntimeCaptureTools(), reamcp.CallerPathWriteTools()...) {
+		assert.NotContains(t, strings.Split(meta.Tools, ", "), "mcp__rea__"+runtime, "M2: %s is main-session only", runtime)
 	}
 }
 
-// S9: Antigravity resolves the REA server through the mcp_<server>_* wildcard,
-// after the read tools and in source order.
-func TestReverseEngineerGemini_ToolsAreReadToolsAndTheREAServer(t *testing.T) {
+// S9 and M2: Antigravity grants the read tools and each static REA tool as
+// mcp_rea_<tool>, in source order, and never the mcp_rea_* wildcard.
+func TestReverseEngineerGemini_ToolsAreReadToolsAndStaticREATools(t *testing.T) {
 	t.Parallel()
 	frontmatter, _ := decodeGeminiAgent(t, content.TransformAgentForGemini(ompAgentSource(t, "reverse-engineer")))
-	assert.Equal(t, []string{"read_file", "grep_search", "glob", "mcp_rea_*"}, frontmatter.Tools)
+	want := []string{"read_file", "grep_search", "glob"}
+	for _, tool := range reamcp.StaticAnalysisTools() {
+		want = append(want, "mcp_rea_"+tool)
+	}
+	assert.Equal(t, want, frontmatter.Tools)
+	assert.NotContains(t, frontmatter.Tools, "mcp_rea_*")
 	assert.Empty(t, frontmatter.Skills)
 }
 
@@ -94,7 +113,7 @@ func TestREAToolGate_LeavesOtherMCPToolsUntouched(t *testing.T) {
 	assert.Contains(t, openCode, `"mcp__reader": allow`)
 	assert.NotContains(t, openCode, "mcp__rea__inspect")
 	frontmatter, _ := decodeGeminiAgent(t, content.TransformAgentForGemini(source))
-	assert.Equal(t, []string{"read_file"}, frontmatter.Tools)
+	assert.Equal(t, []string{"read_file", "mcp_rea_inspect"}, frontmatter.Tools)
 }
 
 // S9: every platform's body demands the five-section behaviour specification,
@@ -116,8 +135,8 @@ func TestReverseEngineerBody_EveryPlatformCarriesTheAnalysisContract(t *testing.
 		for _, want := range []string{
 			"## Behaviour", "## Inputs and Outputs", "## Evidence", "## Unknowns", "## Acceptance Items",
 			"B-1", "A-1", "evidence_id", "## Runtime Capture Request",
-			"- target:", "- tool:", "- will run:", "- why:",
-			"Runtime capture wanted: yes", "Runtime capture consent: <tool> on <target>",
+			"- target:", "- tool:", "- arguments:", "- will run:", "- why:",
+			"Runtime capture wanted: yes", "Runtime capture evidence: <tool> on <target>: <evidence_id>",
 			reaUnavailableRegistered, reaUnavailableOther,
 		} {
 			assert.Contains(t, body, want, "%s: %s", platform, want)

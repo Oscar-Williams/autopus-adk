@@ -22,5 +22,5 @@ func TestCodexReverseRoute_RouterDescriptionAndRegistry(t *testing.T) {
 	rendered, ok := renderCustomWorkflowSkill(spec)
 	require.True(t, ok, "auto-reverse must render a custom workflow body")
 	assert.Contains(t, rendered, "name: auto-reverse\n")
-	assert.Contains(t, rendered, "Runtime capture consent: <tool> on <target>")
+	assert.Contains(t, rendered, "Runtime capture evidence: <tool> on <target>: <evidence_id>")
 }

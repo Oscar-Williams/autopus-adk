@@ -72,3 +72,9 @@
 | J-03 JSON 값 보존·Codex bytes | 유지 | 변경 없음 |
 | J-14 `.autopus/reverse/` 로컬 전용, `--runtime`, tester Scaffold 먼저 | 유지 | 변경 없음 |
 | J-01 OMP balanced analysis rung | 변경: fail closed 대신 "세션 모델로 대체" | 새 analysis rung의 model이 catalog에 없으면 reverse-engineer만 override key 없음(세션 model 상속, `.omp/agents/reverse-engineer.md`는 `model:` 없음), 대체 줄 1개, 실행 성공. 기존 rung과 operator pin은 `omp_profile_candidate_unavailable`·pin 증명 오류 그대로. REQ-REA-11·19, Preset Contract, Form Text, 규칙 7, T23, S11(K1–K4), S21, INV-REA-13, Open Issues |
+
+## 보안 감사 M2 (2026-10-16, lead 결정)
+
+| 항목 | 결정 | 반영 |
+|---|---|---|
+| M2 subagent의 runtime capture 도구 | subagent는 갖지 않는다 | Reverse Engineer Agent Contract: Claude `mcp__rea__<정적 도구>`, Antigravity `mcp_rea_<정적 도구>` 135개(분류 `evidence/rea-tool-catalog-6.5.0.md`, 코드 `pkg/reamcp/tools.go`). Reverse Route Contract 2: 허용 뒤 메인 세션이 runtime 도구를 직접 부르고 evidence_id만 `Runtime capture evidence:` 줄로 넘긴다. REQ-REA-10·21, S9·S13·S19 |

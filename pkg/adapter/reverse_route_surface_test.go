@@ -15,14 +15,16 @@ import (
 )
 
 // reverseContractNeedles are the S13 strings (SPEC-REA-001) every platform's
-// auto-reverse detail must carry: the --runtime entry, the consent loop, the
+// auto-reverse detail must carry: the --runtime entry, the consent loop in
+// which the main session itself calls the runtime tool (security audit M2), the
 // confirmation gate that --auto never skips, the slug rule, the local
 // behaviour-spec artifact, the clean-room handoff, and the dispatch ban.
 var reverseContractNeedles = []string{
 	"--runtime",
 	"Runtime capture wanted: yes",
 	"## Runtime Capture Request",
-	"Runtime capture consent:",
+	"Runtime capture evidence:",
+	"메인 세션이 그 REA 도구를 요청의 arguments로 직접 부르고",
 	"허용 / 거절",
 	"확인 / 수정 / 중단",
 	"--auto도 이 확인 gate를 건너뛰지 않습니다",

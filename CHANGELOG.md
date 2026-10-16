@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **REA reverse-engineer 도구 표면을 정적 분석으로 좁힌다** (2026-10-16, SPEC-REA-001 보안 감사 M1–M3):
+  - Claude Code·Antigravity의 reverse-engineer는 REA 서버 전체(`mcp__rea`, `mcp_rea_*`) 대신 rea-agents@6.5.0의
+    정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 67개와 호출자가 고른 경로에
+    쓰는 도구 4개는 메인 세션만 부르고, runtime 도구는 운영자의 `허용` 답 뒤에만 부른다(`--auto`도 묻는다).
+    분류와 근거는 `.autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md`다.
+
 - **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 16개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
   모델과 thinking을 따로 줄 수 없었다.

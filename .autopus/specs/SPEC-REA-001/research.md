@@ -33,14 +33,14 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | Q1 | `features.rea.enabled`(*bool)는 managed 항목이 결정을 담지 못할 때만 쓴다. M은 쓰기 뒤 다시 읽는다 | A3: key는 옛 auto의 모든 명령을 막고 managed 항목은 옛 update 뒤에도 남는다. `ActionSkip`(J-17) |
 | Q2 | balanced에 opus rung `balancedRungAnalysis`. OMP catalog에 그 model이 없으면 reverse-engineer만 세션 model, 기존 rung은 blocker | matrix 불변식, 도구 간 같은 model. J-01은 Gate 1에서 사용자가 "세션 모델로 대체"를 골랐다 |
 | Q3 | Codex는 `startup_timeout_sec = 30`만, `tool_timeout_sec`는 기본 60초 | Codex 문서 기본 10초·60초, A2 not-run |
-| Q4 | `tools: Read, Grep, Glob, mcp__rea`, 실행 모드에 기대지 않음, 동의·확인은 메인 세션 | Claude 문서의 server-level 이름, subagent에 AskUserQuestion 없음과 fork mode(J-05, J-06) |
+| Q4 | `tools: Read, Grep, Glob, mcp__rea`(보안 감사 M2로 `mcp__rea__<정적 도구>` 135개로 좁힘, `evidence/rea-tool-catalog-6.5.0.md`), 실행 모드에 기대지 않음, 동의·확인은 메인 세션 | Claude 문서의 server-level 이름, subagent에 AskUserQuestion 없음과 fork mode(J-05, J-06) |
 | Q5 | CLI가 실행당 1회 exec probe(POSIX login shell, Windows PATH, 5초), 127은 absent | 서버 실행 형식과 같은 shell(J-19) |
 | Q6 | `--auto`도 동의 질문과 확인 gate에서 멈춘다 | PRD Anti-goal "자동 승인으로 끝까지", 사용자 결정 2 |
 | Q7 | 정확한 모양 + pin 목록, Claude 두 pin 자리 일치, Codex 하위 table은 user_owned | R6, J-13, J-16 |
 | Q8 | 공유 MCP 목록은 만들지 않는다. REA 모양·변환만 `pkg/reamcp` 한 곳 | 템플릿 불변으로 REQ-REA-16, 소비처 5곳(세 adapter, CLI sweep, doctor) |
 | Q9 | `.autopus/reverse/<slug>/behaviour-spec.md`, slug 규칙과 `-2` 보존, 생성 `.gitignore`로 로컬 전용 | 에이전트에 쓰기 도구가 없다. 제3자 대상 유래이고 `rootTrackedPrefixes`(`sync_verify_policy.go:26-29`)에 없다(J-14, J-24) |
 | Q10 | HB6(balanced 16, v0.50.116–v0.50.125, runtimeStandard), HU3(ultra 16, v0.50.115–v0.50.125) | `git show v0.50.115/116/125` 비교 |
-| Q11 | OMP·OpenCode 에이전트에 MCP 이름 없음, 안내는 세 도구에서 분석하라고 말한다. Antigravity는 `mcp_rea_*` | OMP 이름 미확인(R11), J-12, Gemini CLI 문서 |
+| Q11 | OMP·OpenCode 에이전트에 MCP 이름 없음, 안내는 세 도구에서 분석하라고 말한다. Antigravity는 `mcp_rea_*`(M2 뒤 `mcp_rea_<정적 도구>`) | OMP 이름 미확인(R11), J-12, Gemini CLI 문서 |
 | 정리 | 정리 경로는 `auto platform remove`. off는 선택되지 않은 파일도 sweep | `clean` 명령 없음(J-02), J-18 |
 | 보존 | JSON은 값 보존 + 기존 정규화, Codex는 bytes | 기존 merge가 다시 marshal한다(J-03) |
 | handoff | tester(Test Scaffold) → executor → tester(Testing), `SPEC: N/A`·`Task: reverse/<slug>` | executor·tester 입력 계약(J-07) |
@@ -113,7 +113,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
 | CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 30초 시작, Claude `/mcp`의 rea connected와 도구 목록, Antigravity MCP 목록 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
-| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), Antigravity `mcp_rea_*` 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
+| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), Antigravity `mcp_rea_<정적 도구>` 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
 
 ## Evolution Ideas
 These are optional improvements and do not block sync completion.
