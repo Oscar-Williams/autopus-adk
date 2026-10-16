@@ -30,6 +30,9 @@ type specReviewProviderRequest struct {
 	RequestedTimeout int
 	// Warnings receives one line per excluded discovered provider; nil discards.
 	Warnings io.Writer
+	// MissingBinary receives each accepted provider whose binary is not
+	// installed, with the binary looked for; nil prints the runtime warning.
+	MissingBinary func(orchestra.ProviderConfig, string)
 }
 
 // specReviewExclusion is a discovered provider the read-only gate removed.
@@ -73,7 +76,12 @@ func assembleSpecReviewProviders(ctx context.Context, req specReviewProviderRequ
 		fmt.Fprintf(warnings, "spec review: excluding discovered provider %q: %s\n", exclusion.Provider, exclusion.Reason)
 	}
 
-	providers := filterInstalledProviders(accepted)
+	var providers []orchestra.ProviderConfig
+	if req.MissingBinary != nil {
+		providers = filterInstalledProvidersWith(accepted, req.MissingBinary)
+	} else {
+		providers = filterInstalledProviders(accepted)
+	}
 	providers = configureSpecReviewProviders(resolveCodexProviderCapabilities(ctx, providers))
 	providers = applySpecReviewExecutionTimeout(providers, req.RequestedTimeout)
 	// The gate already removed unsupported providers, so a projection

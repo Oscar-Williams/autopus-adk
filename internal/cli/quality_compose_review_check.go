@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/insajin/autopus-adk/pkg/config"
+	"github.com/insajin/autopus-adk/pkg/orchestra"
 )
 
 // composeReviewCheckTimeout is the budget of each live check request; the
@@ -43,7 +44,10 @@ func (f *composeFormRun) reviewLiveCheck(tab *reviewTabState) error {
 	}
 	failed := false
 	shown := reviewCheckModels(tab.baseline, tab.working)
-	for _, result := range runProviderTransportSmoke(commandContext(f.cmd), candidate, composeReviewCheckTimeout) {
+	missing := func(provider orchestra.ProviderConfig, _ string) {
+		f.reviewLine(reviewCheckMissingLine(tab.baseline, provider, text))
+	}
+	for _, result := range runProviderTransportSmokeWith(commandContext(f.cmd), candidate, composeReviewCheckTimeout, missing) {
 		f.reviewLine(reviewCheckLine(candidate, shown, result, text))
 		failed = failed || result.Status != "pass"
 	}
@@ -69,6 +73,22 @@ func reviewCandidate(cfg *config.HarnessConfig, b reviewBaseline, working review
 	// still refuse leaves its entry as it was: the check never runs it.
 	_ = applyReviewEntries(candidate.Orchestra.Providers, b, working)
 	return candidate
+}
+
+// reviewCheckMissingLine is the live check's line for a provider whose binary
+// is not installed: the provider and its binary as written, or the provider
+// alone when the binary is written as a placeholder or cannot be read as
+// written; an OMP provider needs omp, which is no one's value. The runtime
+// warning, which spells the expanded binary, never runs from the tab.
+func reviewCheckMissingLine(b reviewBaseline, provider orchestra.ProviderConfig, text composeReviewText) string {
+	shown := config.ProviderBackendOMP
+	if provider.Backend != config.ProviderBackendOMP {
+		shown = b.binaryText(provider.Name)
+	}
+	if shown == "" || strings.Contains(shown, "${") {
+		return fmt.Sprintf(text.CheckMissingName, provider.Name)
+	}
+	return fmt.Sprintf(text.CheckMissing, provider.Name, shown)
 }
 
 // reviewCheckModels is the model a result line names for each OMP provider:

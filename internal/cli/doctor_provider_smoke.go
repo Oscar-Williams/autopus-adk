@@ -85,6 +85,15 @@ func (r *doctorJSONReport) collectProviderTransportSmokeChecks(cfg *config.Harne
 }
 
 func runProviderTransportSmoke(ctx context.Context, cfg *config.HarnessConfig, timeout time.Duration) []providerSmokeResult {
+	return runProviderTransportSmokeWith(ctx, cfg, timeout, nil)
+}
+
+// runProviderTransportSmokeWith is runProviderTransportSmoke with missing,
+// when set, receiving each provider whose binary is not installed instead of
+// the runtime warning: the review tab's live check spells it as written.
+func runProviderTransportSmokeWith(
+	ctx context.Context, cfg *config.HarnessConfig, timeout time.Duration, missing func(orchestra.ProviderConfig, string),
+) []providerSmokeResult {
 	if cfg == nil {
 		return []providerSmokeResult{{Provider: "review_gate", Status: "fail", Detail: "config unavailable"}}
 	}
@@ -94,7 +103,7 @@ func runProviderTransportSmoke(ctx context.Context, cfg *config.HarnessConfig, t
 
 	// The smoke exercises exactly the gated, read-only projection spec review
 	// executes; a config the policy rejects fails here before anything runs.
-	set, err := assembleSpecReviewProviders(ctx, specReviewProviderRequest{Config: cfg})
+	set, err := assembleSpecReviewProviders(ctx, specReviewProviderRequest{Config: cfg, MissingBinary: missing})
 	if err != nil {
 		return []providerSmokeResult{{Provider: "review_gate", Status: "fail", Detail: err.Error()}}
 	}

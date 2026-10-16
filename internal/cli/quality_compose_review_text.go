@@ -40,6 +40,8 @@ type composeReviewText struct {
 	CheckFail                        string // %s: the detail
 	CheckFailed                      string
 	CheckRefused                     string // %s: the provider name, terminal-safe
+	CheckMissing                     string // %[1]s: the provider, %[2]s: the binary as written
+	CheckMissingName                 string // %s: the provider
 	WriteRefused                     string // %s: the first refused key
 	ReloadFailed                     string // %s: the cause
 	ColProvider, ColReview, ColModel string
@@ -78,11 +80,13 @@ var composeReviewTextKO = composeReviewText{
 	CheckRun:  "확인 호출 — provider %[1]d개에 요청 1회씩 (재시도 포함 최대 %[2]d회 model 호출)",
 	CheckLine: "확인 호출 %[1]s: %[2]s",
 	CheckPass: "통과", CheckWarn: "응답에 확인 문자열이 없습니다", CheckFail: "실패 — %s",
-	CheckFailed:  "확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.",
-	CheckRefused: "확인 호출을 할 수 없습니다: provider 이름 %s에 터미널 제어 문자가 있습니다",
-	WriteRefused: "autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: %s",
-	ReloadFailed: "리뷰 설정은 적용됐지만 다시 읽지 못했습니다: %s",
-	ColProvider:  "provider", ColReview: "리뷰", ColModel: "model", CLIBackend: "CLI backend",
+	CheckFailed:      "확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.",
+	CheckRefused:     "확인 호출을 할 수 없습니다: provider 이름 %s에 터미널 제어 문자가 있습니다",
+	CheckMissing:     "경고: %[1]s의 %[2]s 바이너리를 찾을 수 없어 확인 호출에서 건너뜁니다",
+	CheckMissingName: "경고: %s의 바이너리를 찾을 수 없어 확인 호출에서 건너뜁니다",
+	WriteRefused:     "autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: %s",
+	ReloadFailed:     "리뷰 설정은 적용됐지만 다시 읽지 못했습니다: %s",
+	ColProvider:      "provider", ColReview: "리뷰", ColModel: "model", CLIBackend: "CLI backend",
 	SummaryOff: "(꺼짐)", SummaryJudge: "judge %s",
 }
 
@@ -116,11 +120,13 @@ var composeReviewTextEN = composeReviewText{
 	CheckRun:  "live check — one request for each of %[1]d providers (at most %[2]d model calls with retries)",
 	CheckLine: "live check %[1]s: %[2]s",
 	CheckPass: "passed", CheckWarn: "the reply lacks the check token", CheckFail: "failed — %s",
-	CheckFailed:  "A live check failed; if you apply, that provider keeps failing in reviews.",
-	CheckRefused: "Cannot run the live check: provider name %s holds terminal control characters",
-	WriteRefused: "The review settings in autopus.yaml cannot be edited safely; nothing was written: %s",
-	ReloadFailed: "The review settings were applied but could not be re-read: %s",
-	ColProvider:  "provider", ColReview: "review", ColModel: "model", CLIBackend: "CLI backend",
+	CheckFailed:      "A live check failed; if you apply, that provider keeps failing in reviews.",
+	CheckRefused:     "Cannot run the live check: provider name %s holds terminal control characters",
+	CheckMissing:     "warning: binary %[2]s of %[1]s was not found; the live check skips it",
+	CheckMissingName: "warning: the binary of %s was not found; the live check skips it",
+	WriteRefused:     "The review settings in autopus.yaml cannot be edited safely; nothing was written: %s",
+	ReloadFailed:     "The review settings were applied but could not be re-read: %s",
+	ColProvider:      "provider", ColReview: "review", ColModel: "model", CLIBackend: "CLI backend",
 	SummaryOff: " (off)", SummaryJudge: "judge %s",
 }
 

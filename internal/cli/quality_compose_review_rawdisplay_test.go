@@ -132,3 +132,34 @@ func TestReadReviewRaw_NamesAsWritten(t *testing.T) {
 	assert.True(t, aliased.Names)
 	assert.Equal(t, "claude", aliased.Judge)
 }
+
+// The live check's missing-binary line names the provider and its binary as
+// written, or the provider alone for a placeholder binary; the runtime
+// warning, which spells the expanded binary, never runs from the tab. The
+// read-only gate admits only the native binary, so the placeholder expands
+// to agy here and the line must not name it.
+func TestReviewRawDisplay_LiveCheckMissingBinary(t *testing.T) {
+	t.Setenv("REVIEW_AGY_BIN", "agy")
+	// participation ×3, claude Enter, codex Enter, judge Enter, 확인 호출, the menu's default.
+	lines := reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n", "2\n", "\n"})
+	for name, tc := range map[string]struct{ binary, want string }{
+		"placeholder": {"${REVIEW_AGY_BIN}", "경고: gemini의 바이너리를 찾을 수 없어 확인 호출에서 건너뜁니다\n"},
+		"as written":  {"agy", "경고: gemini의 agy 바이너리를 찾을 수 없어 확인 호출에서 건너뜁니다\n"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			dir := writeReviewRL(t)
+			replaceReviewFile(t, dir, "            binary: agy\n", "            binary: "+tc.binary+"\n")
+
+			var run reviewRun
+			stderr := captureStderr(t, func() { run = runReviewCLIForms(t, dir, []string{"claude", "codex"}, lines...) })
+
+			require.NoError(t, run.err, run.out)
+			assert.Contains(t, run.out, tc.want)
+			assert.NotContains(t, stderr, "바이너리를 찾을 수 없습니다")
+			if name == "placeholder" {
+				assert.NotContains(t, run.out+stderr, "agy 바이너리")
+			}
+			assert.Len(t, run.smoke.recorded(), 2, "claude and codex still get their request")
+		})
+	}
+}
