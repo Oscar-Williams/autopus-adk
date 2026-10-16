@@ -46,7 +46,8 @@ func reviewEffortArg(row reviewArgsRow, args []string) reviewArgValue {
 
 // reviewCLI asks a CLI provider's model by its CLI Model Contract row
 // (REQ-RVM-08, 21–23): 그대로 and the row's models, then the chosen model's
-// effort. A row without a model list prints the reason line instead.
+// effort. A claude or codex row without models prints nothing more than its
+// note; any other row without a model list prints the reason line.
 func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	text := f.reviewText()
 	binary := tab.baseline.Binaries[name]
@@ -54,7 +55,9 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	models := f.reviewCLIModels(row)
 	tab.attested.CLI[name] = models
 	if len(models) == 0 {
-		f.reviewLine(fmt.Sprintf(text.NoModelList, name, binary))
+		if row.kind != reviewRowClaude && row.kind != reviewRowCodex {
+			f.reviewLine(fmt.Sprintf(text.NoModelList, name, binary))
+		}
 		return nil
 	}
 	working := tab.working.CLI[name]
@@ -75,10 +78,19 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	return nil
 }
 
-// reviewCLIModels is the model list of a CLI row.
+// reviewCLIModels is the model list of a CLI row; the codex row reads the
+// run's Codex catalog snapshot, the one the table read, and prints its note
+// when it cannot (REQ-RVM-22).
 func (f *composeFormRun) reviewCLIModels(row reviewArgsRow) []reviewCLIModel {
-	if row.kind == reviewRowClaude {
+	switch row.kind {
+	case reviewRowClaude:
 		return reviewClaudeModels()
+	case reviewRowCodex:
+		models, ok := reviewCodexModels(f.snapshot)
+		if !ok {
+			f.reviewLine(f.reviewText().CodexNote)
+		}
+		return models
 	}
 	return nil
 }

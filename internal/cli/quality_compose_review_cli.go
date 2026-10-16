@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -47,6 +48,36 @@ func reviewClaudeModels() []reviewCLIModel {
 		models = append(models, model)
 	}
 	return models
+}
+
+// reviewCodexModels is the codex row: the run's Codex catalog snapshot models
+// that report at least one of low–max, by name, each with those levels in
+// ladder order (REQ-RVM-22). A model whose levels miss the ladder entirely
+// is left out. It reports false for a snapshot it cannot read.
+func reviewCodexModels(snapshot driftGenerationSnapshot) ([]reviewCLIModel, bool) {
+	if !snapshot.codexCatalogFixed || len(snapshot.codexCatalog) == 0 {
+		return nil, false
+	}
+	catalog, err := config.ParseCodexModelCatalog(snapshot.codexCatalog)
+	if err != nil {
+		return nil, false
+	}
+	var models []reviewCLIModel
+	for _, entry := range catalog.Models {
+		model := reviewCLIModel{ID: entry.Slug}
+		for _, level := range config.QualityEfforts() {
+			if slices.ContainsFunc(entry.SupportedReasoningLevels, func(reported config.CodexCatalogReasoningLevel) bool {
+				return reported.Effort == level
+			}) {
+				model.Efforts = append(model.Efforts, level)
+			}
+		}
+		if len(model.Efforts) > 0 && !slices.ContainsFunc(models, func(m reviewCLIModel) bool { return m.ID == model.ID }) {
+			models = append(models, model)
+		}
+	}
+	slices.SortFunc(models, func(a, b reviewCLIModel) int { return strings.Compare(a.ID, b.ID) })
+	return models, true
 }
 
 // reviewRawProvider is the raw document's view of one provider, without

@@ -36,12 +36,19 @@ func replaceReviewFile(t *testing.T, dir, old, replacement string) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "autopus.yaml"), []byte(strings.Replace(text, old, replacement, 1)), 0o644))
 }
 
-// useReviewPath makes PATH hold exactly empty executables named binaries.
+// useReviewPath makes PATH hold exactly empty executables named binaries; a
+// codex one answers `debug models` with CATC (CAT-E), so runtime assembly
+// resolves the codex profile as a real catalog would.
 func useReviewPath(t *testing.T, binaries ...string) {
 	t.Helper()
 	bin := t.TempDir()
 	for _, binary := range binaries {
-		require.NoError(t, os.WriteFile(filepath.Join(bin, binary), []byte("#!/bin/sh\nexit 0\n"), 0o755))
+		script := "#!/bin/sh\nexit 0\n"
+		if binary == "codex" {
+			script = "#!/bin/sh\nif [ \"$1\" = debug ] && [ \"$2\" = models ]; then printf '%s' '" +
+				mustReadComposeCatalog(t, "CAT-E") + "'; fi\n"
+		}
+		require.NoError(t, os.WriteFile(filepath.Join(bin, binary), []byte(script), 0o755))
 	}
 	t.Setenv("PATH", bin)
 }
@@ -51,7 +58,14 @@ func useReviewPath(t *testing.T, binaries ...string) {
 // binaries.
 func runReviewCLIForms(t *testing.T, dir string, binaries []string, lines ...string) reviewRun {
 	t.Helper()
-	composeSessionCatalog(t, "CAT-E")
+	return runReviewCLIFormsWith(t, dir, mustReadComposeCatalog(t, "CAT-E"), binaries, lines...)
+}
+
+// runReviewCLIFormsWith is runReviewCLIForms with codexCatalog as the run's
+// Codex catalog snapshot.
+func runReviewCLIFormsWith(t *testing.T, dir, codexCatalog string, binaries []string, lines ...string) reviewRun {
+	t.Helper()
+	stubComposeCatalogProbe(t, codexCatalog, nil)
 	useReviewPath(t, binaries...)
 	smoke := useReviewSmokeBackend(t)
 	runner := &ompCLIFakeRunner{catalog: []byte(reviewCatalogCATG)}

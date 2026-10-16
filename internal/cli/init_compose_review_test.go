@@ -55,9 +55,9 @@ const reviewInitTab = "어느 도구를 바꿀까요? \n1. 모든 도구 같게\
 func TestInitComposeReview_S10TabEditSurvivesInit(t *testing.T) {
 	t.Run("(a) gemini off", func(t *testing.T) {
 		newReviewInitRun(t, true)
-		// 구성 편집, 멀티프로바이더 리뷰, claude·codex Enter, gemini 끄기, claude model
-		// Enter, judge Enter, 확인 호출 Enter, 적용, 유지.
-		dir, out, err := runComposeInit(t, formInput("2\n", "4\n", "\n", "\n", "2\n", "\n", "\n", "\n", "2\n", "\n"))
+		// 구성 편집, 멀티프로바이더 리뷰, claude·codex Enter, gemini 끄기, claude·codex
+		// model Enter, judge Enter, 확인 호출 Enter, 적용, 유지.
+		dir, out, err := runComposeInit(t, formInput("2\n", "4\n", "\n", "\n", "2\n", "\n", "\n", "\n", "\n", "2\n", "\n"))
 
 		require.NoError(t, err, out)
 		assert.Contains(t, out, reviewInitTab+"4. 멀티프로바이더 리뷰\n")

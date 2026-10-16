@@ -16,12 +16,14 @@ import (
 
 const reviewRLClaudeArgs = "            args: [--print, --model, claude-fable-5-1, --effort, max]"
 
-// reviewAssembledArgs is the argv `auto spec review` assembles for provider
-// from the loader value of dir.
+// reviewAssembledArgs is the argv `auto spec review --providers <provider>`
+// assembles from the loader value of dir. Naming the provider keeps another
+// provider's read-only policy refusal, such as S24's claude --verbose, out of
+// the judgement.
 func reviewAssembledArgs(t *testing.T, dir, provider string) []string {
 	t.Helper()
 	loaded := reviewLoaderValueKeepCwd(t, dir)
-	set, err := assembleSpecReviewProviders(t.Context(), specReviewProviderRequest{Config: loaded})
+	set, err := assembleSpecReviewProviders(t.Context(), specReviewProviderRequest{Config: loaded, FlagProviders: []string{provider}})
 	require.NoError(t, err)
 	for _, assembled := range set.Providers {
 		if assembled.Name == provider {
@@ -47,9 +49,9 @@ func TestReviewTab_S19ClaudeCLIModelWritesArgs(t *testing.T) {
 	dir := writeReviewRL(t)
 	b1 := readReviewFile(t, dir)
 
-	// participation Enter ×3, claude opus → xhigh, judge Enter, check Enter, 적용, 유지.
+	// participation Enter ×3, claude opus → xhigh, codex Enter, judge Enter, check Enter, 적용, 유지.
 	run := runReviewCLIForms(t, dir, []string{"claude"}, reviewLines(reviewOpen,
-		[]string{"\n", "\n", "\n", "3\n", "4\n", "\n", "\n", "2\n", "\n"})...)
+		[]string{"\n", "\n", "\n", "3\n", "4\n", "\n", "\n", "\n", "2\n", "\n"})...)
 
 	require.NoError(t, run.err, run.out)
 	assert.Contains(t, run.out, "claude model \n1. 그대로 — claude-fable-5-1 · max\n2. claude-fable-5-1\n3. claude-opus-5-5\n"+
@@ -60,7 +62,7 @@ func TestReviewTab_S19ClaudeCLIModelWritesArgs(t *testing.T) {
 	assert.True(t, reviewArgsHasRun(reviewAssembledArgs(t, dir, "claude"), "--model", "claude-opus-5-5", "--effort", "xhigh"))
 
 	run = runReviewCLIForms(t, dir, []string{"claude"}, reviewLines(reviewOpen,
-		[]string{"\n", "\n", "\n", "5\n", "\n", "\n", "2\n", "\n"})...)
+		[]string{"\n", "\n", "\n", "5\n", "\n", "\n", "\n", "2\n", "\n"})...)
 
 	require.NoError(t, run.err, run.out)
 	assert.NotContains(t, run.out, "claude effort")
@@ -78,9 +80,9 @@ func TestReviewTab_S27ClaudePreviewKeepsOtherArgsOut(t *testing.T) {
 
 	var run reviewRun
 	stderr := captureStderr(t, func() {
-		// claude opus → Enter (effort max stays), judge Enter, check Enter, 적용, 유지.
+		// claude opus → Enter (effort max stays), codex Enter, judge Enter, check Enter, 적용, 유지.
 		run = runReviewCLIForms(t, dir, []string{"claude"}, reviewLines(reviewOpen,
-			[]string{"\n", "\n", "\n", "3\n", "\n", "\n", "\n", "2\n", "\n"})...)
+			[]string{"\n", "\n", "\n", "3\n", "\n", "\n", "\n", "\n", "2\n", "\n"})...)
 	})
 
 	require.NoError(t, run.err, run.out)
