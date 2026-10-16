@@ -61,10 +61,10 @@ direct `auto plan` 문맥의 ledger다(planning context). 칸은 증거로만 �
 
 ## Outcome Lock
 
-- User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, provider마다 model과 effort·thinking(OMP catalog, Claude 탭 model, run의 Codex catalog가 증명한 것만, 증명할 수 없는 CLI는 OMP 전환), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 기존 key뿐이다.
-- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 23.
+- User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, provider마다 model과 effort·thinking(OMP catalog, Claude 탭 model, run의 Codex catalog, `agy models`가 증명한 것만, 모든 CLI는 OMP 전환도), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 기존 key뿐이다.
+- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 26.
 - Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI args의 model·effort 값 밖 항목, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
-- Completion evidence: Must S1–S12, S15–S22 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
+- Completion evidence: Must S1–S12, S15–S27 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
 
 ## Visual Planning Brief
 
@@ -176,7 +176,7 @@ These are optional improvements and do not block sync completion.
 
 ## Reviewer Brief
 
-- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, claude·codex CLI model·effort, OMP 전환, judge, 미리보기), 세 key만 쓰는 줄 splice writer, opt-in 확인 요청, backend 진단 줄 escape, init 순서 수정.
+- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, claude·codex·agy CLI model·effort와 `agy models` 해석, OMP 전환, judge, 미리보기), 줄 splice writer와 raw 글자 미리보기, opt-in 확인 요청, 진단 줄 escape, init 순서 수정. CLI model 편집은 범위 안이다(REQ-RVM-21–26).
 - Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI backend model, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Self-verified: A1·A2(실제 loader 경유 throwaway test), A3(v0.50.125 바이너리와 대조군 둘), catalog 정규화·재시도·CI gate 줄 번호, Traceability Matrix, oracle 시나리오, existing/[NEW] 구분.
 - Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1에서 확정된 G1-1·G1-2의 반영, 그리고 Completion Debt only.
@@ -196,5 +196,5 @@ These are optional improvements and do not block sync completion.
 - Q-FEAS-01 | status: PASS | attempt: 3 | files: spec.md, plan.md | reason: 참여를 review gate 목록으로 좁혔고 writer를 줄 splice로 바꿨으며, CLI model은 기존 args·`model_policy`로 쓰고 A1·A3 3차가 실행·호환을 확인했다
 - Q-FEAS-03 | status: PASS | attempt: 2 | files: acceptance.md | reason: S15는 편집 없는 확인 요청으로 시작하고 CATG는 strict 정규화를 지나는 fixture다
 - Q-STYLE-01 | status: PASS | attempt: 2 | files: spec.md | reason: baseline·working을 나눠 비교·기본값·reset 규칙을 따로 적었다
-- Q-SEC-01 | status: PASS | attempt: 2 | files: spec.md | reason: backend 진단 줄의 escape(REQ-RVM-20)와 이름 검사로 확인 요청 중 터미널 출력이 경계 안에 있다
+- Q-SEC-01 | status: PASS | attempt: 3 | files: spec.md, acceptance.md | reason: round 5 V-001: CLI 미리보기는 바뀐 flag 값만 raw 글자로 보이고 placeholder 대상은 거부한다(REQ-RVM-26, S27). 진단 줄 escape와 이름 검사도 유지
 - Q-SEC-03 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: backend 직접 출력도 `terminalSafe`를 거치고 S16이 판정한다. 증거 파일은 경로를 치환한다

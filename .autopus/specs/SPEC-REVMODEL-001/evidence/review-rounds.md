@@ -64,3 +64,12 @@ checklist FAIL(Q-COMP-02/04/05/08, Q-CORR-03, Q-FEAS-01/03, Q-STYLE-01, Q-SEC-01
 ## G1-3 (2026-10-16, 사용자 결정)
 
 - `agy models` 해석기를 더한다(REQ-RVM-24, Agy Catalog Contract): 15초·64 KiB, 머리 줄 건너뜀, `<id>\t<display name>` 엄격 해석, 어긋나면 목록 없음과 이유 줄, provider family 같은 id만, 기본 이름 → 실제 있는 effort 접미사의 두 단계(쓰는 값은 늘 목록의 id). `OMP backend로 전환`은 다른 선택지로 남는다. 목록에 있다고 호출되는 것은 아니라 확인 요청을 권장한다(gemini-3.1-pro 404). 관측 sample은 S23에 그대로 쓴다.
+
+## Round 5 (2026-10-16, REJECT, claude 429, codex·gemini 판정)
+
+| Finding | 반영 |
+|---|---|
+| V-001/F-003 security: CLI 미리보기가 env가 펼쳐진 args 전체를 보임 | REQ-RVM-26: 바뀐 flag 값만 raw 글자로, 다른 args는 안 보임, 대상 값이 placeholder거나 raw와 load가 다르면 거부(S26 미리보기 줄, 새 S27: `${REVIEW_TOKEN}` 값·이름·다른 flag가 출력에 없음, `-m ${CODEX_MODEL}`은 거부·bytes 불변) |
+| V-002: CLI baseline 하나로 | REQ-RVM-25: 현재 값 결정은 migration 뒤 사본, 편집은 raw `args` node(쌍 삽입, raw args 없으면 migration args 삽입, alias·anchor·merge·block·placeholder 거부). S24가 결정과 raw bytes 보존을 함께 판정 |
+| V-003: Outcome·Reviewer Brief 범위 | research Outcome Lock·Reviewer Brief와 spec Outcome Boundary에 REQ-RVM-21–26, agy 해석, S15–S27 반영 |
+| acceptance 200줄 | fixture와 AGY sample을 `evidence/acceptance-fixtures.md`로 옮기고 시나리오 사이 빈 줄을 줄임 |

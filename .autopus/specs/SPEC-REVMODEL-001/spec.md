@@ -13,12 +13,12 @@
 
 `auto spec review`가 어느 provider를 쓰고, provider마다 어느 model·thinking으로 돌며, 누가 judge인지는 지금 `autopus.yaml`을 손으로 고쳐야만 바뀐다. init wizard에는 Review Gate 예/아니오 단계만 있다(`internal/cli/tui/wizard_steps.go` `buildReviewGateStep`). 2026-10-15 실측에서 OMP catalog는 `google-antigravity/gemini-3.1-pro`를 보였지만 한 번 호출하면 HTTP 404였다. 그날의 SPEC 리뷰는 gemini 없이 돌았고, quorum이 차서 receipt의 `degraded_reasons`는 비어 있었다. catalog에 있다는 것만으로는 model이 실제로 답한다고 볼 수 없다.
 
-이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭이 정하는 것은 다섯 가지다: (1) `auto spec review`에 참여하는 provider(`spec.review_gate.providers`), (2) provider마다 model과 effort·thinking(OMP backend는 OMP catalog, claude CLI는 Claude 탭 model, codex CLI는 run의 Codex catalog가 증명한 것만, 증명할 목록이 없는 CLI는 OMP backend 전환), (3) judge(`spec.review_gate.judge`, 참여 provider 또는 지금의 judge 없음), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 요청. 쓰는 key는 v0.50.125가 이미 읽는 기존 key뿐이다.
+이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭이 정하는 것은 다섯 가지다: (1) `auto spec review`에 참여하는 provider(`spec.review_gate.providers`), (2) provider마다 model과 effort·thinking(OMP backend는 OMP catalog, claude CLI는 Claude 탭 model, codex CLI는 run의 Codex catalog, agy는 `agy models` 목록이 증명한 것만, 모든 CLI는 OMP backend 전환도), (3) judge(`spec.review_gate.judge`, 참여 provider 또는 지금의 judge 없음), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 요청. 쓰는 key는 v0.50.125가 이미 읽는 기존 key뿐이다.
 
 ## Outcome Boundary
 
 - Outcome Lock 원문은 `research.md` `## Outcome Lock`이다.
-- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 25 (Must). REQ-RVM-16 ~ 18은 Should다.
+- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 26 (Must). REQ-RVM-16 ~ 18은 Should다.
 - Explicit non-goals:
   - `orchestra.commands.*.providers`와 `orchestra.judge`·`orchestra.commands.*.judge` 쓰기. 명령 목록은 load할 때 `MigrateOrchestraConfig` Migration 3이 `orchestra.providers`의 모든 key로 다시 채운다(`pkg/config/migrate.go:75-88`, probe A2). 그래서 끄기는 orchestra 명령과 `--multi`에 효과가 없고, 미리보기가 그렇게 알린다
   - Migration 3 변경, `--multi`·`--providers` 의미 변경
@@ -27,13 +27,14 @@
   - `orchestra.providers` 항목 추가·삭제, `backend`·`binary`·`tools`·`subprocess` 변경
   - review receipt `degraded_reasons` 규칙과 `auto doctor --provider-smoke` 동작 변경(Evolution Idea)
   - 확인 요청 자동 실행, 결과 저장(receipt·cache), 새 YAML key
-- Completion evidence: Must S1–S12, S15–S26 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
+- Completion evidence: Must S1–S12, S15–S27 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
 
 ## Trust Model
 
 - SPEC-MODELUX-001·002 Trust Model을 그대로 따른다. `autopus.yaml`은 반쯤 신뢰한다. writer는 loader가 환경 변수를 펼친 값을 쓰기 원천으로 쓰지 않고 raw 줄과 raw node를 쓴다.
 - 새 비신뢰 입력은 넷이다. (0) `agy models` 출력은 Agy Catalog Contract의 엄격한 해석만 거친다. (1) OMP catalog 출력은 기존 `readInstalledOMPModelChoices`의 정규화만 거친다. (2) 확인 요청의 응답과 오류는 `classifyProviderSmokeResult`가 판정하고 결과 줄에는 `terminalSafe`를 거친 첫 줄 200 rune까지만 쓴다. (3) provider 이름과 model 문자열은 폼 라벨·결과 줄에 넣기 전에 `terminalSafe`를 거친다.
 - 확인 요청 동안 터미널에 닿는 다른 출력도 같은 경계 안에 둔다. OMP review backend가 stderr에 직접 쓰는 두 줄은 provider·model·tools·사유를 `terminalSafe`로 감싼다(REQ-RVM-20). 이름이 `terminalSafe`로 바뀌는 provider가 하나라도 있으면 확인 요청을 시작하지 않는다(REQ-RVM-10).
+- 미리보기·after 표의 CLI 값은 raw document 글자이고 바뀐 flag 값 밖의 args는 보이지 않는다. 대상 값이 placeholder면 편집하지 않는다(REQ-RVM-26).
 - 확인 요청은 model 호출이라 비용이 든다. OMP backend는 일시 오류에 한 요청을 최대 3회 시도한다(`ompReviewMaxAttempts`). 그래서 기본값은 호출 없음이고 선택지 라벨이 최대 호출 수를 적는다. 새 secret, 승인 단계, 유료 CI는 없다.
 
 ## Requirements
@@ -199,9 +200,16 @@ WHEN the tab needs the models of an `agy` provider, THEN THE SYSTEM SHALL run `<
 ### REQ-RVM-25 CLI baseline
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL take the baseline of every CLI provider entry from a detached copy of the run's config after `config.MigrateOrchestraConfig`, so that `auto quality` (which reads through `LoadPreview` without that migration), `auto update`, and `auto init` show and edit the args the runtime runs, and when the stored args differ from the migrated ones SHALL write the migrated args with only the target values changed.
+THE SYSTEM SHALL decide the current model and effort of every CLI provider from a detached copy of the run's config after `config.MigrateOrchestraConfig`, so that `auto quality` (which reads through `LoadPreview` without that migration), `auto update`, and `auto init` decide on the args the runtime runs, and SHALL compute and apply the edit against the raw `orchestra.providers.<p>.args` node by the Line Splice Writer Contract, inserting the flag pair when absent, inserting the migrated args with only the target values changed when the raw args are absent or empty, and refusing alias, anchor, merge, block-scalar, and placeholder nodes.
 
-- round 4 F-002. 그래서 args가 비었거나 옛 기본 argv인 codex도 쓴 `-m`이 load 뒤 남는다(S24).
+- round 4 F-002, round 5 V-002: 결정은 migration 뒤 값, 쓰기는 raw node다. 그래서 args가 비었거나 옛 기본 argv인 codex도 쓴 `-m`이 load 뒤 남고 raw의 다른 bytes는 그대로다(S24).
+
+### REQ-RVM-26 CLI 값 표시와 placeholder
+Priority: Must · EARS: Unwanted
+
+IF a CLI edit is previewed or its target flag value in the raw document is a `${` placeholder or differs from the loaded value, THEN THE SYSTEM SHALL show only the changed flag values taken from the raw document text and never any other args element, and for a placeholder or differing target SHALL print the CLI value refusal line, keep that provider unchanged, and write nothing for it.
+
+- round 5 V-001. 미리보기는 env가 펼쳐진 run cfg에서 args 전체를 보이지 않는다. `terminalSafe`는 가림이 아니다.
 
 ## Contracts
 
@@ -218,12 +226,12 @@ THE SYSTEM SHALL take the baseline of every CLI provider entry from a detached c
 | CLI 안내 | 증명할 목록이 없는 CLI provider에 OMP 전환을 줄 수 없으면 그 pass에 이유 1줄(REQ-RVM-23) |
 | judge | working judge가 참여하면 `그대로 — <j>` 뒤 다른 참여 provider. working judge가 비었으면 `그대로 — judge 없음` 뒤 참여 provider. working judge가 꺼졌으면 안내 1줄 뒤 참여 provider만, 첫 provider가 기본 |
 | 검증 | `planReviewComposition`(REQ-RVM-05). 오류 뒤 Select는 수 검사 행과 같다 |
-| 미리보기 | after 표, 바뀌는 설정 줄(순서: `spec.review_gate.providers` → provider 순으로 그 provider의 `backend` → `model` → `model_policy` → `args` → `spec.review_gate.judge`, 모양 `<key> <before> → <after>`, 목록은 `[a, b]`, 빈 judge는 `judge 없음`), 고정 안내(provider를 끈 편집이면 명령 안내, model을 바꾼 편집이면 model 안내). 같으면 `변경 없음` |
+| 미리보기 | CLI args는 바뀐 flag 값만 `orchestra.providers.<p>.args <flag> <old> → <new>`로 보이고 다른 항목은 보이지 않으며 값은 raw 글자다(REQ-RVM-26). after 표, 바뀌는 설정 줄(순서: `spec.review_gate.providers` → provider 순으로 그 provider의 `backend` → `model` → `model_policy` → `args` → `spec.review_gate.judge`, 모양 `<key> <before> → <after>`, 목록은 `[a, b]`, 빈 judge는 `judge 없음`), 고정 안내(provider를 끈 편집이면 명령 안내, model을 바꾼 편집이면 model 안내). 같으면 `변경 없음` |
 | 확인 요청 | 미리보기나 `변경 없음` 뒤 `확인 호출 없이 계속`(기본) · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)`. `<n>`은 후보의 참여 provider 수 |
 | 확인 | 바뀐 편집만: 기존 `review`(`quality_compose_form_driver.go:213`)와 같은 `취소`(기본) · `적용` · `다시 편집`. 바뀐 것이 없으면 확인 없이 메뉴로 |
 | 적용 | update·quality는 Line Splice Writer Contract, init은 메모리 경로. 성공하면 기존 `적용했습니다` 줄 |
 
-after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞추고 바뀐 칸 끝에 `*`, CLI backend의 model 칸은 `<binary> <model> · <effort>`, model flag 값이 없으면 `<binary>`):
+after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞추고 바뀐 칸 끝에 `*`, CLI backend의 model 칸은 raw 글자의 `<binary> <model> · <effort>`, model flag 값이 없으면 `<binary>`):
 
 ```text
 provider  리뷰   model                                    judge
@@ -323,6 +331,7 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | 확인 요청 | `확인 호출` · `확인 호출 없이 계속` · `확인 호출 — provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)` · 결과 줄 · `확인 호출이 실패한 provider가 있습니다. 적용하면 그 provider는 리뷰에서 실패합니다.` · `확인 호출을 할 수 없습니다: provider 이름 <terminalSafe(p)>에 터미널 제어 문자가 있습니다` | `Live check` · `continue without a live check` · `live check — one request for each of <n> providers (at most <3n> model calls with retries)` · `live check <p> (<model>): passed` / `: the reply lacks the check token` / `: failed — <detail>` · `A live check failed; if you apply, that provider keeps failing in reviews.` · `Cannot run the live check: provider name <terminalSafe(p)> holds terminal control characters` |
 | agy 안내 | `<p>(agy) model 목록을 읽지 못해 agy model은 그대로입니다` | `Could not read the agy model list for <p>; its agy model stays` |
 | CLI 오류 | `<p> model <m>는 이 provider의 선택지에 없습니다` · `<p> effort <e>는 <m>이 받지 않는 단계입니다` | `<m> is not a choice for <p>` · `<m> does not take effort <e> for <p>` |
+| CLI 값 거부 | `<p>의 <flag> 값이 환경 변수라 이 탭에서 바꾸지 않습니다: <raw>` | `<flag> of <p> comes from an environment variable; this tab leaves it: <raw>` |
 | 쓰기 거부 | `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: <key>` | `The review settings in autopus.yaml cannot be edited safely; nothing was written: <key>` |
 | 메뉴 요약 | `멀티프로바이더 리뷰: claude · codex · gemini(꺼짐) · judge claude` (빈 judge는 `judge 없음`) | `Multi-provider review: claude · codex · gemini (off) · judge claude` (`no judge`) |
 
@@ -386,3 +395,4 @@ Gate 1 범위 결정 둘은 2026-10-16 사용자가 확정했다(근거는 `rese
 | REQ-RVM-23 | T14 | S8, S21, S23 | INV-RVM-12 |
 | REQ-RVM-24 | T14 | S23 | INV-RVM-12 |
 | REQ-RVM-25 | T12 | S24 | INV-RVM-11 |
+| REQ-RVM-26 | T12 | S26, S27 | INV-RVM-07 |
