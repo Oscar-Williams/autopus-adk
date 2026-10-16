@@ -91,9 +91,7 @@ func scanCodex(lines []string) codexScan {
 			}
 			continue
 		}
-		if value, ok := tomlAssignmentValue(trimmed); ok {
-			scan.observeValue(value)
-		}
+		scan.observeLine(trimmed)
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
 		}
