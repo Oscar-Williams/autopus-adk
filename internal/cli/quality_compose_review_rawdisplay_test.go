@@ -163,3 +163,23 @@ func TestReviewRawDisplay_LiveCheckMissingBinary(t *testing.T) {
 		})
 	}
 }
+
+// A provider key that is not a plain scalar of its own is no name as
+// written: an alias key reads as its anchor's name, not the placeholder the
+// anchor holds, and an anchored or tagged key is not plain either.
+func TestReadReviewRaw_OnlyPlainProviderKeys(t *testing.T) {
+	read := func(text string) *reviewRawDocument {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "autopus.yaml"), []byte(text), 0o644))
+		return readReviewRaw(dir)
+	}
+	head := "orchestra:\n    commands:\n        review:\n            providers: [&k \"${X}\"]\n    providers:\n        claude:\n            binary: claude\n"
+
+	assert.True(t, read(head).Names, "plain keys")
+	assert.True(t, read(head+"        \"codex\":\n            binary: codex\n").Names, "a quoted key is its own text")
+	for name, key := range map[string]string{"alias key": "*k ", "anchored key": "&a codex", "tagged key": "!!str codex"} {
+		raw := read(head + "        " + key + ":\n            binary: codex\n")
+		assert.False(t, raw.Names, name)
+		assert.NotContains(t, raw.Providers, "k", name)
+	}
+}

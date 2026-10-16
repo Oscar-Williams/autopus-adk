@@ -76,7 +76,9 @@ func readReviewRaw(dir string) *reviewRawDocument {
 }
 
 // readReviewRawProviders fills views with the provider entries as written and
-// reports whether every provider key reads as written.
+// reports whether every provider key reads as written: a scalar of its own,
+// without an anchor, a tag, or a placeholder. An alias key reads as its
+// anchor's name, never as the value the anchor holds, so it is unreadable.
 func readReviewRawProviders(root *yaml.Node, views map[string]reviewRawProvider) bool {
 	providers, ok := reviewPlainPath(root, "orchestra", "providers")
 	switch {
@@ -89,13 +91,13 @@ func readReviewRawProviders(root *yaml.Node, views map[string]reviewRawProvider)
 	}
 	names := true
 	for i := 0; i+1 < len(providers.Content); i += 2 {
-		key := providers.Content[i].Value
-		if strings.Contains(key, "${") {
+		key := providers.Content[i]
+		if key.Kind != yaml.ScalarNode || key.Anchor != "" || key.Style&yaml.TaggedStyle != 0 || strings.Contains(key.Value, "${") {
 			names = false
 			continue
 		}
 		if view, ok := reviewRawViewOf(providers.Content[i+1]); ok {
-			views[key] = view
+			views[key.Value] = view
 		}
 	}
 	return names
