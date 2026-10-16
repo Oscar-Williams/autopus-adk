@@ -15,6 +15,7 @@ type reviewTabState struct {
 	baseline reviewBaseline
 	working  reviewComposition
 	catalog  *reviewCatalog
+	agy      reviewAgyCatalog
 	attested reviewAttestation
 }
 
@@ -27,7 +28,9 @@ func (f *composeFormRun) reviewTab() error {
 	if f.shared.writer == composeSessionFile {
 		raw = readReviewRaw(f.shared.dir, f.shared.cfg)
 	}
-	tab := &reviewTabState{baseline: newReviewBaseline(f.shared.cfg, raw), catalog: &reviewCatalog{}, attested: newReviewAttestation()}
+	tab := &reviewTabState{
+		baseline: newReviewBaseline(f.shared.cfg, raw), catalog: &reviewCatalog{}, agy: reviewAgyCatalog{}, attested: newReviewAttestation(),
+	}
 	tab.working = tab.baseline.reviewComposition.clone()
 	if f.options.OMP != nil && f.options.OMP.deps.newRunner != nil {
 		tab.catalog.runner = f.options.OMP.deps.newRunner()
