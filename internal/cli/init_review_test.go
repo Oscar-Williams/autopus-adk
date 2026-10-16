@@ -48,7 +48,7 @@ func TestInitReview_S6ShowsTheSettingsBeforeAnyWrite(t *testing.T) {
 		"  품질 모드: Balanced", "  리뷰 게이트: 끔", "  REA 역공학 MCP: 켬", "  방법론: TDD",
 		" 바뀌는 설정", "  language: ai_responses=ko, comments=en, commits=ko", "  spec.review_gate: enabled=false",
 		"  usage_profile: developer", " REA", "  REA MCP: 켬 · 등록", tuiuxReview, tuiuxFooter,
-		"이대로 적용할까요? ", "1. 적용", "2. 뒤로", "3. 취소",
+		"이대로 진행할까요? ", "1. 적용", "2. 뒤로", "3. 취소",
 	}, "\n")+"\n")
 	assert.Equal(t, []bool{false, false}, existed, "DESIGN.md and autopus.yaml do not exist while the review runs")
 	assert.Less(t, strings.Index(out, "적용할 설정\n"), strings.Index(out, tuiuxDesignStep))
@@ -143,7 +143,7 @@ func TestInitReview_S9EnglishReview(t *testing.T) {
 
 	assert.Contains(t, run.out, "Settings to apply\n Answers\n  Usage Profile: Developer\n")
 	assert.Contains(t, run.out, "\n Changed settings\n  language: ai_responses=ko, comments=en, commits=ko\n")
-	assert.Contains(t, run.out, "\n REA\n  REA MCP: on · add\ninit · Review\nType an answer and press Enter · back: b\nApply these settings? \n1. apply\n2. back\n3. cancel\n")
+	assert.Contains(t, run.out, "\n REA\n  REA MCP: on · add\ninit · Review\nType an answer and press Enter · back: b\nProceed with these settings? \n1. apply\n2. back\n3. cancel\n")
 }
 
 // S15 (h): init's form gate does not read CI, so a truthy CI still asks

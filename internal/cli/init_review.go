@@ -30,13 +30,13 @@ type initReviewText struct {
 var initReviewTextKO = initReviewText{
 	Title: "적용할 설정", Answers: " 답한 값", Changed: " 바뀌는 설정", Rea: " REA", None: "(없음)",
 	ReaLine: "  REA MCP: %s · %s", On: "켬", Off: "끔", Add: "등록", Keep: "그대로", Remove: "제거",
-	Header: "확인", Question: "이대로 적용할까요?", Apply: "적용", Back: "뒤로", Cancel: "취소",
+	Header: "확인", Question: "이대로 진행할까요?", Apply: "적용", Back: "뒤로", Cancel: "취소",
 }
 
 var initReviewTextEN = initReviewText{
 	Title: "Settings to apply", Answers: " Answers", Changed: " Changed settings", Rea: " REA", None: "(none)",
 	ReaLine: "  REA MCP: %s · %s", On: "on", Off: "off", Add: "add", Keep: "keep", Remove: "remove",
-	Header: "Review", Question: "Apply these settings?", Apply: "apply", Back: "back", Cancel: "cancel",
+	Header: "Review", Question: "Proceed with these settings?", Apply: "apply", Back: "back", Cancel: "cancel",
 }
 
 // initReviewTextFor returns Korean for ko and English for every other
@@ -49,7 +49,8 @@ func initReviewTextFor(lang string) initReviewText {
 }
 
 // review writes the init review and asks 적용, 뒤로, or 취소, whose default
-// is 적용 (REQ-TUX-11). The block is plain lines before the form, as the
+// is 적용 (REQ-TUX-11). Its question is not the composition step's
+// 적용할까요?, so the two confirmations read apart. The block is plain lines before the form, as the
 // composition table is: the answers of the steps the wizard asked, every
 // setting key the run changes from the base config, and the run's REA
 // decision with the action the platform writes take. Esc is 뒤로 and Ctrl+C

@@ -256,7 +256,7 @@ THE SYSTEM SHALL fit every TUI navigation form into the terminal height by the H
 - diff 규칙: B는 wizard 답을 적용하기 직전의 cfg 사본(REQ-TUX-13의 기준 사본), F는 확인 화면 시점의 cfg다. 둘을 `config.Save`와 같은 struct tag로 YAML marshal 한다(`yaml:"-"` field, 예 `Runtime`은 없다). mapping을 leaf까지 펴고 list는 flow(`[a, b]`) 한 leaf로 본다. 더해졌거나 값이 다르거나 없어진 leaf가 바뀐 leaf다. 바뀐 leaf를 부모 경로로 묶어 부모마다 한 줄 `  <부모 경로>: <key>=<값>, …`(key 순)으로 쓰고, 최상위 leaf는 `  <key>: <값>`이다. 없어진 leaf의 값은 ko `(없음)` / en `(none)`이다. 줄은 경로 순이고 값은 `terminalSafe`를 거친다.
 - 그래서 구성 단계의 프리셋 등급과 effort(`quality.presets.<p>.agents`·`.efforts`), binding(`quality.providers`), OMP `role_model_policy`, 리뷰 탭이 바꾼 key(`spec.review_gate` 등)가 모두 key 이름으로 보인다. 값이 같으면 줄이 없다(예: 리뷰 게이트를 끄면 `spec.review_gate: enabled=false`만 보이고 기본 provider 목록은 그대로라 줄이 없다).
 - 확인 화면에 없는 것: 확인 뒤의 정규화(`MigrateOrchestraConfig`), statusLine·parent rule 줄 질문과 그 결과, 생성 뒤 `reaRun.finish`가 정하는 REA key(`reaKeyAfterRun`), 생성 파일. 확인 블록 머리 줄 아래에 이 설명을 두지 않고 help 문서(REQ-TUX-18)에 적는다.
-- Select 제목 ko `이대로 적용할까요?` / en `Apply these settings?`, 선택지 ko `적용`·`뒤로`·`취소` / en `apply`·`back`·`cancel`, 기본값 적용. 취소는 기존 줄 `  init cancelled.`(`init.go:120`과 같은 bytes)를 쓴다.
+- Select 제목 ko `이대로 진행할까요?` / en `Proceed with these settings?`, 선택지 ko `적용`·`뒤로`·`취소` / en `apply`·`back`·`cancel`, 기본값 적용. 제목은 구성 단계의 `적용할까요?`와 다르게 읽히도록 `적용할까요?`로 끝나지 않는다(구현 중 개정 A-1, `evidence/review-rounds.md`). 취소는 기존 줄 `  init cancelled.`(`init.go:120`과 같은 bytes)를 쓴다.
 - 줄 하나만 묻고 바로 쓰는 `기본 프리셋 고르기`는 확인 화면 대상이 아니다(non-goal). update·quality의 구성 쓰기는 기존 `적용할까요?`가 확인 화면이다.
 
 ### Stage Indicator Contract

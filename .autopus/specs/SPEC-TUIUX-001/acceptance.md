@@ -55,7 +55,7 @@ Priority: Must
 Given IN, ko, `useNavComposeForms`, 확인 폼이 돌 때 `DESIGN.md`와 `autopus.yaml`의 존재를 기록하는 runner hook, 같은 IN 흐름을 8ec13935에서 기록한 base golden
 When init을 입력 Enter 하나로 돌린다
 Then 출력에 다음 줄이 이 순서로 붙어 있다: `적용할 설정`, ` 답한 값`, `  사용 프로필: Developer`, `  언어 설정: 주석 en · 커밋 ko · AI 응답 ko`, `  품질 모드: Balanced`, `  리뷰 게이트: 끔`, `  REA 역공학 MCP: 켬`, `  방법론: TDD`, ` 바뀌는 설정`, `  language: ai_responses=ko, comments=en, commits=ko`, `  spec.review_gate: enabled=false`, `  usage_profile: developer`, ` REA`, `  REA MCP: 켬 · 등록`, `init · 확인`, `답을 입력하고 Enter를 누르세요 · 뒤로: b`
-And 그 뒤는 huh accessible Select의 제목 줄(`이대로 적용할까요?`와 공백 하나), `1. 적용`, `2. 뒤로`, `3. 취소`이고, 확인 폼이 돌 때 두 파일은 없었으며 확인 블록은 `Design Context` 단계 줄보다 앞이다
+And 그 뒤는 huh accessible Select의 제목 줄(`이대로 진행할까요?`와 공백 하나), `1. 적용`, `2. 뒤로`, `3. 취소`이고, 확인 폼이 돌 때 두 파일은 없었으며 확인 블록은 `Design Context` 단계 줄보다 앞이다
 And run 뒤 NPD가 base golden과 같다
 
 ### S7: 확인 화면의 뒤로는 구성을 남기고 마지막 snapshot을 쓴다

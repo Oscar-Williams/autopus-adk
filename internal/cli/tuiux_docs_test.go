@@ -35,13 +35,13 @@ func TestTUIUXDocs_S19HelpsReadmeAndChangelog(t *testing.T) {
 		name, text string
 		wants      []string
 	}{
-		{"auto init --help", newInitCmd().Long, append(append(ko, "지금까지 고른 값", "init · 4/6 리뷰 게이트", "이대로 적용할까요?",
+		{"auto init --help", newInitCmd().Long, append(append(ko, "지금까지 고른 값", "init · 4/6 리뷰 게이트", "이대로 진행할까요?",
 			"답한 값", "REA 결정", "orchestra 정규화"), review...)},
 		{"auto update --help", newUpdateCmd().Long, append(ko, "지금까지 고른 값", "update · 모델 구성 › 구성 편집 › Codex › 역할 그룹")},
 		{"auto quality --help", newQualityCmd().Long, append(en, "b, back, or 뒤로", "quality · Model composition › edit the composition › Codex")},
-		{"README.md", readRepoFile(t, "README.md"), append(append(en, "`b`, `back`, or `뒤로`", "Apply these settings?",
+		{"README.md", readRepoFile(t, "README.md"), append(append(en, "`b`, `back`, or `뒤로`", "Proceed with these settings?",
 			"init · 4/6 Review Gate", "Answers", "Changed settings", "REA MCP: on · add", "orchestra normalization"), review...)},
-		{"CHANGELOG.md v0.50.126", unreleased, append(append(ko, "지금까지 고른 값", "이대로 적용할까요?", "orchestra 정규화"), review...)},
+		{"CHANGELOG.md v0.50.126", unreleased, append(append(ko, "지금까지 고른 값", "이대로 진행할까요?", "orchestra 정규화"), review...)},
 	} {
 		text := flowText(doc.text)
 		for _, want := range doc.wants {

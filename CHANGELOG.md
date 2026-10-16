@@ -17,7 +17,7 @@ All notable changes to this project will be documented in this file.
     고른 값(`지금까지 고른 값`), `방향키 이동 · Enter 선택 · Esc 뒤로 · Ctrl+C 취소` footer가 터미널 높이 안에 보인다.
     요약이 넘치면 머리 줄, `… 외 k개`, 마지막 답만 남긴다.
   - init 확인 화면: 폼으로 묻는 init은 아무 파일도 쓰기 전에 `적용할 설정`(답한 값, 새 설정과의 YAML 차이로 바뀌는
-    설정 key 전부, REA 결정과 동작)을 보이고 `이대로 적용할까요?`에 적용(기본값)·뒤로·취소를 묻는다. 뒤로는 구성 단계가
+    설정 key 전부, REA 결정과 동작)을 보이고 `이대로 진행할까요?`에 적용(기본값)·뒤로·취소를 묻는다. 뒤로는 구성 단계가
     폼을 물었으면 그 메뉴를 구성 그대로 이어 하고 아니면 wizard 마지막 단계로 간다. 취소와 Ctrl+C는 `init cancelled.`를
     쓰고 아무것도 쓰지 않는다(플랫폼 이름 정규화가 필요한 기존 autopus.yaml도 그대로다). 확인 화면에 없는 것: 그 뒤의
     orchestra 정규화, statusLine·parent rule 질문과 결과, 생성 뒤 정하는 `features.rea`, 생성 파일. 구성 단계에 다시
