@@ -20,7 +20,7 @@
 - 3차(2026-10-16, throwaway `TestZZRevmodelProbe3`, 실행 뒤 삭제, model 호출 없음): `evidence/probe-cli-model.md`. pinned codex argv에 쓴 `-m gpt-6-luna`와 effort `high`가 남고 quality codex는 `-m gpt-6-astra`로 덮인다. claude `--model`은 남는다. `backend: omp`+`model`로 바꾼 gemini는 OMP backend로 조립된다. v0.50.125는 두 모양을 읽는다(exit 0).
 - A3(2026-10-15): `git archive v0.50.125`(dd6d6ea2) 빌드. 본 파일 `config get usage_profile` → exit 0, `developer`. 대조군 → `field reviewers not found in type config.ReviewGateConf`, `validate config: provider_model_required: codex`(둘 다 exit 1). `config get`은 두 key만 받지만 파일 전체를 strict load한다.
 - 상위 세션 live 증거(재실행 안 함): catalog의 `google-antigravity/gemini-3.1-pro:high` one-shot은 HTTP 404, `gemini-3-pro`는 stream 끊김, `gemini-3.8-flash:high`는 `ok`.
-- 2026-10-16 사용자 결정: 이 repo의 gemini 리뷰 model을 `google-antigravity/gemini-3.8-flash:high`로 바꾼다(위 live 증거). catalog 증명만으로는 404를 못 잡는다는 D6의 근거이고 S15의 목표 값이다. fixture는 이 값에 기대지 않는다(R3는 `gemini-3.1-pro:high` 그대로).
+- 2026-10-16 사용자 결정: 이 repo의 gemini 리뷰 model을 `google-antigravity/gemini-3.8-flash:high`로 바꾼다(위 live 증거). catalog 증명만으로는 404를 못 잡는다는 D6의 근거이고 S15의 목표 값이다. fixture는 이 값에 기대지 않는다(R3는 `gemini-3.1-pro:high` 그대로). catalog나 `agy models`에 있다는 것은 호출 가능을 뜻하지 않으므로 확인 요청을 권장한다.
 
 ## T1 기존 test 분류
 
@@ -63,7 +63,7 @@ direct `auto plan` 문맥의 ledger다(planning context). 칸은 증거로만 �
 
 - User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, provider마다 model과 effort·thinking(OMP catalog, Claude 탭 model, run의 Codex catalog가 증명한 것만, 증명할 수 없는 CLI는 OMP 전환), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 기존 key뿐이다.
 - Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 23.
-- Explicit non-goals: `spec.md` `## Outcome Boundary`의 목록. 특히 orchestra 명령 목록과 `--multi`는 바뀌지 않는다(G1-1).
+- Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI args의 model·effort 값 밖 항목, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Completion evidence: Must S1–S12, S15–S22 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
 
 ## Visual Planning Brief
@@ -98,7 +98,7 @@ sequenceDiagram
 - D1 탭 위치: 기존 tool tab의 마지막 선택지다(사용자 답 location=compose tab). gate는 `spec.review_gate.enabled`, provider 둘 이상, CI 아님(J-015, J-020).
 - D2 참여 = `spec.review_gate.providers`만: 명령 목록은 Migration 3이 load마다 다시 채우므로 쓰면 미리보기가 거짓이 되고 다음 update가 되돌린다(J-001, probe A2). planning 예시의 "명령 목록에서도 gemini 제거"는 Migration 3 변경이 필요해 scope expansion이다(G1-1). 미리보기 안내가 명령과 `--multi`는 그대로라고 알린다. 2026-10-16 Gate 1에서 사용자가 이 범위를 확정했다(안내 줄 유지).
 - D3 (대체됨 2026-10-16) model은 OMP backend만: 새 `auto init`의 세 CLI provider에서 쓸모가 없어 사용자가 바꿨다. D3'가 대신한다.
-- D3' CLI model: claude는 Claude 탭의 등급 model을 args `--model`로, codex는 run의 Codex catalog model을 `model_policy: pinned`와 `ApplyCodexProviderProfile` args로 쓴다. CLI 항목에 `model` key를 쓰는 대안은 v0.50.125가 읽기는 해도 실행에서 무시해 옛 바이너리가 다른 model로 조용히 돈다. args는 옛 바이너리도 그대로 실행한다(A3 3차). 증명할 목록이 없는 CLI(agy)는 OMP catalog로 증명하는 전환만 준다(G1-3).
+- D3' CLI model: claude는 Claude 탭 model을 `--model`로, codex는 Codex catalog model을 `pinned`와 `-m`으로, agy는 `agy models` 해석(G1-3, 2026-10-16)의 같은 family id를 `--model`로 쓴다. `model` key를 CLI에 쓰면 v0.50.125가 실행에서 무시해 옛 바이너리가 다른 model로 돈다. args 값만 바꾸는 `editCLIArgs`로 다른 항목을 bytes 그대로 두고(F-004), CLI baseline은 migration 뒤 사본에서 읽는다(F-002). 모든 CLI는 OMP가 있으면 전환도 고를 수 있다.
 - D4 family 필터: 런타임의 두 함수로 맞춰 provider 이름과 model family가 어긋나지 않게 한다.
 - D5 judge: `spec.review_gate.judge`만 쓴다. `orchestra.judge`는 명령 쪽 값이라 쓰지 않는다(D2와 같은 경계). 빈 judge는 `그대로 — judge 없음`으로 남는다(J-018). raw node로 key 유무를 baseline에 담아 없으면 넣고 `""`면 값만 바꾼다(J-014).
 - D6 확인 요청: `runProviderTransportSmoke` 전체를 쓴다. 조립 오류와 0개를 그 함수가 이미 결과로 바꾼다(J-017). 통과는 "답했다"이고 readiness 필터는 별개다(J-016). 요청은 provider당 1회지만 model 호출은 최대 3n회라 라벨이 적는다(J-003). 편집 없이도 돈다(J-004).
@@ -126,12 +126,12 @@ sequenceDiagram
 | INV-RVM-03 | "Only models verified for that provider are offered" | 선택지 = 같은 family ∩ 증명된 설치 model, 바뀐 값만 대조(baseline과 같은 값은 catalog에 없어도 통과), thinking = catalog 순서의 보고 단계 | Select 목록, planner 오류(baseline과 다른 값에만) | S2, S4 |
 | INV-RVM-04 | "model + effort/thinking" | 쓰는 값 = `<provider>/<model>:<thinking>` | `orchestra.providers.<p>.model` | S2, S5 |
 | INV-RVM-05 | "Non-TTY … no prompt, keep" + 비용 | 확인 요청은 opt-in, 요청 n·호출 최대 3n, 비대화형·CI는 요청·쓰기 0, 실패 뒤 기본 취소 | FB 요청 수, 라벨, SHA | S5, S6, S11 |
-| INV-RVM-06 | "older binaries still load the file" | 쓰는 key 경로 ⊆ 시작 파일 key ∪ {`spec.review_gate.judge`} | v0.50.125 load 결과 | S7 |
+| INV-RVM-06 | "older binaries still load the file" | 쓰는 key 경로 ⊆ 시작 파일 key ∪ {`spec.review_gate.judge`, `orchestra.providers.<p>.model_policy`, `.backend`, `.model`(전환과 함께)}, 모두 v0.50.125 schema 안 | v0.50.125 load 결과 | S7, S22 |
 | INV-RVM-07 | "preview before apply" + 쓰기 안전 | 바뀐 span만 쓰고 span 밖 bytes 불변, 거부면 bytes·cfg 불변 | diff, span 밖 bytes, SHA | S12 |
 | INV-RVM-08 | "same flow as the per-tool tabs" | 탭 위치(마지막)와 변경 줄 순서 고정 | 출력 줄 순서 | S1, S2 |
 | INV-RVM-09 | 미리보기·다시 편집 | 변경 판정은 baseline, 기본값은 working, 오류 뒤 working = baseline | `변경 없음`, Select 기본값 | S3, S17 |
-| INV-RVM-11 | "each provider's model + effort/thinking"(CLI) | CLI 실행 argv의 model = 쓴 값: claude `--model X`, codex `-m X`(pinned, profile 미적용) | 조립된 argv | S19, S20 |
-| INV-RVM-12 | "OMP backend로 전환" | 전환은 `backend: omp`와 `model`만 쓰고 조립 backend는 omp, OMP가 없으면 이유 줄 | 조립 config, 이유 줄 | S8, S21 |
+| INV-RVM-11 | "each provider's model + effort/thinking"(CLI) | CLI argv의 model = 쓴 값(claude `--model`, codex `-m` pinned, migration 뒤 baseline), 그 밖 args 항목 bytes 그대로 | 조립된 argv, args 줄 | S19, S20, S24, S25 |
+| INV-RVM-12 | "OMP backend로 전환" + G1-3 | agy 선택지 = 엄격 해석한 같은 family id, 쓰는 값은 목록에 있던 id, 전환은 `backend`+`model`, 둘 다 없으면 이유 줄 | args, 조립 config, 이유 줄 | S8, S21, S23 |
 | INV-RVM-10 | Trust Model | 확인 요청 중 터미널에 닿는 이름·사유에 제어 문자 0 | stderr bytes, 거부 줄 | S16 |
 
 ## Feature Coverage Map
@@ -157,7 +157,7 @@ These are optional improvements and do not block sync completion.
 |------|----------------------|-------------------|
 | quorum이 차도 실패한 provider를 receipt에 남기기(승격을 막지 않는 정보 필드) | `degraded_reasons`는 승격을 막는다. 사유로 넣으면 provider 하나만 실패해도 모든 리뷰가 막혀 리뷰 무결성 quorum 규칙을 바꾼다 | 사용자가 별도 필드를 요청 |
 | Migration 3이 명시적으로 뺀 provider를 다시 붙이지 않게 바꾸기(명령 목록 참여) | load 의미 변경이고 기존 migration test가 바뀐다. Gate 1(2026-10-16)은 리뷰 목록만으로 확정했다 | 사용자가 나중에 명령 목록 참여를 요청 |
-| agy model Select(`agy models` 해석으로 증명) | 출력 형식과 증명 규칙이 없다(G1-3) | 사용자가 agy model 편집을 요청 |
+| catalog·`agy models`에 있어도 호출 가능 여부를 자동 표시 | 2026-10-15 `gemini-3.1-pro:high`는 catalog에 있어도 404였다. 지금은 opt-in 확인 요청이 그 판정이다 | 사용자가 자동 표시를 요청 |
 | `auto doctor --provider-smoke`에 "catalog에는 있으나 호출 실패" 안내 | 확인 요청이 같은 판정을 이미 보인다 | doctor 개선 요청 |
 
 ## Sibling SPEC Decision
@@ -172,7 +172,7 @@ These are optional improvements and do not block sync completion.
 |-----------|------|--------------|
 | 위 `pkg/config`, `pkg/orchestra`, `pkg/adapter/omp`, `pkg/content`, `internal/cli` 경로·함수·줄 번호 | existing | Read, grep(2026-10-15, `feat/revmodel-001` = ee811e2e), review round 1 교차 확인 |
 | v0.50.125 schema·바이너리 | existing (tag) | `git show v0.50.125:pkg/config/schema_orchestra.go`, `schema_spec.go`, `git archive` 빌드(A3) |
-| `quality_compose_review*.go`, `composeReviewTabOption`, `planReviewComposition`, `saveReviewComposition`, `verifyReviewLineEdit`, `composeReviewCheckTimeout`, `quality_compose_review_cli.go`, `evidence/manual-smoke-revmodel.txt` | [NEW] planned addition | 부재 확인(grep) |
+| `quality_compose_review*.go`, `composeReviewTabOption`, `planReviewComposition`, `saveReviewComposition`, `verifyReviewLineEdit`, `composeReviewCheckTimeout`, `quality_compose_review_cli.go`, `quality_compose_review_agy.go`, `editCLIArgs`, `agyModelsRunner`, `evidence/manual-smoke-revmodel.txt` | [NEW] planned addition | 부재 확인(grep) |
 
 ## Reviewer Brief
 
@@ -189,7 +189,7 @@ These are optional improvements and do not block sync completion.
 - Q-CORR-04 | status: PASS | attempt: 1 | files: research.md | reason: Reference Discipline이 existing, tag, [NEW]를 나눈다
 - Q-COMP-02 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: 0명 참여(S3d), CI의 init·quality(S6d), catalog_invalid(S4c), 조립 실패(Live Check 엔진 행), judge 없음(S9)을 닫았다
 - Q-COMP-04 | status: PASS | attempt: 2 | files: spec.md, acceptance.md, research.md | reason: 편집 없는 확인 요청을 허용하고 S15 예산을 재시도 포함 18회로, `auto spec review`를 빼 CD-1을 닫을 수 있게 했다
-- Q-COMP-05 | status: PASS | attempt: 4 | files: research.md, acceptance.md | reason: round 2에서 S4(b) 음성 사례를 baseline과 다른 비증명 값으로 바꾸고 baseline 대조군을 더했으며 S18(baseline 1개)을 더했다. INV-RVM-01–10이 S1–S18 oracle에 잇는다. loader 값, 손으로 쓴 파일의 span 밖 bytes, 공유 anchor, 최대 호출 수(3n)를 판정한다
+- Q-COMP-05 | status: PASS | attempt: 5 | files: research.md, acceptance.md | reason: round 4에서 CLI 공통 검증·미리보기(S26), args 보존과 migration baseline(S24), 빈 교집합(S25), agy 해석(S23)을 더했다. INV-RVM-01–12가 S1–S26 oracle에 잇는다
 - Q-COMP-06 | status: PASS | attempt: 3 | files: spec.md | reason: Traceability Matrix가 REQ 23개를 잇는다(REQ-RVM-21–23 추가)
 - Q-COMP-07 | status: PASS | attempt: 1 | files: research.md | reason: live 확인을 CD-1로 남겼다
 - Q-COMP-08 | status: PASS | attempt: 2 | files: plan.md | reason: A1·A2를 `loadHarnessConfigForFlags` 경유로 다시 돌렸고 소비처 주장을 진술 분류에 넣었다

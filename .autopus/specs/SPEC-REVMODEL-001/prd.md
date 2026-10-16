@@ -27,7 +27,7 @@
 | 범위 (사용자) | 참여, model·thinking, judge | 참여는 `spec.review_gate.providers`만(G1-1), model은 OMP backend·claude CLI(`--model`)·codex CLI(`-m`, `pinned`), 증명할 목록이 없는 CLI는 OMP 전환(G1-2 대체, REQ-RVM-21–23), judge는 `spec.review_gate.judge`만 |
 | gemini 404 (사용자) | probe하고 바꾼다 | opt-in 확인 요청(`runProviderTransportSmoke`, 60초)과 실제 터미널 smoke에서 `gemini-3.8-flash:high`로 전환(REQ-RVM-10, 11, S15) |
 | 출하 (사용자) | v0.50.126 | 새 key·secret·승인·의존성 없음, sibling 없음(REQ-RVM-15) |
-| Gate 1 (사용자, 2026-10-16) | G1-1·G1-2 확정 | 참여 끄기는 `auto spec review`에만, 명령 안내 줄 유지. model 편집은 2026-10-16 대체 결정대로 CLI까지(G1-2 superseded), agy는 G1-3. 이 repo의 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`로 바뀐다 |
+| Gate 1 (사용자, 2026-10-16) | G1-1·G1-2 확정 | 참여 끄기는 `auto spec review`에만, 명령 안내 줄 유지. model 편집은 2026-10-16 대체 결정대로 CLI까지(G1-2 superseded), agy는 G1-3 결정대로 `agy models` 해석 model Select와 OMP 전환. 이 repo의 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`로 바뀐다 |
 
 ## 4. 범위 밖
 
@@ -36,4 +36,4 @@
 ## 5. 성공 기준과 위험
 
 - 성공: gemini를 끄면 리뷰 목록에서 빠지고 실제 loader 뒤에도 그대로이며 명령 목록과 judge는 바뀌지 않는다(S1, S11). codex model을 고르면 `orchestra.providers.codex.model`이 정확히 `openai-codex/gpt-6-luna:high`다(S2). 꺼진 provider는 judge가 될 수 없고 provider가 둘보다 적으면 거부한다(S3). catalog에 없는 model은 새로 고를 수 없다(S4). 404 확인 요청 뒤 Enter는 파일을 바꾸지 않는다(S5). 비대화형·CI는 bytes를 바꾸지 않는다(S6). v0.50.125가 쓴 파일을 읽는다(S7). 손으로 쓴 파일은 span 밖 bytes가 그대로다(S12). 실제 터미널 smoke가 기록된다(S15, CD-1).
-- 위험: 참여 끄기는 orchestra 명령과 `--multi`에 효과가 없다(G1-1 사용자 확정, 미리보기가 알림). agy는 OMP 없이 model을 고를 수 없다(G1-3). haiku의 `--effort` 삭제는 구현 확인 전 가정이다. 줄 splice의 span 계산, CLI subprocess stderr, 60초 timeout은 구현 확인 전 가정이다. 탭이 더해져 tool tab Select를 건너뛰던 폼 test 일부에 Enter 하나가 더해진다.
+- 위험: 참여 끄기는 orchestra 명령과 `--multi`에 효과가 없다(G1-1 사용자 확정, 미리보기가 알림). `agy models` 형식이 바뀌면 agy model Select가 사라진다(엄격 해석, 이유 줄). haiku의 `--effort` 삭제는 구현 확인 전 가정이다. 줄 splice의 span 계산, CLI subprocess stderr, 60초 timeout은 구현 확인 전 가정이다. 탭이 더해져 tool tab Select를 건너뛰던 폼 test 일부에 Enter 하나가 더해진다.

@@ -15,9 +15,9 @@
 - [ ] T9: Should. 메뉴 요약 1줄(`f.draw()` 뒤) (REQ-RVM-16).
 - [ ] T10: Should. Form Text en, help·README·CHANGELOG v0.50.126. 생성 표면을 고치면 `make generate-templates` (REQ-RVM-17, 18).
 - [ ] T11: 회귀와 smoke. `go test ./internal/cli/... ./pkg/...` 필터 없이, 300줄, `GOOS=windows GOARCH=amd64 go build ./...`, golangci-lint, test 변경이 T1 분류와 같은지. 이 repo의 실제 터미널에서 S15를 하고 `evidence/manual-smoke-revmodel.txt`에 경로를 치환해 남긴다. 빠지면 CD-1이 남는다 (REQ-RVM-19).
-- [ ] T12: claude CLI model. 소유: `[NEW] internal/cli/quality_compose_review_cli.go`(+test). `ClaudeModelForTier` 네 model, haiku 밖 effort low–max와 기본값, args의 `--model`·`--effort` 값 교체·삽입·haiku의 `--effort` 쌍 삭제, 줄 splice의 args 목록 span (REQ-RVM-08, 21).
-- [ ] T13: codex CLI model. 소유: T12 파일. run의 Codex catalog snapshot model, 그 model 보고 effort, `model_policy: pinned` + `ApplyCodexProviderProfile` args, 못 읽음 안내. 먼저 설정 없는 `auto orchestra run` 분기(`orchestra_run.go:118-120`)의 조건을 확인해 research에 적는다 (REQ-RVM-08, 22).
-- [ ] T14: OMP 전환. 소유: T12 파일. claude·codex 밖 CLI에 `그대로 — CLI backend`·`OMP backend로 전환`(`omp` 설치·catalog 읽힘일 때만), 증명된 OMP model·thinking, `backend: omp`+`model` 삽입, 그 밖엔 이유 줄 (REQ-RVM-08, 23).
+- [ ] T12: CLI 공통과 claude. 소유: `[NEW] internal/cli/quality_compose_review_cli.go`(+test). `editCLIArgs`(이름 붙은 flag 값만, 다른 항목 bytes 그대로), migration 뒤 사본의 CLI baseline(REQ-RVM-25, `LoadPreview` 경로 포함), claude 네 model·effort·haiku, CLI 값의 validation·미리보기 줄 (REQ-RVM-05, 08, 09, 21, 25).
+- [ ] T13: codex CLI. 소유: T12 파일. 교집합이 빈 model 제외, effort 기본값, `model_policy: pinned`, `-m`/`--model`·`model_reasoning_effort=` 값만 교체(`ApplyCodexProviderProfile` 쓰지 않음), 못 읽음 안내, `reportCodexRuntimeFallback` 줄 escape (REQ-RVM-20, 22).
+- [ ] T14: agy와 OMP 전환. 소유: `[NEW] internal/cli/quality_compose_review_agy.go`(+test), T12 파일. `agyModelsRunner` seam, 15초·64 KiB, 엄격 해석과 family·묶음, `--model` 값 교체·맨 앞 삽입, 모든 CLI의 `OMP backend로 전환`, 이유 줄 (REQ-RVM-23, 24).
 
 ## Implementation Strategy
 
@@ -134,6 +134,8 @@ Wireframe B: 편집 없이 확인 요청을 한 뒤(바뀐 것이 없으니 확�
 | `agy`는 `--model`과 `models`를 갖지만 Autopus에는 그 목록 해석기가 없다 | verified_fact | `agy --help`, grep |
 | 전환 뒤 남는 `binary`·`args`는 OMP backend 조립과 read-only 정책을 막지 않는다 | verified_fact | A1 3차 `switch gemini backend=omp` 조립 |
 | haiku에 `--effort` 없이 `--model`만 주어도 claude CLI가 받는다 | implementation_assumption | T12, S19 |
+| `agy models` 출력은 머리 줄 뒤 `<id>\t<display name>` 줄이다 | verified_fact | 사용자 관측 2026-10-16(agy 1.4.0, model 호출 없음) |
+| agy가 `--model <id>`와 `--print`를 함께 받는다 | implementation_assumption | T14, S15 확인 요청 |
 | 줄 splice가 span 밖 bytes를 원본 그대로 둔다(retired key 없는 파일) | implementation_assumption | T4, S12(d) |
 | CLI subprocess가 provider stderr를 터미널에 넘기지 않는다 | implementation_assumption | T6 첫 확인. 넘기면 `terminalSafeMultiline` |
 | 60초가 max thinking provider의 한 줄 답에 충분하다 | implementation_assumption | T6, S15. 틀리면 실패 줄이 나고 쓰기는 사용자 선택으로 남는다 |

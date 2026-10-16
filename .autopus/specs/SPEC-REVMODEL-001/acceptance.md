@@ -128,6 +128,7 @@ Given OMP review backend와, 이름이 `gem\x1b[2Jini`(ESC 포함)인 provider�
 When (a) 그 이름과 유효한 selector로 `ompReviewBackend.Execute`를 부르고 os.Stderr를 pipe로 받는다. (b) 같은 cfg로 리뷰 탭의 확인 호출을 고른다
 Then (a)의 stderr에는 0x1b byte가 없고 `provider=gem\x1b[2Jini`가 역슬래시 글자로 있다
 And (b)는 `확인 호출을 할 수 없습니다: provider 이름 gem\x1b[2Jini에 터미널 제어 문자가 있습니다`를 쓰고 FB 요청은 0회이며, 제어 문자가 없는 이름의 (a) 출력은 지금과 bytes가 같다
+And model이 `gpt\x1b[2J`, effort가 `hi\x1b[0mgh`인 codex 항목이 `reportCodexRuntimeFallback`을 지나면 그 줄에 0x1b byte가 없고 두 값은 역슬래시 글자다
 
 ### S17: 다시 편집은 working을 기본값으로, baseline과 비교한다
 Priority: Must
@@ -173,6 +174,35 @@ Given S19(1), S19(2), S20, S21이 남긴 파일과 대조군(S20 파일의 codex
 When 각 파일의 project에서 v0.50.125 바이너리로 `auto config get usage_profile`을 실행하고 key 경로 집합을 B1과 비교한다
 Then 네 파일은 exit 0이고 대조군은 exit 1과 `field models not found`를 담은 오류다
 And 더해진 key는 S21의 `orchestra.providers.gemini.backend`·`orchestra.providers.gemini.model` 둘뿐이고 S20의 `model_policy`는 값만 바뀐다
+
+### S23: agy model 목록
+Priority: Must
+Given RL, temp bin의 `omp`와 CATG가 있고, `agyModelsRunner`가 (1) 정확히 `Fetching available models...`, `gemini-3.8-flash-high\tGemini 3.8 Flash (High)`, `gemini-4-argon-medium\tGemini 4 Argon (Medium)`, `claude-opus-5-5-low\tClaude Opus 5.5 (Low)`, `gpt-oss-120b-medium\tGPT-OSS 120B (Medium)` 다섯 줄(AGY), (2) AGY에 `gemini-3.8-flash-low\tGemini 3.8 Flash (Low)`를 더한 것, (3) 탭 없는 줄·대문자 id·display name의 ESC·머리 줄만·exit 1·64 KiB 초과 여섯 변형을 낸다
+When (1)에서 gemini model `gemini-4-argon` → `적용`, (2)에서 gemini model `gemini-3.8-flash` → effort `low` → `적용`, (3)의 각 변형으로 gemini model Select까지 연다
+Then (1)의 gemini 선택지는 정확히 `그대로 — agy`, `gemini-3.8-flash`, `gemini-4-argon`, `OMP backend로 전환`이고 effort Select 없이 args가 `[--model, gemini-4-argon-medium, --print, ""]`가 된다(다른 항목 bytes 그대로)
+And (2)의 effort Select는 `high — Gemini 3.8 Flash (High)`, `low — Gemini 3.8 Flash (Low)`이고 args의 `--model` 값은 `gemini-3.8-flash-low`다
+And (3)은 모두 `gemini(agy) model 목록을 읽지 못해 agy model은 그대로입니다`를 쓰고 agy model 선택지 없이 `그대로 — agy`, `OMP backend로 전환`만 보인다
+
+### S24: CLI baseline과 다른 args 보존
+Priority: Must
+Given RQ(RL에서 codex 항목이 `binary: codex` 한 줄뿐이고 claude args가 `[--print, --verbose, --model, claude-fable-5-1, --effort, max]`), RP(codex가 `model_policy: pinned`, args `[exec, --json, --json, --sandbox, workspace-write, -m, gpt-6-astra, -c, model_reasoning_effort="max", --skip-git-repo-check]`), CATC가 있다
+When RQ에서 `auto quality`로 리뷰 탭을 열어 claude model `claude-opus-5-5` → effort `high`, codex model `gpt-6-luna` → effort `high` → `적용`을 고르고, RP에서 codex model `gpt-6-luna` → effort `high` → `적용`을 고른다
+Then RQ의 codex model Select 첫 줄은 migration 뒤 값인 `그대로 — gpt-6-astra · max`이고, 적용 뒤 codex는 `model_policy: pinned`와 migration 기본 args에서 `-m`·effort 값만 바꾼 `[exec, --json, --sandbox, workspace-write, -m, gpt-6-luna, -c, model_reasoning_effort="high"]`이며 loader 값으로 조립한 argv에 `-m gpt-6-luna`가 있다
+And RQ의 claude args는 `[--print, --verbose, --model, claude-opus-5-5, --effort, high]`이고, RP의 codex args는 `-m`·effort 두 항목만 바뀌어 `--json` 두 개와 `--skip-git-repo-check`가 그대로 남는다
+
+### S25: effort 교집합이 빈 Codex model은 보이지 않는다
+Priority: Must
+Given RL과, CATC에 `minimal`만 보고하는 `gpt-6-mini`를 더한 Codex catalog가 있다
+When 리뷰 탭의 codex model Select를 연다
+Then 선택지는 정확히 `그대로 — gpt-6-astra · max`, `gpt-6-astra`, `gpt-6-luna`, `gpt-6.1-sol`이고 `gpt-6-mini`는 없다
+And `planReviewComposition`에 codex model `gpt-6-mini`를 주면 `codex model gpt-6-mini는 이 provider의 선택지에 없습니다` 오류다
+
+### S26: CLI 값의 공통 검증과 미리보기
+Priority: Must
+Given RL, CATC, AGY가 있다
+When `planReviewComposition`에 claude model `claude-opus-9`, claude `claude-haiku-4-5`와 effort `high`, gemini agy id `gemini-9-foo-high`를 각각 주고, 리뷰 탭에서 claude `claude-opus-5-5`·`xhigh`와 gemini `gemini-4-argon`을 함께 고른다
+Then 오류는 차례로 `claude model claude-opus-9는 이 provider의 선택지에 없습니다`, `claude effort high는 claude-haiku-4-5이 받지 않는 단계입니다`, `gemini model gemini-9-foo-high는 이 provider의 선택지에 없습니다`다
+And 탭의 바뀌는 설정은 `orchestra.providers.claude.args [--print, --model, claude-fable-5-1, --effort, max] → [--print, --model, claude-opus-5-5, --effort, xhigh]`, `orchestra.providers.gemini.args [--print, ""] → [--model, gemini-4-argon-medium, --print, ""]` 순서다
 
 ## Oracle Acceptance Notes
 
