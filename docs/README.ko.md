@@ -6,13 +6,13 @@
 
 AI 코딩 도구(Claude Code, Codex, Antigravity CLI, OpenCode, Oh My Pi)가 진짜 개발팀처럼 일하게 만듭니다 — 기획, 테스트, 코드 리뷰, 보안 감사까지 자동으로.
 
-**16개 에이전트. 53개 스킬 라이브러리와 작은 기본 목록. 여러 플랫폼을 하나의 설정으로 관리합니다.**
+**17개 에이전트. 53개 스킬 라이브러리와 작은 기본 목록. 여러 플랫폼을 하나의 설정으로 관리합니다.**
 
 [![GitHub Stars](https://img.shields.io/github/stars/autopus-ai/autopus-adk?style=social)](https://github.com/autopus-ai/autopus-adk/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://golang.org)
 [![Platforms](https://img.shields.io/badge/Platforms-5-orange)](#-하나의-설정-다섯-개-플랫폼)
-[![Agents](https://img.shields.io/badge/Agents-16-blueviolet)](#-16개-전문-에이전트)
+[![Agents](https://img.shields.io/badge/Agents-17-blueviolet)](#-17개-전문-에이전트)
 [![Skills](https://img.shields.io/badge/Skills-53-ff69b4)](#-전체-명령어)
 
 **AI 코딩 도구의 채팅창에 아래 명령을 붙여넣으세요 — 에이전트가 실행해서 설치부터 설정까지 알아서 합니다. 터미널에서 직접 실행해도 됩니다.**
@@ -79,7 +79,7 @@ Codex와 OpenCode는 명시적인 live 검사로 생성·결과·취소·정리 
 # 3개 AI 모델이 서로 토론하며 브레인스토밍
 /auto idea "Google과 GitHub 프로바이더로 OAuth2 인증 추가" --multi --ultrathink
 
-# 한 명령으로 나머지 전부 — 기획, 16개 에이전트 구현, 문서화까지
+# 한 명령으로 나머지 전부 — 기획, 17개 에이전트 구현, 문서화까지
 /auto dev "Google과 GitHub 프로바이더로 OAuth2 인증 추가"
 ```
 
@@ -154,7 +154,7 @@ Autopus는 **하네스**입니다 — 에이전트가 시니어 엔지니어가 
 flowchart TB
     subgraph OF ["🧬 에이전트로 이루어진 (Of)"]
         direction TB
-        O1["16개 특화 에이전트가\n소프트웨어 팀을 구성"]
+        O1["17개 특화 에이전트가\n소프트웨어 팀을 구성"]
         O2["Planner · Executor · Tester\nReviewer · Architect · ..."]
     end
 
@@ -179,7 +179,7 @@ flowchart TB
 
 | 원칙 | 의미 |
 |------|------|
-| **에이전트로 이루어진 (Of)** | 16개 특화 에이전트가 실제 엔지니어링 팀을 구성합니다 — 기획자, 구현자, 테스터, 리뷰어, 보안 감사관 등. 하나의 챗봇이 아닌 팀. |
+| **에이전트로 이루어진 (Of)** | 17개 특화 에이전트가 실제 엔지니어링 팀을 구성합니다 — 기획자, 구현자, 테스터, 리뷰어, 보안 감사관 등. 하나의 챗봇이 아닌 팀. |
 | **에이전트에 의해 운영 (By)** | 에이전트가 파이프라인을 자율적으로 운영합니다 — 셀프힐링 품질 게이트, 병렬 워크트리, 멀티모델 토론. 사람은 목표를 설정하고, 에이전트가 실행합니다. |
 | **에이전트를 위해 설계 (For)** | 모든 파일, 규칙, 문서가 에이전트가 파싱하도록 설계됩니다. 산문보다 구조. 그것이 AX입니다. |
 | **매 세션이 첫 출근** | 에이전트는 세션 간 모든 맥락을 잃습니다. 하네스가 아키텍처, 의사결정, 컨벤션이라는 조직 기억을 제공합니다. |
@@ -218,7 +218,7 @@ flowchart TB
 
 ### 🤖 챗봇이 아닌, 팀을 구성하는 AI 에이전트
 
-Autopus는 하나의 AI 어시스턴트가 아닌 — 역할 정의, 품질 게이트, 재시도 로직을 갖춘 **16개 전문 에이전트 소프트웨어 엔지니어링 팀**을 제공합니다.
+Autopus는 하나의 AI 어시스턴트가 아닌 — 역할 정의, 품질 게이트, 재시도 로직을 갖춘 **17개 전문 에이전트 소프트웨어 엔지니어링 팀**을 제공합니다.
 
 ```
 🧠 Planner        →  요구사항을 태스크로 분해
@@ -533,15 +533,15 @@ auto status --platform omp
 
 활성화 단계에서는 생성한 overlay를 로드한 OMP RPC `get_state` 세션으로 모든 `@role`을 확인합니다. prompt나 모델 프로바이더 요청은 보내지 않습니다. 확인한 provider/model/thinking map은 receipt에 결속하며 `explain`과 doctor가 독립적으로 다시 검증합니다.
 
-v0.50.126부터 OMP는 기본으로 Autopus 에이전트 16개를 씁니다(SPEC-MODELUX-003). 생성은 정규 에이전트마다 `.omp/agents/<agent>.md`를 OMP manifest 소유로 만들고 `model` 필드를 쓰지 않습니다. `thinkingLevel`은 그 에이전트의 선언 effort이며 `task.agentModelOverrides` route가 그 이름을 담지 않을 때만 씁니다. 또 plain `omp`가 읽는 project `.omp/config.yml`에 `task.disabledAgents: [scout, security-reviewer, sonic, designer, librarian]`을 claim합니다. Autopus가 지원하는 omp 버전의 `task`를 뺀 bundled 에이전트 전부이며(18.6.1은 앞의 셋, 17.2.7은 `designer`·`librarian`도 번들합니다), 설치된 omp가 번들하지 않는 이름은 아무것도 거르지 않는 항목입니다. 이름 없는 dispatch가 bundled `task`로 가므로 `task`는 켜 두고, 생성한 `reviewer`는 omp 18.6.1 bundled reviewer의 `output` schema를 가져 `/review`가 verdict를 그대로 읽습니다. 역할 프로필이 있으면 route는 16개 이름과 `task`를 key로 한 `task.agentModelOverrides`로 기존 활성화·증명·되읽기·복원 경로를 탑니다(`task`는 `task` pin, `planner` pin, 프로필의 planner route 순서). 프로필 없이 pin만 있으면(아래) pin한 에이전트와, 자기 pin이나 planner pin을 따르는 `task`만 route를 갖고, pin도 없으면 모든 에이전트가 세션 모델을 상속합니다.
+v0.50.126부터 OMP는 기본으로 Autopus 에이전트 17개를 씁니다(SPEC-MODELUX-003, SPEC-REA-001). 생성은 정규 에이전트마다 `.omp/agents/<agent>.md`를 OMP manifest 소유로 만들고 `model` 필드를 쓰지 않습니다. `thinkingLevel`은 그 에이전트의 선언 effort이며 `task.agentModelOverrides` route가 그 이름을 담지 않을 때만 씁니다. 또 plain `omp`가 읽는 project `.omp/config.yml`에 `task.disabledAgents: [scout, security-reviewer, sonic, designer, librarian]`을 claim합니다. Autopus가 지원하는 omp 버전의 `task`를 뺀 bundled 에이전트 전부이며(18.6.1은 앞의 셋, 17.2.7은 `designer`·`librarian`도 번들합니다), 설치된 omp가 번들하지 않는 이름은 아무것도 거르지 않는 항목입니다. 이름 없는 dispatch가 bundled `task`로 가므로 `task`는 켜 두고, 생성한 `reviewer`는 omp 18.6.1 bundled reviewer의 `output` schema를 가져 `/review`가 verdict를 그대로 읽습니다. 역할 프로필이 있으면 route는 17개 이름과 `task`를 key로 한 `task.agentModelOverrides`로 기존 활성화·증명·되읽기·복원 경로를 탑니다(`task`는 `task` pin, `planner` pin, 프로필의 planner route 순서). 프로필 없이 pin만 있으면(아래) pin한 에이전트와, 자기 pin이나 planner pin을 따르는 `task`만 route를 갖고, pin도 없으면 모든 에이전트가 세션 모델을 상속합니다.
 
-`auto update`는 옮기기를 한 번 미리 보입니다. `+ .omp/agents/<agent>.md` 줄, `task.disabledAgents: scout, security-reviewer, sonic, designer, librarian`, `OMP는 이제 Autopus 에이전트 16개를 씁니다. v0.50.126 동안 role_model_policy.agent_source: native로 되돌릴 수 있습니다.`를 보인 뒤 OMP adapter의 transaction 하나로 수행하고 `autopus.yaml`은 쓰지 않습니다. manifest가 기록하지 않은 `.omp/agents/<agent>.md`는 사용자 파일이라 bytes 그대로 둡니다(`.omp/agents/<agent>.md는 사용자 파일이라 그대로 둡니다`). 사용자가 `task.disabledAgents`를 다른 값으로 정해 두면 그 key는 사용자 소유입니다. Autopus는 값을 바꾸지 않고 `.omp/config.yml의 task.disabledAgents를 사용자가 정해 두어 scout, security-reviewer, sonic, designer, librarian을 끄지 않았습니다`를 쓰며, doctor는 degraded와 `agents:disabled_agents_user_owned`를 보고합니다. 그 표시는 `auto clean`만 지웁니다.
+`auto update`는 옮기기를 한 번 미리 보입니다. `+ .omp/agents/<agent>.md` 줄, `task.disabledAgents: scout, security-reviewer, sonic, designer, librarian`, `OMP는 이제 Autopus 에이전트 17개를 씁니다. v0.50.126 동안 role_model_policy.agent_source: native로 되돌릴 수 있습니다.`를 보인 뒤 OMP adapter의 transaction 하나로 수행하고 `autopus.yaml`은 쓰지 않습니다. manifest가 기록하지 않은 `.omp/agents/<agent>.md`는 사용자 파일이라 bytes 그대로 둡니다(`.omp/agents/<agent>.md는 사용자 파일이라 그대로 둡니다`). 사용자가 `task.disabledAgents`를 다른 값으로 정해 두면 그 key는 사용자 소유입니다. Autopus는 값을 바꾸지 않고 `.omp/config.yml의 task.disabledAgents를 사용자가 정해 두어 scout, security-reviewer, sonic, designer, librarian을 끄지 않았습니다`를 쓰며, doctor는 degraded와 `agents:disabled_agents_user_owned`를 보고합니다. 그 표시는 `auto clean`만 지웁니다.
 
 manifest에 없는 정규 `.omp/agents/<name>.md`가 있으면 OMP가 Autopus 정의 대신 그 파일을 쓰므로 doctor의 OMP agent catalog는 degraded와 `agents:autopus_agent_user_file`을 냅니다. managed parser가 안전하게 읽지 못하는 project `.omp/config.yml`(symlink, 잘못된 YAML, 여러 문서, alias, flow 형식, 단독 CR·NEL·LS·PS 줄바꿈)은 쓰지 않습니다. 이때 `auto update`는 `task.disabledAgents: …` 미리보기 줄 대신 `.omp/config.yml을 안전하게 읽지 못해(symlink, 잘못된 YAML, 여러 문서, alias, flow 형식, 단독 CR·NEL·LS·PS 줄바꿈) task.disabledAgents를 쓰지 않았습니다. scout, security-reviewer, sonic, designer, librarian이 켜져 있습니다`를 쓰고, doctor는 사용자 소유와 다른 상태인 `agents:project_config_unclaimable`을 보고합니다. ledger가 그 key를 이미 claim한 뒤 파일에 그런 줄바꿈이 생기면 파일과 ledger를 그대로 둡니다. 파일을 다시 읽을 수 있을 때까지 `auto update`는 `.omp/config.yml에 ADK가 고치지 않는 줄바꿈(…)이 있어 task.disabledAgents를 마지막으로 쓴 그대로 둡니다…` 줄을 쓰고, `auto clean`은 `project_config_unclaimable`로 거부합니다. ledger가 `.omp/config.yml`을 더는 claim하지 않으면 transaction이 남긴 그 파일의 백업은 지우되 하나는 남깁니다. ledger를 놓은 가장 최근 committed transaction의 rollback artifact(그 release가 남긴 config에 적용하는 것)이며, 다음 release가 바꿀 때까지 `.autopus/backup/` 아래 있어 release를 손으로 되돌릴 수 있습니다. ADK가 만든 config를 지운 release는 artifact가 없고, `auto clean`은 검증된 preimage로 복원하며 config의 rollback artifact를 남기지 않습니다.
 
 `role_model_policy.agent_source: native`는 v0.50.126 동안만 아래 동작을 되살립니다. 이 key와 native 경로는 v0.50.127에서 제거할 예정입니다. 다른 값은 `role_model_policy.agent_source_invalid`로 로드에 실패하고, 이 key만으로는 역할 모델 정책이 생기지 않습니다. 되돌릴 때는 이전 바이너리가 아니라 이 key를 쓰세요. v0.50.126보다 오래된 auto는 `agent_source`나 `quality.presets.*.efforts`를 쓴 `autopus.yaml`을 읽지 못하고, v0.50.125는 새 agent surface 필드가 담긴 project ownership ledger(`.autopus/omp-model-project-ownership-v1.json`)를 거부합니다. 아래 두 문단은 `agent_source: native`일 때의 설명입니다.
 
-`auto init`은 OMP용 에이전트 정의를 만들지 않습니다. OMP는 자체 기본 에이전트(`task`, `scout`, `reviewer`, `security-reviewer`, `sonic`)를 등록하고 이름으로 정확히 찾으므로, 생성한 `.omp/agents/<name>.md`는 기본 에이전트를 가리기만 합니다. 역할 프로필은 대신 `task.agentModelOverrides`로 모델을 지정하며 16개 ADK 역할은 이 다섯 에이전트로 모입니다. `auto platform omp explain`과 `auto status --platform omp`는 기본 에이전트별로 역할·capability 출처와 실제 selector를 한 행씩 표시하고, `.omp/agents/<기본 이름>.md` 파일이 있으면 `native_agent_shadowed`로 보고합니다.
+`auto init`은 OMP용 에이전트 정의를 만들지 않습니다. OMP는 자체 기본 에이전트(`task`, `scout`, `reviewer`, `security-reviewer`, `sonic`)를 등록하고 이름으로 정확히 찾으므로, 생성한 `.omp/agents/<name>.md`는 기본 에이전트를 가리기만 합니다. 역할 프로필은 대신 `task.agentModelOverrides`로 모델을 지정하며 17개 ADK 역할은 이 다섯 에이전트로 모입니다. `auto platform omp explain`과 `auto status --platform omp`는 기본 에이전트별로 역할·capability 출처와 실제 selector를 한 행씩 표시하고, `.omp/agents/<기본 이름>.md` 파일이 있으면 `native_agent_shadowed`로 보고합니다.
 
 여러 역할 키가 한 기본 에이전트로 모일 수 있습니다. 이때는 대표 역할이 결정합니다 — `task`는 planner, `scout`는 explorer, `sonic`은 validator를 따릅니다. plan·explain·receipt의 각 행이 적용된 키를 표시하므로 16개 역할을 모두 적은 기존 설정도 그대로 동작하고 어떤 항목이 적용됐는지 확인할 수 있습니다. 대표 역할이 없는 조합은 우선순위를 정할 근거가 없어 `omp_native_agent_conflict`로 거절하며 정리할 항목을 함께 알립니다.
 
@@ -832,7 +832,7 @@ ARCHITECTURE.md                    # 도메인, 레이어, 의존성 맵
 # 1. 기획 — AI가 전체 SPEC 생성 (요구사항, 태스크, 수락 기준)
 /auto plan "GET /healthz 헬스 체크 엔드포인트 추가"
 
-# 2. 구현 — 16개 에이전트가 구현, 테스트, 리뷰 처리
+# 2. 구현 — 17개 에이전트가 구현, 테스트, 리뷰 처리
 /auto go SPEC-HEALTH-001 --auto
 
 # 3. 배포 — 문서 동기화, SPEC 상태 업데이트, 의사결정 이력과 함께 커밋
@@ -1087,7 +1087,7 @@ sequenceDiagram
     R-->>S: ✅ APPROVE
 ```
 
-### 16개 전문 에이전트
+### 17개 전문 에이전트
 
 | 에이전트 | 역할 | 실행 시점 |
 |---------|------|----------|
@@ -1107,6 +1107,7 @@ sequenceDiagram
 | **Perf Engineer** | 벤치마크, pprof, 성능 회귀 감지 | 온디맨드 |
 | **Deep Worker** | 장시간 자율 탐색 + 구현 | 온디맨드 |
 | **Explorer** | 코드베이스 구조 분석 | `/auto map` |
+| **Reverse Engineer** | REA 도구와 읽기 도구만으로 행동 명세 작성 (clean-room) | `/auto reverse` |
 
 ### 품질 모드
 
@@ -1233,7 +1234,7 @@ key가 있으면 쓰지 않고 파일을 그대로 둡니다. 둘 다 quality �
 터미널에서는 이 단계가 init wizard와 같은 huh 폼입니다. 화살표와 Enter로 고르고, 스크립트나 파이프 입력은 위의 줄 질문 그대로입니다. 메뉴는 유지 · 최신 기본값으로 갱신(built-in 프리셋이 이전 버전 기본값일 때만) · 구성 편집 · 기본 프리셋 고르기(`auto quality`만)입니다. **구성 편집**은 도구 탭을 엽니다.
 
 - **모든 도구 같게**는 위의 역할 그룹 구성입니다. 등급 선택지마다 도구별 칸을 보여 줍니다. 예: `opus — Claude Code: opus-5-5 · high | Codex: 6.1-sol · xhigh`.
-- **Claude Code**와 **Codex**는 그 도구만 바꿉니다. 선택지는 `<cells>  [<tier>]`(예: `6.1-sol · xhigh  [opus]`)이고, 결과는 `quality.presets.<provider>-custom`(16개 에이전트 전부)과 `quality.providers.<provider>: <provider>-custom`으로 저장됩니다. v0.50.88보다 오래된 auto는 `quality.providers`를 읽지 않습니다.
+- **Claude Code**와 **Codex**는 그 도구만 바꿉니다. 선택지는 `<cells>  [<tier>]`(예: `6.1-sol · xhigh  [opus]`)이고, 결과는 `quality.presets.<provider>-custom`(17개 에이전트 전부)과 `quality.providers.<provider>: <provider>-custom`으로 저장됩니다. v0.50.88보다 오래된 auto는 `quality.providers`를 읽지 않습니다.
 - **OMP**는 `auto update`·`auto quality`에서 autopus.yaml에 저장된 platforms에 omp가 있을 때, `auto init`에서 이번 init에서 고른 platforms에 omp가 있을 때 나옵니다. native OMP agent마다 설치된 모델과 thinking 단계를 고르고, plan의 실제 route를 미리 보인 뒤 기존 OMP profile writer로 씁니다. init은 선택을 설정에 넣고 플랫폼 파일 생성 때 함께 씁니다.
 
 Claude 라벨은 모델 slug(`opus-5-5`)이고, 표 칸은 생성기가 쓰는 frontmatter 값(`opus`, 또는 `fable-5-1` 같은 정확한 ID)입니다. `auto update`는 이번 실행에서 감지한 플랫폼의 열도 보여 주고 같은 catalog 읽기로 생성합니다. 폼에서 Ctrl+C는 `auto update`를 생성 전에 0이 아닌 종료로 끝내고, `auto init`은 파일을 쓰기 전에 취소하며, `auto quality`는 오류 없이 끝냅니다.
@@ -1277,7 +1278,7 @@ OMP에서는 두 축을 분리합니다. `--team`은 owner `omp`의 네이티브
 | 단계 | 수행 내용 | 플래그 (자동 적용) |
 |------|----------|-------------------|
 | **plan** | PRD + SPEC + 멀티 프로바이더 리뷰 | `--auto --multi --ultrathink` |
-| **go** | 16개 에이전트 Agent Teams + 자가 치유 | `--auto --loop --team` |
+| **go** | 17개 에이전트 Agent Teams + 자가 치유 | `--auto --loop --team` |
 | **sync** | 문서 + 변경 이력 + Lore 커밋 | — |
 
 > 풀 파워가 필요 없다면? `--solo`로 단일 세션 모드, `--no-multi`로 멀티 프로바이더 리뷰 생략, 또는 `plan` / `go` / `sync`를 개별 실행하여 세밀하게 제어하세요.
@@ -1318,7 +1319,7 @@ spec-writer 에이전트가 5개 문서를 생성합니다:
 
 ### 🚀 2단계 · `/auto go` — 구현하기
 
-SPEC을 **16개 에이전트**에 전달합니다. 기획, 테스트 스캐폴드, 병렬 구현, 검증, 어노테이션, 테스트, 리뷰까지 — 모두 자동으로.
+SPEC을 **17개 에이전트**에 전달합니다. 기획, 테스트 스캐폴드, 병렬 구현, 검증, 어노테이션, 테스트, 리뷰까지 — 모두 자동으로.
 
 ```bash
 /auto go SPEC-HOOK-001 --auto --loop
@@ -1358,6 +1359,18 @@ auto sync verify --spec SPEC-HOOK-001 --strict
 
 세 개의 명령으로 요구사항, 구현, 전달 기록을 연결합니다. 완료 여부는 기록된
 인수 기준과 검증 결과를 확인해 판단하세요.
+
+### 🔍 역공학 — `/auto reverse`
+
+`auto init`은 기본으로 Claude Code(`.mcp.json`), Codex(`.codex/config.toml`), Antigravity(`.gemini/settings.json`)에 프로젝트 범위 REA 역공학 MCP(`npx -y rea-agents@6.5.0 mcp`)를 등록합니다(SPEC-REA-001). 대화형 wizard는 한 번 묻고(기본 Yes), `--rea`·`--no-rea`는 묻지 않고 정하며 init과 update는 둘을 함께 받지 않습니다. 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace 실행은 아무것도 더하지 않고 `auto update --rea`를 알리는 hint 한 줄만 씁니다. `--rea`·`--no-rea`는 `--workspace`와 함께 쓸 수 없으니 repo마다 `--local`로 실행하세요.
+
+- **Node**: `node`가 `^22.19.0 || ^24.11.0 || >=26.0.0`일 때만 항목을 씁니다. 서버가 시작하는 방식(`/bin/bash -l -c 'node --version'`, Windows는 PATH의 `node`)으로 실행당 한 번, 5초 안에 확인합니다. 아니면 항목을 더하지 않고 Node 안내 한 줄을 쓰며 기존 항목과 결정은 그대로 둡니다.
+- **결정이 사는 곳**: managed `rea` 항목이 결정을 담습니다. 항목이 담지 못할 때만(끔, Node 미충족, 대상 파일이 모두 사용자 소유) `features.rea.enabled`를 쓰고, 처음 쓰는 실행은 `features.rea는 v0.50.126보다 오래된 auto가 읽지 못합니다`를 한 번 씁니다. v0.50.113–v0.50.125의 strict loader가 이 key를 거부하기 때문입니다. 사용자가 소유하거나 다른 버전에 pin한 `rea` 항목은 값이 그대로입니다. 끄면 선택되지 않은 플랫폼의 대상 파일에서도 managed 항목을 지우고, `auto platform remove <platform>`은 그 플랫폼의 managed 항목을 지웁니다.
+- **Windows**: Claude Code·Antigravity 서버는 기존 서버처럼 `/bin/bash -l -c`로 시작하므로 Windows에서는 시작되지 않습니다.
+- **OMP·OpenCode**에는 REA MCP 항목을 쓰지 않고, `npx -y rea-agents@6.5.0 setup`이 REA를 사용자 범위의 메인 세션에만 등록한다고 안내합니다.
+- **17번째 에이전트**: `reverse-engineer`는 결정과 무관하게 모든 플랫폼에 생성됩니다. REA 도구와 읽기 도구만 쓰고(Write·Edit·Bash 없음) 항목 ID, evidence_id 참조, unknowns가 담긴 행동 명세만 돌려주며 디컴파일된 의사코드는 넣지 않습니다. balanced는 opus에 둡니다(Claude `claude-opus-5-5` · `high`, Codex `gpt-6.1-sol` · `xhigh`). OMP나 Codex catalog에 그 model이 없으면 reverse-engineer만 세션 모델을 쓰고 안내 한 줄을 내며, 다른 rung의 blocker는 그대로입니다. 이 버전이 쓴 17개 프리셋은 v0.50.125가 사용자 수정으로 읽습니다.
+- **clean-room 흐름**: `/auto reverse <대상> <기능> [--runtime]`은 reverse-engineer를 보내고, 대상을 실행하거나 붙는 runtime capture 전에 메인 세션이 동의를 묻습니다(`허용 / 거절`, `--auto`도 묻습니다). 명세와 제안한 소유 경로·테스트 경로를 보이고 `확인 / 수정 / 중단`을 물은 뒤, 확인한 명세만 생성 `.gitignore`가 무시하는 `.autopus/reverse/<slug>/behaviour-spec.md`에 쓰고 tester → executor → tester를 잇습니다. dispatch prompt에는 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다. OMP에서 `/auto reverse`는 대화형 command이고 headless managed OMP RPC backend(`/autopus-pipeline`)는 이 route를 돌리지 않습니다.
+- **doctor**는 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류(`managed`, `absent`, `other_pin`, `user_owned`), OMP·OpenCode 안내를 텍스트와 `--json`(`data.rea`)으로 보고하며, REA 서버를 띄우거나 네트워크를 쓰지 않습니다.
 
 ---
 
@@ -1549,7 +1562,7 @@ autopus-adk/
 │   ├── terminal/       # 터미널 멀티플렉서 어댑터 (cmux, tmux, plain)
 │   └── version/        # 빌드 메타데이터
 ├── templates/          # 플랫폼별 템플릿
-├── content/            # 임베디드 콘텐츠 (16개 에이전트, 53개 스킬)
+├── content/            # 임베디드 콘텐츠 (17개 에이전트, 53개 스킬)
 └── configs/            # 기본 설정
 ```
 

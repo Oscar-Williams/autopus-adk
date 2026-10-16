@@ -23,4 +23,5 @@ const initCmdLong = "코딩 CLI에 Autopus 하네스를 설치합니다. autopus
 	"v0.50.126 동안 bundled 5개 방식을 고릅니다.\n\n" +
 	"이 기본 mode의 OMP 탭은 프로필·계열을 묻지 않고 역할 그룹 4개나 에이전트별로 그대로 · OMP 세션 모델 그대로 ·\n" +
 	"모든 provider의 증명된 설치 model을 고르며, thinking은 고른 model이 보고한 단계만 보입니다. 결과는 프로필 없는\n" +
-	"pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면 planner를 따릅니다."
+	"pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면 planner를 따릅니다.\n\n" +
+	reaInitHelp

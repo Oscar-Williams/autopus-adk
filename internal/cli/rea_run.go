@@ -17,21 +17,27 @@ import (
 // through the action every platform write of the run reads, to the
 // autopus.yaml write after those writes (Decision State Contract).
 type reaRun struct {
+	dir     string
 	text    reaText
 	probe   *reaNodeProbe
 	state   reaState
 	action  config.ReaMCPAction
 	active  bool // a REA target platform is selected; otherwise only the OMP·OpenCode line remains
 	heldKey bool // autopus.yaml held features.rea before the run
-	// before holds each REA target file as the run found it (nil when
-	// missing), so finish can name the files this run registered.
+	// before holds each target file the run's platform writes may change as
+	// the run found it (nil when missing), so finish can name the files this
+	// run registered.
 	before map[reamcp.Platform][]byte
+	// refusals are the target files the run did not read or write; finish
+	// prints one line for each.
+	refusals []*reaTargetError
 }
 
 // newReaRun starts a run's REA state over cfg's selected platforms. It reads
-// the three target files before any platform write.
+// no target file: snapshot reads the ones the run's writes may change.
 func newReaRun(dir string, cfg *config.HarnessConfig, heldKey bool) *reaRun {
-	run := &reaRun{
+	return &reaRun{
+		dir:     dir,
 		text:    reaCurrentText(),
 		probe:   newReaNodeProbe(),
 		state:   reaUndecided,
@@ -39,12 +45,37 @@ func newReaRun(dir string, cfg *config.HarnessConfig, heldKey bool) *reaRun {
 		heldKey: heldKey,
 		before:  map[reamcp.Platform][]byte{},
 	}
-	for _, p := range reamcp.Platforms() {
-		if data, err := readReaTarget(dir, p); err == nil {
-			run.before[p] = data
+}
+
+// snapshot reads, before the run's platform writes, the target files of the
+// REA target platforms among platforms. Unselected target files stay unread.
+func (r *reaRun) snapshot(platforms []string) {
+	for _, p := range reaSelectedTargets(platforms) {
+		if _, seen := r.before[p]; seen {
+			continue
+		}
+		data, err := readReaTarget(r.dir, p)
+		if err != nil {
+			r.note(err)
+			continue
+		}
+		r.before[p] = data
+	}
+}
+
+// note records a refused target file once; it reports whether err was one.
+func (r *reaRun) note(err error) bool {
+	var refused *reaTargetError
+	if !errors.As(err, &refused) {
+		return false
+	}
+	for _, seen := range r.refusals {
+		if seen.Rel == refused.Rel {
+			return true
 		}
 	}
-	return run
+	r.refusals = append(r.refusals, refused)
+	return true
 }
 
 // checkReaFlags rejects --rea with --no-rea, and either with a workspace
@@ -108,15 +139,19 @@ func (r *reaRun) nodeNotice(gate reamcp.NodeGate) string {
 }
 
 // finish runs after the run's platform writes. An off decision first sweeps
-// the managed entry out of the unselected target files; a refused sweep is
-// reported but still records the decision. M is then read back from the
-// selected target files, autopus.yaml is written by the write table, and the
-// registration, old-binary, and OMP·OpenCode lines are printed once.
+// the managed entry out of the unselected target files: a file the sweep
+// cannot inspect gets one skip line, and a needed removal it refuses gets one
+// line and fails the run, which still records the decision. M is then read
+// back from the selected target files, autopus.yaml is written by the write
+// table, and the registration, old-binary, and OMP·OpenCode lines follow.
 func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) error {
 	var sweepErr error
 	if r.active {
 		if r.state == reaOff {
-			sweepErr = sweepReaUnselected(dir, cfg.Platforms)
+			sweepErr = r.sweepErrors(sweepReaUnselected(dir, cfg.Platforms))
+		}
+		for _, refused := range r.refusals {
+			r.line(out, refused.line(r.text))
 		}
 		if files := r.registered(dir, cfg.Platforms); len(files) > 0 {
 			r.line(out, fmt.Sprintf(r.text.Registered, strings.Join(files, ", ")))
@@ -162,6 +197,32 @@ func (r *reaRun) guidance(out io.Writer, platforms []string) {
 	if r.state != reaOff && len(reaGuidancePlatforms(platforms)) > 0 {
 		r.line(out, r.text.Guidance)
 	}
+}
+
+// sweepErrors notes each refused file of a sweep and returns what fails the
+// run: a refused needed removal, as one line-free error, and any other error.
+func (r *reaRun) sweepErrors(err error) error {
+	errs := []error{err}
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		errs = joined.Unwrap()
+	}
+	var failed []error
+	refusedChange := false
+	for _, one := range errs {
+		var refused *reaTargetError
+		switch {
+		case one == nil:
+		case errors.As(one, &refused):
+			r.note(refused)
+			refusedChange = refusedChange || refused.Changed
+		default:
+			failed = append(failed, one)
+		}
+	}
+	if refusedChange {
+		failed = append(failed, errors.New(r.text.ChangeFailed))
+	}
+	return errors.Join(failed...)
 }
 
 func (r *reaRun) line(out io.Writer, text string) {

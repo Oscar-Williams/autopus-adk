@@ -4,7 +4,45 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 16개로** (2026-10-13, SPEC-MODELUX-003):
+- **v0.50.126: REA 역공학 MCP, 17번째 에이전트 reverse-engineer, `/auto reverse`** (2026-10-15, SPEC-REA-001):
+  기존 앱·바이너리의 기능을 증거와 함께 분석해 다시 구현하려 해도 하네스에는 역공학 도구 등록, 분석 격리,
+  디컴파일 결과와 구현 사이의 clean-room 경계가 없었다.
+  - 기본 on: Node 조건을 충족하면 새 `auto init`은 프로젝트 범위 REA MCP(`npx -y rea-agents@6.5.0 mcp`)를 Claude Code
+    `.mcp.json`, Codex `.codex/config.toml`, Antigravity `.gemini/settings.json`에 등록한다. 대화형 wizard는 한 번
+    묻는다(기본 Yes). 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace
+    실행은 아무것도 더하지 않고 `auto update --rea`를 알리는 hint 한 줄만 쓴다.
+  - flag: `--rea`·`--no-rea`는 init과 update에서 묻지 않고 결정한다. 둘을 함께 쓰면 `--rea와 --no-rea는 함께 쓸 수
+    없습니다`, update에서 `--workspace`와 섞으면 `--rea·--no-rea는 --workspace와 함께 쓸 수 없습니다. repo마다 --local로
+    실행하세요`로 쓰기 전에 끝난다.
+  - Node: `^22.19.0 || ^24.11.0 || >=26.0.0`일 때만 등록한다. probe는 서버와 같은 `/bin/bash -l -c 'node --version'`
+    (Windows는 PATH의 `node`)을 실행당 한 번, 5초 안에 돌리고, 없음·범위 밖·확인 불가면 항목을 더하지 않고 안내 한
+    줄을 쓴다. 기존 managed 항목과 결정은 그대로다.
+  - lazy `features.rea`: managed 항목이 결정을 담고, 담지 못할 때만(끔, Node 미충족, 대상 파일이 모두 사용자 소유)
+    `features.rea.enabled`를 쓴다. 이 key를 처음 쓰는 실행은 `features.rea는 v0.50.126보다 오래된 auto가 읽지
+    못합니다`를 한 번 쓴다. v0.50.113–v0.50.125의 strict loader는 이 key가 든 파일을 거부한다. 사용자 소유·다른 pin의
+    `rea` 항목은 값이 그대로이고, 끄면 선택되지 않은 대상 파일의 managed 항목까지 지우며, `auto platform remove`도
+    그 플랫폼의 managed 항목을 지운다. 결정이 없거나 꺼져 있으면 세 MCP 파일은 이전과 같은 bytes로 생성된다.
+  - Windows: Claude Code·Antigravity 서버는 기존 서버처럼 POSIX `/bin/bash -l -c "exec npx …"`로 시작하므로 Windows에서는
+    시작되지 않는다. OMP·OpenCode에는 등록하지 않고 `npx -y rea-agents@6.5.0 setup`이 메인 세션(사용자 범위)에만
+    등록한다는 안내 한 줄을 쓴다.
+  - 17번째 에이전트: `reverse-engineer`가 결정과 무관하게 모든 플랫폼에 생성된다. REA 도구와 읽기 도구만 쓰고(Write·
+    Edit·Bash 없음) 항목 ID·evidence_id·unknowns가 담긴 행동 명세만 내며 디컴파일 의사코드는 넣지 않는다. balanced
+    표준 배치는 opus(Claude `claude-opus-5-5`·`high`, Codex `gpt-6.1-sol`·`xhigh`)이고 ultra는 opus·max다. v0.50.125의
+    16개 기본 프리셋은 이전 버전 기본값으로 분류되어 `u`로 갱신되고, 이 버전이 쓴 17개 프리셋은 v0.50.125가 사용자
+    수정으로 본다. 탐색·보조 그룹은 explorer, annotator, reverse-engineer다.
+  - 세션 모델 대체: balanced analysis rung의 model이 OMP catalog나 Codex catalog에 없으면 reverse-engineer만 route나
+    model 줄 없이 세션 모델을 쓰고 `reverse-engineer: <selector>이 OMP catalog에 없어 세션 모델을 씁니다`(Codex는
+    `… Codex catalog에 없어 …`) 줄을 한 번 낸다. 기존 rung과 operator pin의 blocker는 그대로다.
+  - clean-room 흐름: `/auto reverse <대상> <기능> [--runtime]`은 reverse-engineer 분석 → runtime capture가 필요하면
+    메인 세션의 동의 질문(`허용 / 거절`, `--auto`도 묻고 허용 전 capture 호출은 0) → 명세와 소유·테스트 경로의 확인
+    gate(`확인 / 수정 / 중단`) → 확인한 명세만 `.autopus/reverse/<slug>/behaviour-spec.md`(생성 `.gitignore`가 무시)에
+    저장 → tester·executor·tester로 잇는다. dispatch prompt에는 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지
+    않는다. OMP에서 `reverse`는 대화형 command이고 headless managed OMP RPC backend(`/autopus-pipeline`)는 이 route를
+    돌리지 않는다.
+  - doctor: 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류, OMP·OpenCode 안내를 텍스트와 `--json`의
+    `data.rea`·`doctor.rea.*` check로 보고하고 REA 서버를 띄우거나 네트워크를 쓰지 않는다. `mcp__rea` 권한 사전 승인과
+    project MCP 자동 승인은 쓰지 않는다.
+- **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 17개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
   모델과 thinking을 따로 줄 수 없었다.
   - effort: Claude Code·Codex 탭에서 그룹·에이전트의 등급 Select마다 그 도구의 effort Select가 이어진다. 기본은
@@ -33,12 +71,12 @@ All notable changes to this project will be documented in this file.
     `model_reasoning_effort`(같은 catalog로 해석)로 생성된다. 다른 편집, `u` 갱신, 도구별 줄 editor는 저장된
     efforts를 지우지 않는다. 모든 도구 같게는 binding 프리셋의 efforts를 다른 built-in에 쓰지 않고 `custom`으로
     옮기며(`quality.presets.custom.efforts 옮겨 씀 (N개 에이전트)`), 같은 이름의 이전 버전 기본값만 제자리 갱신한다.
-  - OMP 기본값: 생성이 `.omp/agents/<agent>.md` 16개(manifest 소유, `model` 없음, route가 없는 에이전트만 선언
+  - OMP 기본값: 생성이 `.omp/agents/<agent>.md` 17개(SPEC-REA-001의 reverse-engineer 포함, manifest 소유, `model` 없음, route가 없는 에이전트만 선언
     effort의 `thinkingLevel`)를 만들고 project `.omp/config.yml`에 `task.disabledAgents: [scout, security-reviewer,
     sonic, designer, librarian]`을 claim한다. 지원하는 omp 버전의 `task`를 뺀 bundled 에이전트 전부이고(18.6.1은 앞의
     셋, 17.2.7은 `designer`·`librarian`도), 설치된 omp가 번들하지 않는 이름은 아무것도 거르지 않는 항목이다. `task`는
     이름 없는 dispatch의 기본이라 켜 두고, `reviewer`는 omp 18.6.1 bundled reviewer의 `output` schema를 가진
-    Autopus reviewer가 대신한다. 프로필이 있으면 `task.agentModelOverrides`가 16개 이름과
+    Autopus reviewer가 대신한다. 프로필이 있으면 `task.agentModelOverrides`가 17개 이름과
     `task`를 key로 기존 활성화·증명·되읽기·복원을 탄다. 프로필 없이 pin만 있으면 pin한 에이전트와, 자기 pin이나
     planner pin을 따르는 `task`만 route를 갖고, pin도 없으면 세션 모델을 상속한다.
   - OMP 탭(autopus 모드): 프로필·계열을 묻지 않는다. 지금 pin이나 프로필의 effective route에서 시작해 역할 그룹
@@ -57,7 +95,7 @@ All notable changes to this project will be documented in this file.
     Autopus가 증명할 수 없는 model이라 그대로 두면 적용이 막힙니다: <models>. 프로필 그대로 고치려면 줄 OMP 편집기나
     auto platform omp profile apply를 쓰세요`를 쓴다.
   - migration: `auto update`가 `+ .omp/agents/<agent>.md` 줄, `task.disabledAgents: scout, security-reviewer,
-    sonic, designer, librarian`, `OMP는 이제 Autopus 에이전트 16개를 씁니다.` 안내를 미리 보이고 OMP transaction 하나로
+    sonic, designer, librarian`, `OMP는 이제 Autopus 에이전트 17개를 씁니다.` 안내를 미리 보이고 OMP transaction 하나로
     옮긴다. `autopus.yaml`은 쓰지 않는다. manifest에 없는 같은 이름 파일은 사용자 파일이라 그대로 둔다. 사용자가 다른 값으로
     정한 `task.disabledAgents`는 사용자 소유라 바꾸지 않고, 안내 1줄과 doctor의 `agents:disabled_agents_user_owned`
     (degraded)로 알린다. 그 표시는 `auto clean`만 지운다.

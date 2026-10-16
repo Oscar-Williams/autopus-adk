@@ -2,9 +2,6 @@ package cli
 
 import (
 	"errors"
-	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
@@ -87,15 +84,6 @@ func reaGuidancePlatforms(platforms []string) []string {
 		}
 	}
 	return guided
-}
-
-// readReaTarget reads p's target file under dir. A missing file is nil data.
-func readReaTarget(dir string, p reamcp.Platform) ([]byte, error) {
-	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(reamcp.TargetRelPath(p))))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
-	return data, err
 }
 
 // reaFileClass classifies the rea entry of p's target file. A file that
@@ -185,6 +173,30 @@ func reaSameKey(a, b *bool) bool {
 	return *a == *b
 }
 
+// reaSweepPreviewItems lists, for a preview whose run turns REA off, each
+// unselected target file the off sweep would change, so `auto update --plan`
+// shows every file the run writes. Any other run lists nothing.
+func reaSweepPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem {
+	if cfg == nil || cfg.Runtime.ReaMCP != config.ReaMCPRemove {
+		return nil
+	}
+	var items []previewItem
+	for _, p := range reamcp.Platforms() {
+		if containsPlatform(cfg.Platforms, string(p)) {
+			continue
+		}
+		data, err := readReaTarget(dir, p)
+		if err != nil || data == nil {
+			continue
+		}
+		if _, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove); err == nil && changed {
+			items = append(items, previewItem{Path: reamcp.TargetRelPath(p), Kind: "update", Scope: string(p),
+				Reason: "REA off would remove the managed rea entry of this unselected platform"})
+		}
+	}
+	return items
+}
+
 // sweepReaUnselected removes the managed rea entry from the target file of
 // every REA target platform outside platforms (the off sweep). No adapter runs
 // for those files, so the CLI applies the same reamcp transform itself.
@@ -196,31 +208,4 @@ func sweepReaUnselected(dir string, platforms []string) error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// removeReaEntry removes a managed rea entry from p's target file and leaves
-// any other file as it is. The write is refused when its path crosses a
-// symlink or leaves dir, so a file outside the project is never changed.
-func removeReaEntry(dir string, p reamcp.Platform) error {
-	data, err := readReaTarget(dir, p)
-	if err != nil || data == nil {
-		return nil
-	}
-	out, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove)
-	if err != nil || !changed {
-		return nil
-	}
-	rel := reamcp.TargetRelPath(p)
-	path, err := adapter.SafeWorkspacePath(dir, filepath.FromSlash(rel))
-	if err != nil {
-		return fmt.Errorf("REA MCP 쓰기 거부 %s: %w", rel, err)
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("REA MCP 제거 실패 %s: %w", rel, err)
-	}
-	if err := adapter.WriteFileIfChanged(path, out, info.Mode().Perm()); err != nil {
-		return fmt.Errorf("REA MCP 제거 실패 %s: %w", rel, err)
-	}
-	return nil
 }

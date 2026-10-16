@@ -22,6 +22,20 @@ type reaText struct {
 	DoctorOnKey   string
 	DoctorOffKey  string
 	DoctorUnset   string
+	// TargetSkipped and ChangeRefused name a target file (%s) and why (%s):
+	// a file left uninspected, and a needed REA change left unwritten.
+	TargetSkipped string
+	ChangeRefused string
+	ChangeFailed  string    // the run's error after a refused change line
+	Refusals      [5]string // reaRefusal reasons, in reaRefusal order
+}
+
+// refusal is the reason text of one reaRefusal.
+func (t reaText) refusal(reason reaRefusal) string {
+	if reason < reaRefusedSymlink || int(reason) > len(t.Refusals) {
+		return ""
+	}
+	return t.Refusals[reason-1]
 }
 
 // reaTextFor returns the REA lines for lang: Korean for ko and English for
@@ -54,6 +68,11 @@ var reaTextKo = reaText{
 	DoctorOnKey:   "REA: 켜짐 (autopus.yaml)",
 	DoctorOffKey:  "REA: 꺼짐 (autopus.yaml)",
 	DoctorUnset:   "REA: 미결정",
+	TargetSkipped: "REA MCP 대상 파일을 건너뜁니다: %s (%s)",
+	ChangeRefused: "REA MCP 항목을 바꾸지 않았습니다: %s (%s)",
+	ChangeFailed:  "REA MCP 항목을 바꾸지 못한 대상 파일이 있습니다",
+	Refusals: [5]string{"symlink를 따라가지 않습니다", "일반 파일이 아닙니다", "1 MiB보다 큽니다",
+		"바꾼 결과가 설정 구조 검사를 통과하지 못합니다", "읽을 수 없습니다"},
 }
 
 var reaTextEn = reaText{
@@ -71,4 +90,9 @@ var reaTextEn = reaText{
 	DoctorOnKey:   "REA: on (autopus.yaml)",
 	DoctorOffKey:  "REA: off (autopus.yaml)",
 	DoctorUnset:   "REA: undecided",
+	TargetSkipped: "REA MCP target file skipped: %s (%s)",
+	ChangeRefused: "REA MCP entry left unchanged: %s (%s)",
+	ChangeFailed:  "a REA MCP entry was left unchanged",
+	Refusals: [5]string{"crosses a symlink", "not a regular file", "larger than 1 MiB",
+		"the changed file fails its structure check", "cannot be read"},
 }

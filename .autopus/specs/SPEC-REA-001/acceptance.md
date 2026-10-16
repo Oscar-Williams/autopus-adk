@@ -164,7 +164,7 @@ Then BASE가 지원하는 네 명령의 sandbox 파일 집합 차이는 두 sand
 Priority: Must
 Given 이 branch와 기준 commit 4d73aa91의 test가 있다
 When `go test ./...`를 필터 없이 돌리고, `git diff --stat 4d73aa91 -- '*_test.go' '*.golden' 'evals/'`를 T2 분류와 맞추며, `auto eval harness run`, `GOOS=windows GOARCH=amd64 go build ./...`, 신규·변경 `.go` 줄 수 확인, `make generate-templates` 뒤 `git status --porcelain`을 실행한다
-Then 모든 test가 통과하고 바뀐 기존 test는 T2 목록과 Existing Test Changes 규칙 1–8대로이며, eval harness 실패 0, Windows build 성공, 신규·변경 `.go`는 모두 300줄 이하(`update.go` 포함), generate 뒤 반영 안 된 diff 0이다
+Then 모든 test가 통과하고 바뀐 기존 test는 T2 목록(`evidence/test-classification.md`)과 Existing Test Changes 규칙 1–13대로이며, eval harness 실패 0, Windows build 성공, 신규·변경 `.go`는 모두 300줄 이하(`update.go` 포함), generate 뒤 반영 안 된 diff 0이다
 
 ### S18: 실제 터미널 smoke (모델 호출 없음, Codex 먼저)
 Priority: Must

@@ -29,7 +29,7 @@ func TestReaFeaturesConf_RoundTripKeepsFalseAndOmitsAbsent(t *testing.T) {
 			assert.Equal(t, tc.want, string(out))
 			var back FeaturesConf
 			require.NoError(t, yaml.Unmarshal(out, &back))
-			assert.Equal(t, tc.in.Decided(), back.Rea.Decided())
+			assert.Equal(t, tc.in.Enabled != nil, back.Rea.Enabled != nil)
 			if tc.in.Enabled != nil {
 				assert.Equal(t, *tc.in.Enabled, *back.Rea.Enabled)
 			}
@@ -63,6 +63,6 @@ func TestReaFeaturesConf_StrictLoaderRejectsUnknownKeysAndValues(t *testing.T) {
 func TestDefaultFullConfig_HasNoReaKeyAndKeepAction(t *testing.T) {
 	t.Parallel()
 	cfg := DefaultFullConfig("p")
-	assert.False(t, cfg.Features.Rea.Decided())
+	assert.Nil(t, cfg.Features.Rea.Enabled)
 	assert.Equal(t, ReaMCPKeep, cfg.Runtime.ReaMCP)
 }

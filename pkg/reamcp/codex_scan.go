@@ -5,36 +5,108 @@ import (
 	"strings"
 )
 
-// The scanner below duplicates the line rules of the Codex adapter's
-// structural config merge (codexTOMLScanState, parseStructuralCodexSection,
-// and parseCodexConfigAssignment in pkg/adapter/codex), which this package
-// cannot import. Sharing the rules means the rea table edited here is the
-// table that merge sees, and a `[` inside a multiline string is never a
-// header. pkg/adapter/codex TestReaCodexHeaderDetectionMatchesMerge holds the
-// two copies to the same header decisions.
+// The scanner below decides headers with the rule of the Codex adapter's
+// structural config merge (parseStructuralCodexSection in pkg/adapter/codex),
+// which this package cannot import, but reads strings by TOML's own rules:
+// one-line basic and literal strings, escapes included, are skipped before a
+// multiline delimiter counts; every line outside a multiline string is read,
+// whatever its key looks like; and a line that closes a multiline string is
+// read on past the delimiter. A `[` inside any string is therefore never a
+// header, including the strings the merge's scanner misses (a `'''` inside a
+// one-line string, a dotted key, an array element). Where the two differ this
+// one follows TOML, and every Codex text a REA action changes is re-checked
+// by the structural validator before it is written.
+// pkg/adapter/codex TestReaCodexHeaderDetectionMatchesMerge keeps both on the
+// same headers for ordinary TOML.
 
 type tomlScanState struct {
-	multiline string
+	multiline string // delimiter of the multiline string being read, or ""
 }
 
+// skipSyntaxLine reports whether line starts inside a multiline string. When
+// the string closes on line, the rest of the line is read for a new one.
 func (s *tomlScanState) skipSyntaxLine(line string) bool {
 	if s.multiline == "" {
 		return false
 	}
-	if tomlHasUnescapedToken(line, s.multiline) {
-		s.multiline = ""
+	end := tomlMultilineEnd(line, 0, s.multiline)
+	if end < 0 {
+		return true
 	}
+	s.multiline = tomlOpenMultiline(line[end:])
 	return true
 }
 
-func (s *tomlScanState) observeValue(value string) {
-	value = tomlValueWithoutComment(value)
-	for _, delimiter := range []string{`"""`, `'''`} {
-		if tomlHasOddUnescapedToken(value, delimiter) {
-			s.multiline = delimiter
-			return
+// observeLine reads a line that starts outside any string and records the
+// multiline string it leaves open.
+func (s *tomlScanState) observeLine(line string) {
+	s.multiline = tomlOpenMultiline(line)
+}
+
+// tomlOpenMultiline walks text that starts outside any string and returns the
+// delimiter of a multiline string still open at its end, or "".
+func tomlOpenMultiline(text string) string {
+	for i := 0; i < len(text); {
+		switch {
+		case text[i] == '#':
+			return ""
+		case strings.HasPrefix(text[i:], `"""`), strings.HasPrefix(text[i:], `'''`):
+			delimiter := text[i : i+3]
+			end := tomlMultilineEnd(text, i+3, delimiter)
+			if end < 0 {
+				return delimiter
+			}
+			i = end
+		case text[i] == '"':
+			i = tomlBasicStringEnd(text, i+1)
+		case text[i] == '\'':
+			end := strings.IndexByte(text[i+1:], '\'')
+			if end < 0 {
+				return ""
+			}
+			i += end + 2
+		default:
+			i++
 		}
 	}
+	return ""
+}
+
+// tomlMultilineEnd returns the index just past the delimiter that closes a
+// multiline string whose content resumes at from, or -1 when text does not
+// close it. A basic string's delimiter may not be escaped, and up to two
+// quotes right before the delimiter are content, so a run of four or five
+// quotes closes at its end.
+func tomlMultilineEnd(text string, from int, delimiter string) int {
+	for i := from; i+len(delimiter) <= len(text); i++ {
+		if !strings.HasPrefix(text[i:], delimiter) {
+			continue
+		}
+		if delimiter == `"""` && tomlIsEscapedAt(text, i) {
+			continue
+		}
+		end := i + len(delimiter)
+		for extra := 0; extra < 2 && end < len(text) && text[end] == delimiter[0]; extra++ {
+			end++
+		}
+		return end
+	}
+	return -1
+}
+
+// tomlBasicStringEnd returns the index just past the quote that closes a
+// one-line basic string whose content starts at from, or len(text) when the
+// line ends first.
+func tomlBasicStringEnd(text string, from int) int {
+	for i := from; i < len(text); i++ {
+		switch text[i] {
+		case '\\':
+			i++
+		case '"':
+			return i + 1
+		}
+	}
+	return len(text)
 }
 
 func tomlValueWithoutComment(value string) string {
@@ -92,43 +164,12 @@ func tomlValueWithoutComment(value string) string {
 	return value
 }
 
-func tomlHasUnescapedToken(value, token string) bool {
-	for offset := 0; offset < len(value); {
-		index := strings.Index(value[offset:], token)
-		if index < 0 {
-			return false
-		}
-		index += offset
-		if !tomlIsEscapedAt(value, index) {
-			return true
-		}
-		offset = index + len(token)
-	}
-	return false
-}
-
 func tomlIsEscapedAt(value string, index int) bool {
 	backslashes := 0
 	for i := index - 1; i >= 0 && value[i] == '\\'; i-- {
 		backslashes++
 	}
 	return backslashes%2 == 1
-}
-
-func tomlHasOddUnescapedToken(value, token string) bool {
-	count := 0
-	for offset := 0; offset < len(value); {
-		index := strings.Index(value[offset:], token)
-		if index < 0 {
-			break
-		}
-		index += offset
-		if !tomlIsEscapedAt(value, index) {
-			count++
-		}
-		offset = index + len(token)
-	}
-	return count%2 == 1
 }
 
 // tomlStructuralSection mirrors parseStructuralCodexSection: an array table
@@ -147,39 +188,6 @@ func tomlStructuralSection(line string) (string, bool) {
 		return "", false
 	}
 	return section, true
-}
-
-// tomlAssignmentValue mirrors parseCodexConfigAssignment. It admits only a
-// single-segment key, and only such a line moves the multiline state, exactly
-// as the merge does.
-func tomlAssignmentValue(trimmed string) (string, bool) {
-	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-		return "", false
-	}
-	equals := strings.IndexByte(trimmed, '=')
-	if equals < 0 || !tomlSingleKey(strings.TrimSpace(trimmed[:equals])) {
-		return "", false
-	}
-	value := strings.TrimSpace(trimmed[equals+1:])
-	return value, value != ""
-}
-
-func tomlSingleKey(raw string) bool {
-	if raw == "" {
-		return false
-	}
-	if raw[0] == '"' {
-		value, err := strconv.Unquote(raw)
-		return err == nil && value != "" && !strings.Contains(value, ".")
-	}
-	if raw[0] == '\'' {
-		if len(raw) < 2 || raw[len(raw)-1] != '\'' {
-			return false
-		}
-		value := raw[1 : len(raw)-1]
-		return value != "" && !strings.Contains(value, ".")
-	}
-	return !strings.ContainsAny(raw, " \t.\"'")
 }
 
 // tomlKeyPath splits a TOML dotted key into its unquoted segments, so that

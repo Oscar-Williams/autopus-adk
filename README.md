@@ -6,13 +6,13 @@
 
 Make your AI coding tools (Claude Code, Codex, Antigravity CLI, OpenCode, Oh My Pi) work like a real engineering team — with planning, testing, code review, and security audits built in.
 
-**16 agents. 53 skills in the library, a compact default catalog. One config across platforms.**
+**17 agents. 53 skills in the library, a compact default catalog. One config across platforms.**
 
 [![GitHub Stars](https://img.shields.io/github/stars/autopus-ai/autopus-adk?style=social)](https://github.com/autopus-ai/autopus-adk/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)](https://golang.org)
 [![Platforms](https://img.shields.io/badge/Platforms-5-orange)](#-one-config-five-platforms)
-[![Agents](https://img.shields.io/badge/Agents-16-blueviolet)](#-16-specialized-agents)
+[![Agents](https://img.shields.io/badge/Agents-17-blueviolet)](#-17-specialized-agents)
 [![Skills](https://img.shields.io/badge/Skills-53-ff69b4)](#-all-commands)
 
 **Paste this command into your AI coding agent's chat (Claude Code, Codex, OpenCode, etc.) — the agent will run it and set up everything automatically. Or run it directly in your terminal.**
@@ -84,7 +84,7 @@ for production.
 # Brainstorm with 3 AI models debating each other
 /auto idea "Add OAuth2 with Google and GitHub providers" --multi --ultrathink
 
-# One command does the rest — plan, build with 16 agents, ship with docs
+# One command does the rest — plan, build with 17 agents, ship with docs
 /auto dev "Add OAuth2 with Google and GitHub providers"
 ```
 
@@ -173,7 +173,7 @@ Autopus is a **harness** — a structured environment that gives agents the cont
 flowchart TB
     subgraph OF ["🧬 Of the Agents"]
         direction TB
-        O1["16 specialized agents\nform a software team"]
+        O1["17 specialized agents\nform a software team"]
         O2["Planner · Executor · Tester\nReviewer · Architect · ..."]
     end
 
@@ -198,7 +198,7 @@ flowchart TB
 
 | Principle | What It Means |
 |-----------|--------------|
-| **Of the Agents** | 16 specialized agents form a real engineering team — planner, executor, tester, reviewer, security auditor, and more. Not one chatbot. A team. |
+| **Of the Agents** | 17 specialized agents form a real engineering team — planner, executor, tester, reviewer, security auditor, and more. Not one chatbot. A team. |
 | **By the Agents** | Agents run the pipeline autonomously — self-healing quality gates, parallel worktrees, multi-model debate. Humans set the goal; agents handle the rest. |
 | **For the Agents** | Every file, rule, and document is designed to be parsed by agents, not just read by humans. Structure over prose. That's AX. |
 | **Every Session is Day One** | Agents lose all context between sessions. The harness provides institutional memory — architecture, decisions, conventions — so they start informed, not blank. |
@@ -237,7 +237,7 @@ This isn't just about file size. The entire harness is **agent-readable by desig
 
 ### 🤖 AI Agents That Form a Team, Not a Chatbot
 
-Autopus doesn't give you one AI assistant — it gives you a **software engineering team of 16 specialized agents** with defined roles, quality gates, and retry logic.
+Autopus doesn't give you one AI assistant — it gives you a **software engineering team of 17 specialized agents** with defined roles, quality gates, and retry logic.
 
 ```
 🧠 Planner        →  Decomposes requirements into tasks
@@ -615,15 +615,15 @@ When the installed OMP catalog lacks family, capability, or authorization metada
 
 Activation verifies every projected `@role` through an OMP RPC `get_state` session loaded with the generated overlay. It sends no prompt and makes no model-provider request; the resulting provider/model/thinking map is bound into the receipt and independently rechecked by `explain`/doctor.
 
-From v0.50.126 OMP serves the 16 Autopus agents by default (SPEC-MODELUX-003). Generation writes `.omp/agents/<agent>.md` for every canonical agent, owned by the OMP manifest and carrying no `model` field; `thinkingLevel` is the agent's declared effort and appears only when no `task.agentModelOverrides` route names that agent. It also claims `task.disabledAgents: [scout, security-reviewer, sonic, designer, librarian]` in the project `.omp/config.yml`, which plain `omp` reads: every bundled agent but `task` across the omp releases Autopus supports (18.6.1 bundles the first three, 17.2.7 also `designer` and `librarian`), and a name the installed omp does not bundle is an inert filter entry. The bundled `task` agent stays enabled because an unnamed dispatch runs it, and the generated `reviewer` replaces the bundled one with the `output` schema of the omp 18.6.1 reviewer, so `/review` keeps its verdict. With a role profile, routes are written as `task.agentModelOverrides` keyed by the 16 names and `task` (`task` follows a `task` pin, then a `planner` pin, then the profile's planner route) through the existing activation, attestation, readback, and rollback; without a profile, pins alone (below) route only the pinned agents, and `task` through its own or planner's pin, and with no pin every agent inherits the session model.
+From v0.50.126 OMP serves the 17 Autopus agents by default (SPEC-MODELUX-003, SPEC-REA-001). Generation writes `.omp/agents/<agent>.md` for every canonical agent, owned by the OMP manifest and carrying no `model` field; `thinkingLevel` is the agent's declared effort and appears only when no `task.agentModelOverrides` route names that agent. It also claims `task.disabledAgents: [scout, security-reviewer, sonic, designer, librarian]` in the project `.omp/config.yml`, which plain `omp` reads: every bundled agent but `task` across the omp releases Autopus supports (18.6.1 bundles the first three, 17.2.7 also `designer` and `librarian`), and a name the installed omp does not bundle is an inert filter entry. The bundled `task` agent stays enabled because an unnamed dispatch runs it, and the generated `reviewer` replaces the bundled one with the `output` schema of the omp 18.6.1 reviewer, so `/review` keeps its verdict. With a role profile, routes are written as `task.agentModelOverrides` keyed by the 17 names and `task` (`task` follows a `task` pin, then a `planner` pin, then the profile's planner route) through the existing activation, attestation, readback, and rollback; without a profile, pins alone (below) route only the pinned agents, and `task` through its own or planner's pin, and with no pin every agent inherits the session model.
 
-`auto update` previews the move once — `+ .omp/agents/<agent>.md` lines, `task.disabledAgents: scout, security-reviewer, sonic, designer, librarian`, and `OMP now uses the 16 Autopus agents; set role_model_policy.agent_source: native to go back during v0.50.126.` — and performs it in the OMP adapter's one transaction without writing `autopus.yaml`. An `.omp/agents/<agent>.md` the manifest does not record is a user file and stays byte-identical (`.omp/agents/<agent>.md is a user file; left unchanged`). A `task.disabledAgents` you set to another value is user-owned: Autopus leaves it, prints `task.disabledAgents in .omp/config.yml is user-owned; scout, security-reviewer, sonic, designer, and librarian stay enabled`, and doctor reports `agents:disabled_agents_user_owned` as degraded; only `auto clean` drops that mark.
+`auto update` previews the move once — `+ .omp/agents/<agent>.md` lines, `task.disabledAgents: scout, security-reviewer, sonic, designer, librarian`, and `OMP now uses the 17 Autopus agents; set role_model_policy.agent_source: native to go back during v0.50.126.` — and performs it in the OMP adapter's one transaction without writing `autopus.yaml`. An `.omp/agents/<agent>.md` the manifest does not record is a user file and stays byte-identical (`.omp/agents/<agent>.md is a user file; left unchanged`). A `task.disabledAgents` you set to another value is user-owned: Autopus leaves it, prints `task.disabledAgents in .omp/config.yml is user-owned; scout, security-reviewer, sonic, designer, and librarian stay enabled`, and doctor reports `agents:disabled_agents_user_owned` as degraded; only `auto clean` drops that mark.
 
 Doctor's OMP agent catalog turns degraded with `agents:autopus_agent_user_file` while a canonical `.omp/agents/<name>.md` is a user file, because OMP then runs that file instead of the Autopus definition. A project `.omp/config.yml` the managed parser cannot read safely — a symlink, invalid YAML, several documents, an alias, a flow-style mapping, or a lone CR, NEL, LS, or PS line break — is never written: `auto update` prints `task.disabledAgents was not written: .omp/config.yml cannot be read safely (a symlink, invalid YAML, several documents, an alias, a flow-style mapping, or a lone CR, NEL, LS, or PS line break); scout, security-reviewer, sonic, designer, and librarian stay enabled` instead of the `task.disabledAgents: …` preview line, and doctor reports `agents:project_config_unclaimable`, a state distinct from a user-owned value. When a ledger already claims the key and the file then gains such a line break, the file and the ledger stay as they are, `auto update` prints `task.disabledAgents is left as last written: …`, and `auto clean` refuses with `project_config_unclaimable` until the file reads cleanly. Once no ledger claims `.omp/config.yml`, ADK keeps none of the backups its transactions recorded of that file except one: the rollback artifact of the newest committed transaction that released the ledger, applied to the config as that release left it. It stays under `.autopus/backup/` until the next release replaces it, so a release can still be undone by hand; a release that deleted a config ADK had created leaves none, and `auto clean` restores from the verified preimage and leaves no rollback artifact of the config.
 
 `role_model_policy.agent_source: native` restores the behavior described below for v0.50.126 only; the key and the native path are planned for removal in v0.50.127. Any other value fails to load with `role_model_policy.agent_source_invalid`, and the key alone configures no role model policy. Roll back with this key, not with an older binary: auto older than v0.50.126 cannot read an `autopus.yaml` that sets `agent_source` or `quality.presets.*.efforts`, and v0.50.125 rejects the project ownership ledger (`.autopus/omp-model-project-ownership-v1.json`) once it carries the new agent-surface fields. The next two paragraphs describe `agent_source: native`.
 
-`auto init` writes no agent definition for OMP. OMP registers its own bundled agents (`task`, `scout`, `reviewer`, `security-reviewer`, `sonic`) and resolves a task agent by exact name, so a generated `.omp/agents/<name>.md` would only shadow the bundled one. A role profile binds models through `task.agentModelOverrides` instead, and the 16 ADK work roles collapse onto those five agents. `auto platform omp explain` and `auto status --platform omp` show one row per bundled agent with its role/capability provenance and effective selector; a project file at `.omp/agents/<bundled name>.md` is reported as `native_agent_shadowed`.
+`auto init` writes no agent definition for OMP. OMP registers its own bundled agents (`task`, `scout`, `reviewer`, `security-reviewer`, `sonic`) and resolves a task agent by exact name, so a generated `.omp/agents/<name>.md` would only shadow the bundled one. A role profile binds models through `task.agentModelOverrides` instead, and the 17 ADK work roles collapse onto those five agents. `auto platform omp explain` and `auto status --platform omp` show one row per bundled agent with its role/capability provenance and effective selector; a project file at `.omp/agents/<bundled name>.md` is reported as `native_agent_shadowed`.
 
 Several role keys can land on one bundled agent. The representative role decides — `task` follows `planner`, `scout` follows `explorer`, `sonic` follows `validator` — and every plan row, explain row, and receipt entry reports the governing key, so a pre-cutover policy that names all 16 roles keeps working and the applied entry stays visible. A set with no representative row has nothing to rank it and is refused with `omp_native_agent_conflict` naming the entries to reconcile.
 
@@ -957,7 +957,7 @@ Now you're ready. Describe what you want in plain language:
 # 1. Plan — AI creates a full SPEC (requirements, tasks, acceptance criteria)
 /auto plan "Add a health check endpoint at GET /healthz"
 
-# 2. Build — 16 agents handle implementation, testing, and review
+# 2. Build — 17 agents handle implementation, testing, and review
 /auto go SPEC-HEALTH-001 --auto
 
 # 3. Ship — Sync docs, update SPEC status, commit with decision history
@@ -1200,7 +1200,7 @@ sequenceDiagram
     R-->>S: ✅ APPROVE
 ```
 
-### 16 Specialized Agents
+### 17 Specialized Agents
 
 | Agent | Role | When |
 |-------|------|------|
@@ -1220,6 +1220,7 @@ sequenceDiagram
 | **Perf Engineer** | Benchmark, pprof, regression detection | on-demand |
 | **Deep Worker** | Long-running autonomous exploration + implementation | on-demand |
 | **Explorer** | Codebase structure analysis | `/auto map` |
+| **Reverse Engineer** | Behaviour specification from REA tools and read tools only (clean-room) | `/auto reverse` |
 
 ### Quality Modes
 
@@ -1348,7 +1349,7 @@ are not kept.
 In a terminal the step runs as huh forms, like the init wizard: arrow keys and Enter choose, and scripted or piped input keeps the line prompts above. The menu offers keep, update to the latest defaults (only when a built-in preset is a previous-version default), edit the composition, and, in `auto quality`, choose the default preset. **edit the composition** opens a tool tab:
 
 - **same for all tools** is the role-group composition above; every tier option names the cells each tool would get, for example `opus — Claude Code: opus-5-5 · high | Codex: 6.1-sol · xhigh`.
-- **Claude Code** and **Codex** change only that tool. Options read `<cells>  [<tier>]`, such as `6.1-sol · xhigh  [opus]`, and the result is saved as `quality.presets.<provider>-custom` (all 16 agents) with `quality.providers.<provider>: <provider>-custom`. Binaries older than v0.50.88 ignore `quality.providers`.
+- **Claude Code** and **Codex** change only that tool. Options read `<cells>  [<tier>]`, such as `6.1-sol · xhigh  [opus]`, and the result is saved as `quality.presets.<provider>-custom` (all 17 agents) with `quality.providers.<provider>: <provider>-custom`. Binaries older than v0.50.88 ignore `quality.providers`.
 - **OMP** appears in `auto update` and `auto quality` when the platforms saved in autopus.yaml include omp, and in `auto init` when the platforms this init chose include omp. It pins one installed model and thinking level per native OMP agent, previews the plan's real routes, and writes through the existing OMP profile writer; init keeps the choice in its config and writes it with the platform files.
 
 A Claude label names the model slug (`opus-5-5`), while the table cell is the frontmatter value the generator writes (`opus`, or an exact ID such as `fable-5-1`). `auto update` also shows a column for every platform it detected in this run and generates them from the same catalog read. Ctrl+C in a form ends `auto update` with a non-zero exit before any generation, cancels `auto init` before it writes any file, and leaves `auto quality` without an error.
@@ -1392,7 +1393,7 @@ For most features, you only need two commands:
 | Stage | What Happens | Flags (auto-applied) |
 |-------|-------------|---------------------|
 | **plan** | PRD + SPEC + multi-provider review | `--auto --multi --ultrathink` |
-| **go** | 16 agents in Agent Teams + self-healing | `--auto --loop --team` |
+| **go** | 17 agents in Agent Teams + self-healing | `--auto --loop --team` |
 | **sync** | Docs + changelog + Lore commit | — |
 
 > 💡 **Don't want the full power?** Use `--solo` for single-session mode, `--no-multi` to skip multi-provider review, or call `plan` / `go` / `sync` individually for fine-grained control.
@@ -1430,7 +1431,7 @@ Options: `--multi` for a read-only multi-provider planning advisory plus final S
 
 ### 🚀 Step 2 · `/auto go` — Build It
 
-Feed the SPEC to **16 agents** that plan, scaffold tests, implement in parallel, validate, annotate, test, and review — all automatically.
+Feed the SPEC to **17 agents** that plan, scaffold tests, implement in parallel, validate, annotate, test, and review — all automatically.
 
 ```bash
 /auto go SPEC-HOOK-001 --auto --loop
@@ -1470,6 +1471,18 @@ Before committing, `auto sync verify` creates a read-only staging plan and print
 
 Three commands connect requirements, implementation, and delivery records. Check
 the recorded acceptance and verification results before treating the work as complete.
+
+### 🔍 Reverse Engineering — `/auto reverse`
+
+`auto init` registers the project-scope REA reverse-engineering MCP (`npx -y rea-agents@6.5.0 mcp`) for Claude Code (`.mcp.json`), Codex (`.codex/config.toml`), and Antigravity (`.gemini/settings.json`) by default (SPEC-REA-001). The interactive wizard asks once (default Yes); `--rea` and `--no-rea` decide without asking, and init or update refuses the two together. An existing project is asked once, by an interactive `auto update`; a non-interactive, `--yes`, `--auto`, CI, or workspace run adds nothing and prints one hint naming `auto update --rea`. `--rea` and `--no-rea` cannot be combined with `--workspace`; run them per repository with `--local`.
+
+- **Node**: the entry is written only when `node` is `^22.19.0 || ^24.11.0 || >=26.0.0`, probed once per run the way the server starts (`/bin/bash -l -c 'node --version'`, PATH `node` on Windows) within 5 seconds. Otherwise no entry is added, one Node line is printed, and existing entries and the decision stay.
+- **Where the decision lives**: a managed `rea` entry carries it. `features.rea.enabled` is written only when no entry can (off, Node unmet, or every target file user-owned), and the run that first writes it prints `auto older than v0.50.126 cannot read features.rea` once: the strict loader of v0.50.113–v0.50.125 rejects the key. A `rea` entry you own or pin to another version stays value-identical. Turning REA off also removes the managed entry from target files of unselected platforms, and `auto platform remove <platform>` removes that platform's managed entry.
+- **Windows**: the Claude Code and Antigravity servers start through `/bin/bash -l -c` like the existing servers, so they do not start on Windows.
+- **OMP and OpenCode** get no REA MCP entry; Autopus prints that `npx -y rea-agents@6.5.0 setup` registers REA for the main session only (user scope).
+- **The 17th agent**: `reverse-engineer` is generated on every platform whatever the decision. It uses only REA and read tools (no Write, Edit, or Bash) and returns a behaviour specification with item IDs, evidence_id references, and unknowns, never decompiled pseudocode. Balanced places it on opus (Claude `claude-opus-5-5` · `high`, Codex `gpt-6.1-sol` · `xhigh`); when an OMP or Codex catalog lacks that model, only reverse-engineer falls back to the session model with one notice line, and every other rung keeps its blocker. v0.50.125 reads the 17-agent presets this release writes as customized.
+- **Clean-room flow**: `/auto reverse <target> <feature> [--runtime]` dispatches reverse-engineer; asks the main-session consent before any runtime capture that runs or attaches to the target (`allow / decline`, and `--auto` asks too); shows the specification with the proposed owned and test paths (`confirm / revise / stop`); writes only the confirmed specification to `.autopus/reverse/<slug>/behaviour-spec.md`, which the generated `.gitignore` ignores; then runs tester → executor → tester. Dispatch prompts never carry REA results, evidence bundles, or decompiled text. On OMP, `/auto reverse` is an interactive command; the headless managed OMP RPC backend (`/autopus-pipeline`) does not run it.
+- **Doctor** reports the decision and its source, the Node verdict, each selected platform's `rea` entry class (`managed`, `absent`, `other_pin`, `user_owned`), and the OMP·OpenCode guidance, in text and in `--json` (`data.rea`), without starting the REA server or making a network call.
 
 ---
 
@@ -1661,7 +1674,7 @@ autopus-adk/
 │   ├── terminal/       # Terminal multiplexer adapters (cmux, tmux, plain)
 │   └── version/        # Build metadata
 ├── templates/          # Platform-specific templates
-├── content/            # Embedded content (16 agents, 53 skills)
+├── content/            # Embedded content (17 agents, 53 skills)
 └── configs/            # Default configuration
 ```
 

@@ -29,13 +29,18 @@ func ClassifyFile(p Platform, data []byte) (Class, error) {
 // empty for a missing file. An unchanged file comes back as data itself. A
 // changed JSON file is re-encoded the way the Claude and Antigravity adapter
 // merges encode it (json.MarshalIndent with two spaces and a trailing
-// newline), so the result equals what that merge would write.
+// newline), so the result equals what that merge would write. A changed Codex
+// text must pass the structural check the Codex adapter applies to its own
+// REA writes; otherwise the change is refused with an error naming the file.
 func ApplyFile(p Platform, data []byte, a config.ReaMCPAction) ([]byte, bool, error) {
 	switch p {
 	case Codex:
 		out, changed := ApplyCodexTOML(string(data), a)
 		if !changed {
 			return data, false, nil
+		}
+		if err := tomlValidateStructure(out); err != nil {
+			return nil, false, fmt.Errorf("%s: REA MCP change fails the TOML structure check: %w", TargetRelPath(p), err)
 		}
 		return []byte(out), true, nil
 	case Claude, Antigravity:

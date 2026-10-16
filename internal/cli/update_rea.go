@@ -35,11 +35,14 @@ func resolveUpdateRea(cmd *cobra.Command, dir string, cfg *config.HarnessConfig,
 	return run
 }
 
-// ask settles an undecided update. A run the compose gate treats as
-// interactive asks the REA question once, default Yes, and applies the
-// answer in this run; every other run reads no stdin and prints the hint.
-// An answer that is neither yes nor no leaves REA undecided.
-func (r *reaRun) ask(cmd *cobra.Command, cfg *config.HarnessConfig, gate composeGate) {
+// prepare runs before an update's platform writes. It snapshots the target
+// files of the configured and newly detected platforms, then settles an
+// undecided update: a run the compose gate treats as interactive asks the REA
+// question once, default Yes, and applies the answer in this run; every other
+// run reads no stdin and prints the hint. An answer that is neither yes nor
+// no leaves REA undecided.
+func (r *reaRun) prepare(cmd *cobra.Command, cfg *config.HarnessConfig, gate composeGate) {
+	r.snapshot(append(append([]string{}, cfg.Platforms...), gate.Detected...))
 	if r.state != reaUndecided || !r.active {
 		return
 	}

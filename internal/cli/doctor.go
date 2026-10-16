@@ -34,7 +34,7 @@ func newDoctorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Check autopus harness health",
-		Long:  "하네스 설치 상태를 진단합니다. 누락된 파일, 의존성 상태, 플랫폼 상태를 확인합니다.",
+		Long:  "하네스 설치 상태를 진단합니다. 누락된 파일, 의존성 상태, 플랫폼 상태를 확인합니다.\n\n" + reaDoctorHelp,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jsonMode, err := resolveJSONMode(jsonOutput, format)
 			if err != nil {

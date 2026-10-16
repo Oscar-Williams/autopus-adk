@@ -57,4 +57,5 @@ func (r *initRea) decideInit(cmd *cobra.Command, cfg *config.HarnessConfig, answ
 		}
 	}
 	r.decide(reaContext(cmd), cmd.OutOrStdout(), cfg, state)
+	r.snapshot(cfg.Platforms)
 }
