@@ -109,7 +109,7 @@ planning context의 표다(2026-10-16). 셀은 근거로만 요약했고 지시�
 | INV-TUX-03 | "어떤 스테이지에 있는지" | formula: wizard `n/N` = 같은 폼 제목의 `[n/N]`, 구성 경로 = 단계 › 메뉴 › 탭 › 방식 순서, locale 규칙 | header·footer 줄 | S4, S9 |
 | INV-TUX-04 | scope_boundary "no change to what gets written" | paired matching: 뒤로·다시 답하기를 거친 run의 NPD = 같은 마지막 답을 바로 준 대조 run의 NPD | NPD, autopus.yaml key | S6, S7, S10, S11, S12, S14 |
 | INV-TUX-05 | 확인 화면 "취소" | cancel·Ctrl+C 뒤 경로 집합과 bytes·mtime 불변, 옛 플랫폼 이름 포함 | 경로 목록, SHA-256, mtime | S8, S16 |
-| INV-TUX-06 | "non-TTY/--yes/CI behaviour" 불변 | paired matching with base golden: 폼이 열리지 않는 자리의 stdout과 NPD가 8ec13935와 같다. gate별 CI 규칙 그대로 | stdout, NPD, 폼 실행 수, 기존 test diff | S15, S17 |
+| INV-TUX-06 | "non-TTY/--yes/CI behaviour" 불변 | paired matching with base golden: 폼이 열리지 않는 자리의 stdout과 NPD가 b08ea644(8ec13935에 SPEC-REVMODEL-001 구현을 합친 구현 기준)와 같다. gate별 CI 규칙 그대로 | stdout, NPD, 폼 실행 수, 기존 test diff | S15, S17 |
 | INV-TUX-07 | huh "esc distinguished from abort" | parser: Esc → 뒤로(filter 입력 중이면 filter), Ctrl+C → abort, 첫 폼 Esc → 머묾, 한 번에 온 화살표 → 이동 | 오류 값, 값, view 줄 | S3, S4, S18 |
 | INV-TUX-08 | "accessible mode can express back" | parser: `b`·`back`·`뒤로` 한 줄만 token, 다음 줄은 남고 다른 줄은 그대로, `TERM=dumb`도 같다, 줄 driver에는 token이 없다 | 결과, 출력 줄, 줄 driver stdout | S1, S2, S3, S15, S21 |
 | INV-TUX-09 | 리뷰 탭 의미 불변 | OMP(native·autopus)·리뷰 탭의 뒤로는 도구 탭으로, 쓰기·활성화·경고 0, `ompPins` 경로 포함 | SHA-256, activate 수, 경고 줄 | S13 |

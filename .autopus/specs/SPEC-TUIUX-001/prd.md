@@ -2,7 +2,7 @@
 
 - **SPEC-ID**: SPEC-TUIUX-001
 - **Mode**: Minimal
-- **Source**: 사용자 요청(2026-10-16), planning context의 Plan Intent Ledger, 8ec13935 코드, huh v1.0.0 probe(`evidence/probe-nav-a1.md`)
+- **Source**: 사용자 요청(2026-10-16), planning context의 Plan Intent Ledger, b08ea644 코드, huh v1.0.0 probe(`evidence/probe-nav-a1.md`)
 - **Status**: Draft (revision 2, review round 1 반영)
 - **Date**: 2026-10-16
 - **Target module**: `autopus-adk`
@@ -38,5 +38,5 @@
 - accessible runner로 돈 wizard에서 3단계 뒤로 뒤 2단계가 앞 답을 미리 선택하고 결과가 뒤로 없는 대조와 같다(S1). 여러 field 단계의 부분 답은 버려진다(S2).
 - header·요약·footer 문자열이 Contract와 정확히 같다(S1, S5, S9, S10). 실제 `tea.Program`에서 Esc·Ctrl+C·filter가 구별된다(S4).
 - init 확인 화면이 첫 쓰기 전에 답한 값, 바뀌는 설정 key, REA 결정을 정확한 줄로 보이고, 적용은 기준과 같은 파일을, 취소와 Ctrl+C는 옛 플랫폼 이름이 있어도 bytes·mtime 불변을 남긴다(S6, S8). 뒤로를 거친 run의 파일은 대조와 같고 재진입은 마지막 catalog를 쓴다(S7, S10–S14). 24줄 화면에서 header와 footer가 보인다(S20).
-- 폼이 열리지 않는 자리의 출력과 파일이 8ec13935 golden과 같다(시간 field만 정규화, S15). `TERM=dumb`은 accessible 경로다(S21). 기존 test는 분류 안에서만 바뀐다(S17).
+- 폼이 열리지 않는 자리의 출력과 파일이 b08ea644 golden과 같다(시간 field만 정규화, S15). `TERM=dumb`은 accessible 경로다(S21). 기존 test는 분류 안에서만 바뀐다(S17).
 - 실제 터미널 smoke 기록(S18)이 남는다. 그 전에는 Completion Debt CD-1이다.

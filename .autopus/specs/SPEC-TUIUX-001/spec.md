@@ -5,7 +5,7 @@
 **Revision**: 3 (review round 1의 F-001–F-012, round 2의 F-007·F-008·F-010 반영. 반영표 `evidence/review-rounds.md`)
 **Domain**: TUIUX
 **Module**: autopus-adk
-**Release**: v0.50.126 (SPEC-REA-001, SPEC-REVMODEL-001, TEAMAUTO 작업과 같은 release). branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위)
+**Release**: v0.50.126 (SPEC-REA-001, SPEC-REVMODEL-001, TEAMAUTO 작업과 같은 release). branch `feat/tuiux-001`, 기준 b08ea644(`feat/revmodel-001` 위)
 **Source PRD**: `prd.md`(같은 디렉터리). 코드 근거, probe, 결정은 `research.md`와 `evidence/probe-nav-a1.md`에 있다.
 
 ## 목적
@@ -90,7 +90,7 @@ WHEN a navigation form runs in accessible mode and reads a line that equals b, b
 ### REQ-TUX-07 폼이 열리지 않는 자리는 그대로
 Priority: Must · EARS: Unwanted
 
-IF a form did not open at a place before this SPEC, because the command's existing interactivity gate in the Form Gate Contract does not ask there or because the composition step uses the SPEC-MODELUX-001 line driver there, THEN THE SYSTEM SHALL open no navigation form at that place, print no frame, accept no back token, and keep that output byte-identical to 8ec13935.
+IF a form did not open at a place before this SPEC, because the command's existing interactivity gate in the Form Gate Contract does not ask there or because the composition step uses the SPEC-MODELUX-001 line driver there, THEN THE SYSTEM SHALL open no navigation form at that place, print no frame, accept no back token, and keep that output byte-identical to b08ea644.
 
 - navigation은 run 단위가 아니라 폼 단위다. 지금 폼이 열리는 자리는 모두 navigation 폼이 되고, 열리지 않는 자리는 그대로다. gate는 하나도 바꾸지 않는다(Form Gate Contract).
 - 그래서 `auto init | tee log`(TTY stdin, pipe stdout)는 wizard가 지금처럼 stderr의 huh 폼이라 navigation을 받고, 구성 단계는 줄 driver이며 확인 화면은 없다. CI truthy는 지금처럼 update의 구성 단계만 막는다. init과 quality에서 CI는 판단에 들어가지 않는다.
@@ -297,7 +297,7 @@ THE SYSTEM SHALL fit every TUI navigation form into the terminal height by the H
    - 다섯 파일은 모두 `package cli`이고 지금 `internal/cli/tui`를 import하지 않는다. 그래서 파일마다 `github.com/insajin/autopus-adk/internal/cli/tui` import 한 줄과 gofmt가 그 import block에 내는 정렬 변경을 허용한다. 그 밖의 줄은 바꾸지 않는다.
 2. init 확인 화면: form path로 init을 돌리는 test(`init_compose_form_test.go`, `init_compose_review_test.go`, `init_compose_omp_test.go`, form path라면 `init_rea_test.go`)는 마지막에 폼 하나를 더 만난다. (a) 입력이 옛 흐름 끝에서 끝나면 EOF가 적용을 고른다: 변경 없음. (b) 남는 줄이 빈 줄뿐이면 Enter가 적용이다: 변경 없음. (c) 남는 줄에 빈 줄이 아닌 답이 있으면 그 줄이 확인 화면에 닿기 전에 끝나도록 입력 모양만 고친다. init test에는 폼 실행 횟수를 단언하는 줄이 없다(grep `Equal(t, <n>, *` 0건). 있게 되면 회귀로 보고 멈춘다.
 3. 새 helper(`useNavComposeForms`)와 새 test는 새 파일에만 둔다(`[NEW] quality_compose_nav_helpers_test.go` 등). 기존 test 파일에 함수를 더하지 않는다.
-4. wizard test(`internal/cli/tui/*_test.go`)는 step builder와 제목이 그대로라 바꾸지 않는다. `RunInitWizard(Accessible: true)`는 지금처럼 폼 없이 기본값이다.
+4. wizard test(`internal/cli/tui/*_test.go`)는 step builder와 제목이 그대로라 기존 줄을 바꾸지 않는다. T5가 소유한 `export_test.go`에 test alias 두 줄(`TestWizardStreams`·`TestWizardStepKinds`)만 더한다(S17 (iv)). `RunInitWizard(Accessible: true)`는 지금처럼 폼 없이 기본값이다.
 5. 줄 driver golden(`quality_compose_line_golden_test.go`, `quality_compose_table_golden_test.go`)은 stub 시그니처 줄 말고는 그대로 통과해야 한다.
 6. 위 분류 밖에서 실패하면 회귀다. test가 아니라 코드를 고친다.
 7. SPEC-REVMODEL-001 개정이 같은 release에서 `composeRunForm` stub을 더하면 새 시그니처를 써야 한다. compile 오류가 신호이고 나중에 들어오는 쪽이 맞춘다.
