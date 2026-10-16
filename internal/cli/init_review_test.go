@@ -195,3 +195,13 @@ func tuiuxConfigWith(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg.Runtime.ReaMCP = action
 	return cfg
 }
+
+// A piped or TERM=dumb review whose input ends after an invalid answer is a
+// cancel: the existing cancel line, no error, and nothing written.
+func TestInitReview_InvalidAnswerThenEndCancels(t *testing.T) {
+	newTUIUXEnv(t, true, "")
+	run := runTUIUXIN(t, []tui.InitWizardResult{tuiuxW()}, "9\n")
+
+	assert.True(t, strings.HasSuffix(run.out, "\n  init cancelled.\n"), run.out)
+	assert.Empty(t, tuiuxPathState(t, run.dir))
+}

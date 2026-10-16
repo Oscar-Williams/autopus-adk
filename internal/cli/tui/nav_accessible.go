@@ -30,13 +30,27 @@ func RunNavAccessible(form *huh.Form, frame NavFrame, in io.Reader, out io.Write
 	}
 	fmt.Fprintln(out, footer)
 	reader := &navLineReader{in: in, out: out, first: frame.First, notice: text.notice}
-	if err := form.WithAccessible(true).WithInput(reader).WithOutput(out).Run(); err != nil {
+	if err := runAccessibleForm(form, reader, out); err != nil {
 		return err
 	}
 	if reader.back {
 		return ErrNavBack
 	}
 	return nil
+}
+
+// runAccessibleForm runs form in huh's accessible mode. When the input ends
+// right after an invalid answer, huh takes that answer as the choice and a
+// Select indexes its options with it, which panics inside huh; such a run
+// reads as a cancelled form, the huh.ErrUserAborted Ctrl+C gives, so piped
+// or TERM=dumb input never crashes the command and its caller writes nothing.
+func runAccessibleForm(form *huh.Form, in io.Reader, out io.Writer) (err error) {
+	defer func() {
+		if recover() != nil {
+			err = huh.ErrUserAborted
+		}
+	}()
+	return form.WithAccessible(true).WithInput(in).WithOutput(out).Run()
 }
 
 // navLineReader hands huh one input line per read and reads its own input

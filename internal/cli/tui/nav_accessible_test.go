@@ -148,3 +148,23 @@ func TestRunNavAccessible_InvalidAnswerThenBack(t *testing.T) {
 	require.NoError(t, tui.RunNavAccessible(abcSelect(&value), tui.NavFrame{}, in, &strings.Builder{}))
 	assert.Equal(t, "c", value)
 }
+
+// Input that ends right after an invalid answer makes huh index a Select's
+// options with that answer; the helper reads it as a cancelled form, as
+// Ctrl+C, instead of crashing, on first forms and later ones alike.
+func TestRunNavAccessible_InvalidAnswerThenEndIsACancel(t *testing.T) {
+	for _, input := range []string{"9\n", "x\n", "9\nb\n"} {
+		for _, first := range []bool{false, true} {
+			if input == "9\nb\n" && !first {
+				continue // a later form's token is a back, not an end
+			}
+			value := "b"
+			var err error
+			assert.NotPanics(t, func() {
+				err = tui.RunNavAccessible(abcSelect(&value), tui.NavFrame{First: first}, strings.NewReader(input), &strings.Builder{})
+			}, "%q first=%v", input, first)
+			assert.ErrorIs(t, err, huh.ErrUserAborted, "%q first=%v", input, first)
+			assert.Equal(t, "b", value)
+		}
+	}
+}
