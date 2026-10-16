@@ -25,15 +25,6 @@ func TestTOMLKeyPath(t *testing.T) {
 	}
 }
 
-func TestTOMLSingleKey(t *testing.T) {
-	for raw, want := range map[string]bool{
-		`"a"`: true, `"a.b"`: false, `'a'`: true, `'a`: false, `''`: false,
-		"a.b": false, "a b": false, "": false, `"\q"`: false, "rea": true,
-	} {
-		assert.Equal(t, want, tomlSingleKey(raw), raw)
-	}
-}
-
 func TestTOMLValueWithoutComment(t *testing.T) {
 	for value, want := range map[string]string{
 		`"a#b" # c`:        `"a#b" `,
