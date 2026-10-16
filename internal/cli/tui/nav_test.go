@@ -1,17 +1,14 @@
 package tui
 
 // SPEC-TUIUX-001 T2 (acceptance S3, S4, S20): RunNav runs a real tea.Program
-// over an io.Pipe. Every listed byte sequence goes in one write: split
-// writes would read an arrow's escape byte as Esc (probe P2, Open Risk R1).
+// over an io.Pipe (nav_harness_test.go). Every listed byte sequence goes in
+// one write: split writes would read an arrow's escape byte as Esc (probe P2,
+// Open Risk R1).
 
 import (
 	"fmt"
-	"io"
-	"regexp"
 	"strings"
-	"sync"
 	"testing"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
@@ -19,113 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var navTestANSI = regexp.MustCompile("\x1b\\[[0-9;?]*[a-zA-Z]")
-
-// navRun is one RunNav run on a real program over a pipe: its error once it
-// returned and every view it drew, ANSI removed.
-type navRun struct {
-	t       *testing.T
-	program *tea.Program
-	feed    *io.PipeWriter
-	done    chan error
-	err     error
-	mu      sync.Mutex
-	views   []string
-}
-
-// startNavTUI starts RunNav with form and frame; size, when non-zero, is sent
-// as the window size before any key.
-func startNavTUI(t *testing.T, form *huh.Form, frame NavFrame, size tea.WindowSizeMsg) *navRun {
-	t.Helper()
-	run := &navRun{t: t, done: make(chan error, 1)}
-	started := make(chan *tea.Program, 1)
-	navProgramStarted = func(p *tea.Program) {
-		if size.Height > 0 {
-			go p.Send(size)
-		}
-		started <- p
-	}
-	navViewed = func(view string) {
-		run.mu.Lock()
-		defer run.mu.Unlock()
-		run.views = append(run.views, navTestANSI.ReplaceAllString(view, ""))
-	}
-	t.Cleanup(func() { navProgramStarted, navViewed = nil, nil })
-	in, feed := io.Pipe()
-	run.feed = feed
-	go func() { run.done <- RunNav(form, frame, in, io.Discard) }()
-	run.program = <-started
-	t.Cleanup(func() { _ = feed.Close() })
-	return run
-}
-
-// write sends one write after the views of the write before it settled.
-func (r *navRun) write(keys string) {
-	r.t.Helper()
-	time.Sleep(150 * time.Millisecond)
-	_, err := r.feed.Write([]byte(keys))
-	require.NoError(r.t, err)
-}
-
-// running reports whether RunNav is still running a moment later.
-func (r *navRun) running() bool {
-	select {
-	case r.err = <-r.done:
-		return false
-	case <-time.After(300 * time.Millisecond):
-		return true
-	}
-}
-
-// wait returns RunNav's error; a run that does not return is killed.
-func (r *navRun) wait() error {
-	r.t.Helper()
-	select {
-	case r.err = <-r.done:
-	case <-time.After(3 * time.Second):
-		r.program.Kill()
-		r.t.Fatalf("RunNav did not return; last view:\n%s", r.lastView())
-	}
-	return r.err
-}
-
-func (r *navRun) seen() []string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return append([]string(nil), r.views...)
-}
-
-// lastView is the last non-empty view drawn so far.
-func (r *navRun) lastView() string {
-	views := r.seen()
-	for i := len(views) - 1; i >= 0; i-- {
-		if views[i] != "" {
-			return views[i]
-		}
-	}
-	return ""
-}
-
-// runNavTUI runs form with frame over writes and returns once RunNav did.
-func runNavTUI(t *testing.T, form *huh.Form, frame NavFrame, size tea.WindowSizeMsg, writes ...string) *navRun {
-	t.Helper()
-	run := startNavTUI(t, form, frame, size)
-	for _, keys := range writes {
-		run.write(keys)
-	}
-	run.wait()
-	return run
-}
-
-func navSelect(value *string) *huh.Form {
-	return huh.NewForm(huh.NewGroup(huh.NewSelect[string]().
-		Options(huh.NewOption("A", "a"), huh.NewOption("B", "b"), huh.NewOption("C", "c")).Value(value)))
-}
-
-func navLines(view string) []string {
-	return strings.Split(view, "\n")
-}
 
 // S4: Esc goes back, Ctrl+C aborts, Enter completes, a one-write arrow moves,
 // the filter keeps its Esc, and a Confirm goes back on Esc too.
@@ -156,14 +46,15 @@ func TestRunNav_S4KeysOfTheNavigationContract(t *testing.T) {
 		})
 	}
 	t.Run("(5) filter keeps the first esc", func(t *testing.T) {
+		// The esc that ends the filter input is huh's: Enter after it picks
+		// the filtered option, which a back could not.
 		value := "b"
-		run := startNavTUI(t, navSelect(&value), frame, size)
-		for _, keys := range []string{"/", "c", "\x1b"} {
-			run.write(keys)
-		}
-		require.True(t, run.running(), "the esc that ends the filter input is huh's")
-		run.write("\x1b")
-		assert.ErrorIs(t, run.wait(), ErrNavBack)
+		run := runNavTUI(t, navSelect(&value), frame, size, "/", "c", "\x1b", "\r")
+		require.NoError(t, run.err)
+		assert.Equal(t, "c", value)
+		value = "b"
+		run = runNavTUI(t, navSelect(&value), frame, size, "/", "c", "\x1b", "\x1b")
+		assert.ErrorIs(t, run.err, ErrNavBack)
 	})
 	t.Run("(6) confirm esc", func(t *testing.T) {
 		confirmed := true
@@ -195,10 +86,10 @@ func TestRunNav_S3FirstFormStaysWithTheNotice(t *testing.T) {
 	frame := NavFrame{Header: "init · 1/6 사용 프로필", First: true, Lang: "ko"}
 	run := startNavTUI(t, navSelect(&value), frame, tea.WindowSizeMsg{})
 	run.write("\x1b")
-	require.True(t, run.running())
-	lines := navLines(run.lastView())
+	notice := "첫 단계입니다. 취소하려면 Ctrl+C를 누르세요."
+	lines := navLines(run.waitView(func(view string) bool { return strings.HasSuffix(view, "\n"+notice) }))
 	assert.Equal(t, "init · 1/6 사용 프로필", lines[0])
-	assert.Equal(t, "첫 단계입니다. 취소하려면 Ctrl+C를 누르세요.", lines[len(lines)-1])
+	assert.Equal(t, notice, lines[len(lines)-1])
 	run.write("\r")
 
 	require.NoError(t, run.wait())
