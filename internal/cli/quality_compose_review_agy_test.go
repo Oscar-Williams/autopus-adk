@@ -149,3 +149,15 @@ func TestReviewAgyCatalog_ReadsOncePerBinary(t *testing.T) {
 	catalog.load(context.Background(), "/opt/agy")
 	assert.Equal(t, 2, *runs)
 }
+
+// L2 on every OS: only a name for PATH runs. Windows reads `C:agy` as a path
+// relative to the drive's working directory, so a `:` is a path like either
+// separator; an empty or `.`-prefixed name never runs either.
+func TestAgyBareName_OnlyANameForPATH(t *testing.T) {
+	for _, binary := range []string{"agy", "agy.exe", "agy-1.4"} {
+		assert.True(t, agyBareName(binary), binary)
+	}
+	for _, binary := range []string{"", "C:agy", "c:agy.exe", "./agy", "tools/agy", `tools\agy`, ".agy", ".", ".."} {
+		assert.False(t, agyBareName(binary), binary)
+	}
+}

@@ -37,10 +37,11 @@ func runAgyModels(ctx context.Context, binary string) ([]byte, error) {
 	return processprobe.OutputLimited(exec.CommandContext(ctx, binary, "models"), agyModelsMaxOutput)
 }
 
-// agyBareName reports a binary given as a name for PATH to resolve, never as
-// a path of either separator.
+// agyBareName reports a binary given as a name for PATH to resolve: not
+// empty, without a leading `.`, and without either separator or a `:`,
+// which Windows reads as a drive-relative path such as C:agy.
 func agyBareName(binary string) bool {
-	return binary != "" && !strings.ContainsAny(binary, `/\`)
+	return binary != "" && !strings.HasPrefix(binary, ".") && !strings.ContainsAny(binary, `:/\`)
 }
 
 // agyModelLine is one listed model: an id, a tab, and a display name without
