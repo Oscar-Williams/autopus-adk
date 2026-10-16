@@ -85,17 +85,58 @@ func TestReviewTab_S16bControlCharacterNameRefusesTheCheck(t *testing.T) {
 func TestReviewCheckLine_ResultShapes(t *testing.T) {
 	candidate := reviewR3Config()
 	candidate.Orchestra.Providers["claude"] = config.DefaultClaudeProviderEntry()
+	baseline := newReviewBaseline(candidate, nil)
+	shown := reviewCheckModels(baseline, baseline.reviewComposition)
 	text := composeReviewTextKO
 
 	assert.Equal(t, "확인 호출 review_gate: 실패 — no installed review providers",
-		reviewCheckLine(candidate, providerSmokeResult{Provider: "review_gate", Status: "fail", Detail: "no installed review providers"}, text))
+		reviewCheckLine(candidate, shown, providerSmokeResult{Provider: "review_gate", Status: "fail", Detail: "no installed review providers"}, text))
 	assert.Equal(t, "확인 호출 codex (openai-codex/gpt-6-astra:max): 응답에 확인 문자열이 없습니다",
-		reviewCheckLine(candidate, providerSmokeResult{Provider: "codex", Status: "warn", Detail: "missing"}, text))
+		reviewCheckLine(candidate, shown, providerSmokeResult{Provider: "codex", Status: "warn", Detail: "missing"}, text))
 	assert.Equal(t, "확인 호출 claude (CLI backend): 통과",
-		reviewCheckLine(candidate, providerSmokeResult{Provider: "claude", Status: "pass"}, text))
+		reviewCheckLine(candidate, shown, providerSmokeResult{Provider: "claude", Status: "pass"}, text))
 	long := strings.Repeat("가", 250) + "\nsecond line"
-	line := reviewCheckLine(candidate, providerSmokeResult{Provider: "gemini", Status: "fail", Detail: "\x1b[31m" + long}, text)
+	line := reviewCheckLine(candidate, shown, providerSmokeResult{Provider: "gemini", Status: "fail", Detail: "\x1b[31m" + long}, text)
 	assert.Equal(t, "확인 호출 gemini (google-antigravity/gemini-3.1-pro:high): 실패 — "+`\x1b[31m`+strings.Repeat("가", 192), line)
 	assert.Equal(t, "live check codex (openai-codex/gpt-6-astra:max): passed",
-		reviewCheckLine(candidate, providerSmokeResult{Provider: "codex", Status: "pass"}, composeReviewTextEN))
+		reviewCheckLine(candidate, shown, providerSmokeResult{Provider: "codex", Status: "pass"}, composeReviewTextEN))
+}
+
+// The shown model of an OMP provider: the chosen one, the raw text of an
+// unchanged one, and none without raw text; never the expanded value.
+func TestReviewCheckModels_ChosenOrRaw(t *testing.T) {
+	cfg := reviewR3Config()
+	cfg.Orchestra.Providers["codex"] = reviewOMPEntry("openai-codex/rvm-sentinel-7f3a9c:max")
+	baseline := newReviewBaseline(cfg, map[string]reviewRawProvider{
+		"claude": {Backend: "omp", Model: "anthropic/claude-fable-5-1:max"},
+		"codex":  {Backend: "omp", Model: "${CODEX_REVIEW_MODEL}"},
+	})
+	working := baseline.reviewComposition.clone()
+	working.Models["claude"] = "anthropic/claude-opus-5-5:high"
+
+	assert.Equal(t, map[string]string{
+		"claude": "anthropic/claude-opus-5-5:high", "codex": "${CODEX_REVIEW_MODEL}", "gemini": "",
+	}, reviewCheckModels(baseline, working))
+	assert.Equal(t, "확인 호출 gemini: 통과", reviewCheckLine(cfg, reviewCheckModels(baseline, working),
+		providerSmokeResult{Provider: "gemini", Status: "pass"}, composeReviewTextKO))
+}
+
+// The result line names an unchanged OMP model as autopus.yaml writes it:
+// the check runs the expanded placeholder, but its value never reaches the
+// screen.
+func TestReviewTab_CheckLineNamesTheRawModel(t *testing.T) {
+	t.Setenv("CODEX_REVIEW_MODEL", "openai-codex/rvm-sentinel-7f3a9c:max")
+	dir := writeReviewR3(t)
+	replaceReviewFile(t, dir, "model: openai-codex/gpt-6-astra:max", "model: ${CODEX_REVIEW_MODEL}")
+
+	// participation ×3, claude Enter, gemini Enter, judge Enter, 확인 호출, the menu's default.
+	run := runReviewForms(t, dir, nil, reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n", "2\n", "\n"})...)
+
+	require.NoError(t, run.err, run.out)
+	assert.Contains(t, run.out, "codex의 model 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_REVIEW_MODEL}\n")
+	assert.Contains(t, run.out, "확인 호출 codex (${CODEX_REVIEW_MODEL}): 통과\n")
+	assert.NotContains(t, run.out, "rvm-sentinel-7f3a9c")
+	requests := run.smoke.recorded()
+	require.Len(t, requests, 3)
+	assert.Equal(t, "openai-codex/rvm-sentinel-7f3a9c:max", requests[1].Model, "the check runs what the runtime runs")
 }

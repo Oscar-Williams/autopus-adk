@@ -42,8 +42,9 @@ func (f *composeFormRun) reviewLiveCheck(tab *reviewTabState) error {
 		}
 	}
 	failed := false
+	shown := reviewCheckModels(tab.baseline, tab.working)
 	for _, result := range runProviderTransportSmoke(commandContext(f.cmd), candidate, composeReviewCheckTimeout) {
-		f.reviewLine(reviewCheckLine(candidate, result, text))
+		f.reviewLine(reviewCheckLine(candidate, shown, result, text))
 		failed = failed || result.Status != "pass"
 	}
 	if failed {
@@ -68,17 +69,38 @@ func reviewCandidate(cfg *config.HarnessConfig, b reviewBaseline, working review
 	return candidate
 }
 
+// reviewCheckModels is the model a result line names for each OMP provider:
+// a model the tab chose, as chosen, and an unchanged one as the raw document
+// writes it. The check runs the candidate's expanded model, but an
+// environment value never reaches the line (REQ-RVM-26); a provider with no
+// raw model names none.
+func reviewCheckModels(b reviewBaseline, working reviewComposition) map[string]string {
+	shown := map[string]string{}
+	for _, name := range b.Visible {
+		switch {
+		case !working.OMP[name]:
+		case !b.OMP[name] || working.Models[name] != b.Models[name]:
+			shown[name] = working.Models[name]
+		default:
+			shown[name] = b.Raw[name].Model
+		}
+	}
+	return shown
+}
+
 // reviewCheckLine is one result line (Live Check Contract): the provider,
-// its candidate selector or CLI backend, and the verdict. The review_gate
-// result of a failed assembly names no model.
-func reviewCheckLine(candidate *config.HarnessConfig, result providerSmokeResult, text composeReviewText) string {
+// its shown model or CLI backend, and the verdict. The review_gate result of
+// a failed assembly and an OMP provider without a shown model name no model.
+func reviewCheckLine(candidate *config.HarnessConfig, shown map[string]string, result providerSmokeResult, text composeReviewText) string {
 	subject := result.Provider
 	if entry, ok := candidate.Orchestra.Providers[result.Provider]; ok || result.Provider != "review_gate" {
 		model := text.CLIBackend
 		if entry.Backend == config.ProviderBackendOMP {
-			model = entry.Model
+			model = shown[result.Provider]
 		}
-		subject += " (" + model + ")"
+		if model != "" {
+			subject += " (" + model + ")"
+		}
 	}
 	verdict := text.CheckPass
 	switch result.Status {

@@ -93,8 +93,8 @@ func reviewArgsChangeLines(prefix string, row reviewArgsRow, raw []string, want 
 // per visible provider, its review state, its model, and the judge mark,
 // each changed cell ending in `*`. An unchanged model cell shows the raw
 // document's text, so an environment value never reaches the table: a CLI
-// cell reads `<binary> <model> · <effort>`, and a provider without a raw view
-// shows only its binary or backend.
+// cell reads `<binary> <model> · <effort>`, and a cell without raw text shows
+// only its binary or backend.
 func reviewAfterTable(b reviewBaseline, working reviewComposition, text composeReviewText) composeTableLayout {
 	layout := composeTableLayout{header: []string{text.ColProvider, text.ColReview, text.ColModel, text.Judge}}
 	for _, name := range b.Visible {
@@ -107,10 +107,11 @@ func reviewAfterTable(b reviewBaseline, working reviewComposition, text composeR
 		var changed bool
 		if working.OMP[name] {
 			model, changed = working.Models[name], !b.OMP[name] || working.Models[name] != b.Models[name]
-			if raw, ok := b.Raw[name]; !changed && !ok {
+			if !changed {
 				model = config.ProviderBackendOMP
-			} else if !changed && raw.Model != "" {
-				model = raw.Model
+				if raw := b.Raw[name].Model; raw != "" {
+					model = raw
+				}
 			}
 		} else {
 			value := working.CLI[name]
