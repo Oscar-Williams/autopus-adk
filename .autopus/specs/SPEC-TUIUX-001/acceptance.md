@@ -58,15 +58,16 @@ Then 출력에 다음 줄이 이 순서로 붙어 있다: `적용할 설정`, ` 
 And 그 뒤는 huh accessible Select의 제목 줄(`이대로 적용할까요?`와 공백 하나), `1. 적용`, `2. 뒤로`, `3. 취소`이고, 확인 폼이 돌 때 두 파일은 없었으며 확인 블록은 `Design Context` 단계 줄보다 앞이다
 And run 뒤 NPD가 base golden과 같다
 
-### S7: 확인 화면의 뒤로와 마지막 snapshot
+### S7: 확인 화면의 뒤로는 구성을 남기고 마지막 snapshot을 쓴다
 Priority: Must
 Given IN과 IR, ko, `useNavComposeForms`
 When (a) IN에서 seam이 첫 호출에 W, resume 호출에 W_none을 돌려주게 하고 확인 화면에 `2`, 다시 나온 확인 화면에 Enter를 준다
-When (b) IR에서 첫 진입 CAT-A, 둘째 진입 CAT-B로 구성 편집 → Codex → 역할 그룹 → 설계·판단 `6.1-sol · xhigh  [opus]` 선택지(SPEC-MODELUX-002 S2와 같은 답) → 그 뒤 폼 모두 Enter → 적용 → 유지를 고르고, 확인 화면에 `2`, 다시 나온 메뉴에서 유지, 다시 나온 확인 화면에 Enter를 준다
+When (b) IR에서 첫 진입 CAT-A, 둘째 진입 CAT-B로 구성 편집 → Codex → 역할 그룹 → 설계·판단 `6.1-sol · xhigh  [opus]` 선택지(SPEC-MODELUX-002 S2와 같은 답, balanced의 `fable`과 다른 값) → 설계·판단 effort `low` 선택지 → 그 뒤 폼 모두 Enter → 적용 → 유지를 고르고, 확인 화면에 `2`, 다시 나온 메뉴(이어 하기)에서 유지, 다시 나온 확인 화면에 Enter를 준다
+When (b′) 음성 대조로 (b)와 같은 입력을 두 진입 모두 CAT-A로 돌린다
 Then (a) seam은 2번 불리고 둘째 호출의 `Resume`은 W와 같으며, 둘째 확인 블록에 `  방법론: None`이 있고 NPD는 seam이 W_none을 바로 돌려준 대조와 같다
-And (b) seam은 1번 불리고 `구성을 바꿀까요?`는 3번, `init · 확인`은 2번 나오며, 첫 확인 블록에 `  quality.providers: codex=codex-custom` 줄과 `  quality.presets.codex-custom.agents:`로 시작하는 줄이 있다
-And (b)의 Codex planner agent 파일에 `gpt-6.1-sol`이 없고 그 model은 둘째 진입 표의 Codex planner 칸과 같으며, NPD는 같은 답을 CAT-B 한 번 진입으로 준 대조와 같다
-And 두 경우 모두 `Design Context` 단계 줄은 1번이다
+And (b) 보존: seam은 1번 불리고 `구성을 바꿀까요?`는 3번, `init · 확인`은 2번이다. 두 확인 블록 모두 `  quality.providers: codex=codex-custom`과 `  quality.presets.codex-custom.efforts: architect=low, planner=low, security-auditor=low, spec-writer=low` 줄을 가진다. autopus.yaml의 `quality.presets.codex-custom`에서 planner·architect·spec-writer·security-auditor는 `opus`, `efforts`는 넷 모두 `low`다. NPD는 같은 답(`opus`의 CAT-B 선택지, effort `low`)을 CAT-B 한 번 진입으로 준 대조 K와 같다
+And (b) 마지막 snapshot: Codex planner agent 파일의 model은 `gpt-6.1-sol`이 아니고 둘째 진입 표의 Codex planner 칸과 같으며 effort는 `low`다. (b′)의 같은 파일 model은 `gpt-6.1-sol`이다(oracle이 두 snapshot을 구별한다는 확인)
+And 모든 경우 `Design Context` 단계 줄은 1번이다
 
 ### S8: 취소와 Ctrl+C는 아무것도 쓰지 않는다
 Priority: Must
@@ -108,26 +109,27 @@ And (c) 출력에 `quality.default =`가 없고 autopus.yaml SHA-256은 실행 �
 ### S12: 적용할까요?와 override 질문의 뒤로
 Priority: Must
 Given D와 P, ko, `auto quality`, `useNavComposeForms`
-When (a) D에서 구성 편집 → Claude Code → 역할 그룹 → 설계·판단 `fable` → 그 뒤 폼 모두 Enter → 적용할까요? `b` → 방식 역할 그룹 → 모든 폼 Enter → 적용할까요? 적용 → 유지
-When (b) P에서 구성 편집 → 모든 도구 같게 → 역할 그룹 → 설계·판단 `fable` → 그 뒤 폼 모두 Enter → override 질문 `b` → 방식 역할 그룹 → 모든 폼 Enter → override 질문 `n` → 적용 → 유지
+When (a) D에서 구성 편집 → Claude Code → 역할 그룹 → 설계·판단 `opus` 선택지(balanced의 `fable`과 다른 값) → 그 뒤 폼 모두 Enter → 적용할까요? `b` → 방식 역할 그룹 → 모든 폼 Enter → 적용할까요? 적용 → 유지
+When (b) P에서 구성 편집 → 모든 도구 같게 → 역할 그룹 → 설계·판단 `opus` 선택지 → 그 뒤 폼 모두 Enter → override 질문 `b` → 방식 역할 그룹 → 모든 폼 Enter → override 질문 `n` → 적용 → 유지
 Then (a) `어떻게 고칠까요?`와 `적용할까요?`는 2번씩이고 확인의 취소 줄(`composeText.Cancelled`)은 0번이며 NPD는 대조와 같다
 And (b) NPD는 override 질문에 처음부터 `n`을 준 대조와 같다
 
 ### S13: OMP 탭과 리뷰 탭은 탭 단위로 돌아간다
 Priority: Must
 Given O3·O3N(activate 호출 수), RV, ko, `auto quality`, `useNavComposeForms`
-When (a) O3에서 구성 편집 → OMP → 첫 폼 `b` (b) O3N에서 구성 편집 → OMP → `에이전트별 지정 (balanced 위에)` → `모델 계열` Enter → 첫 에이전트 model 폼 `b` (c) RV에서 구성 편집 → 멀티프로바이더 리뷰 → 첫 폼 `b` (d) RV에서 첫 폼 Enter → 둘째 폼 `b`를 주고, 각각 도구 탭 `b` → 유지를 고른다
-Then 네 run 모두 출력에 `경고:`가 없고 `어느 도구를 바꿀까요?`가 2번이며 다시 보인 도구 탭의 기본 선택은 그 탭이다
+When (a) O3에서 구성 편집 → OMP → 첫 폼 `b` (b) O3N에서 구성 편집 → OMP → `OMP 구성` 폼의 4번 `에이전트별 지정 (balanced 위에)`(기본값 1번 `돌아가기`가 아닌 선택지) → `모델 계열` Enter(저장된 계열) → `에이전트를 고르세요` 목록의 `task — 프로필 기본값` 선택지(기본값 `완료`가 아닌 선택지) → `task (<capability>)` model 폼 `b` (b2) (b)와 같되 목록에서 `b` (c) RV에서 구성 편집 → 멀티프로바이더 리뷰 → 첫 폼 `b` (d) RV에서 첫 폼 Enter → 둘째 폼 `b`를 주고, 각각 도구 탭 `b` → 유지를 고른다
+Then 다섯 run 모두 출력에 `경고:`가 없고 `어느 도구를 바꿀까요?`가 2번이며 다시 보인 도구 탭의 기본 선택은 그 탭이다
 And autopus.yaml SHA-256, `.omp/` 아래 파일 bytes가 실행 전과 같고 activate 호출은 0번이다
-And (b)는 `ompPins`의 첫 model 폼까지 갔다(그 폼 제목이 출력에 있다). 이 자리의 오류는 `ompFailed`를 지나므로 그 조건이 넓혀지지 않았으면 `  경고:` 줄이 나온다
+And (b)의 출력에는 `에이전트를 고르세요` 목록과 `task (`로 시작하는 model 폼 제목이 차례로 있고, 그 뒤 바로 도구 탭 `어느 도구를 바꿀까요?`가 온다. 이 `b`는 `ompPin` → `ompPins` → `ompFailed`(`quality_compose_omp.go:93`)를 지난다. (b2)의 `b`도 `ompPins` → `ompFailed`를 지난다. 두 경우 `ompFailed`의 조건이 넓혀지지 않았으면 `  경고:` 줄이 나오고 도구 탭이 다시 나오지 않으므로 이 단언이 그 경로를 구별한다
 
 ### S14: 메뉴의 경계와 init 구성 단계 밖으로 뒤로
 Priority: Must
 Given D(quality·update), IR, ko, `useNavComposeForms`
-When (a) D quality 메뉴에 `b` → 유지 (b) D update 메뉴에 `b` → Enter (c) IR에서 첫 진입 CAT-A, 둘째 진입 CAT-B로 구성 편집 → Claude Code → 역할 그룹 → 설계·판단 `fable` → 그 뒤 폼 모두 Enter → 적용 → 메뉴 `b`, seam의 resume 호출은 W를 돌려주고 확인 화면 Enter
+When (a) D quality 메뉴에 `b` → 유지 (b) D update 메뉴에 `b` → Enter (c) IR에서 첫 진입 CAT-A, 둘째 진입 CAT-B로, 첫 진입에서 구성 편집 → Claude Code → 역할 그룹 → 설계·판단 Enter(그대로) → 설계·판단 effort `low` 선택지 → 그 뒤 폼 모두 Enter → 적용 → 메뉴 `b`를 고르고, seam의 resume 호출은 W_rg를 돌려주며, 새로 시작한 둘째 진입에서 구성 편집 → Codex → 역할 그룹 → 설계·판단 `opus`의 CAT-B 선택지 → 그 뒤 폼 모두 Enter → 적용 → 유지, 확인 화면 Enter (c′) 음성 대조로 (c)와 같은 입력을 두 진입 모두 CAT-A로 돌린다
 Then (a) 안내 줄이 1번이고 구성 표는 1번만 그려지며 SHA-256이 같다
 And (b) 출력은 `b` 없이 Enter만 준 대조 출력에 안내 한 줄을 더한 것과 같다
-And (c) seam의 둘째 호출 `Resume`은 W_rg와 같고, autopus.yaml과 확인 블록에 `claude-custom`이 없으며 NPD는 seam이 처음부터 W를 돌려주고 CAT-B 한 번 진입인 대조와 같다
+And (c) 폐기: seam의 둘째 호출 `Resume`은 W_rg와 같다. 첫 진입의 적용 뒤 다시 그린 표에는 Claude Code `*` 칸이 있지만 둘째 진입의 첫 표에는 `*` 칸이 없다. autopus.yaml에 `claude-custom`과 `efforts` key가 하나도 없고 `quality.providers`는 `codex: codex-custom` 하나다. 확인 블록에 `claude-custom`·`efforts`가 든 줄이 없고 `  quality.providers: codex=codex-custom`이 있다. NPD는 seam이 W_rg를 한 번 돌려주고 둘째 진입의 답만 CAT-B 한 번 진입으로 준 대조 X와 같다
+And (c) 마지막 snapshot: Codex planner agent 파일의 model은 `gpt-6.1-sol`이 아니고 둘째 진입 표의 Codex planner 칸과 같다. (c′)의 같은 파일 model은 `gpt-6.1-sol`이다
 
 ### S15: 폼이 열리지 않는 자리는 bytes가 같다
 Priority: Must
@@ -150,8 +152,8 @@ Priority: Must
 Given 8ec13935의 test 파일과 research `### 기존 test 분류`
 When `go test ./internal/cli/... ./pkg/...`를 필터 없이 돌리고 `git diff 8ec13935 -- '*_test.go'`를 본다
 Then 모든 test가 통과한다
-And 기존 test 파일의 변경 줄은 분류 1의 다섯 줄(stub 4곳의 시그니처, `quality_compose_form_test.go:94`의 인자)과 분류표에 적힌 입력 줄뿐이다. 새 helper와 새 test는 새 파일에만 있다
-And `assert.`·`require.` 줄의 기대 인자가 바뀐 줄은 0이다. `quality_compose_form_test.go:94`는 호출 인자만 하나 늘고 `value == "b"`와 `2. b` 단언은 그대로 통과한다
+And 기존 test 파일의 변경 줄은 셋뿐이다: (i) 분류 1의 다섯 줄(stub 4곳의 시그니처, `quality_compose_form_test.go:94`의 호출 인자), (ii) 그 다섯 파일마다 `github.com/insajin/autopus-adk/internal/cli/tui` import 한 줄과 gofmt가 그 import block에 낸 정렬 변경, (iii) 분류표에 적힌 입력 줄. 새 helper와 새 test는 새 파일에만 있다
+And 단언의 기대 값은 그대로다. `quality_compose_form_test.go:94`는 `require.NoError(t, composeRunForm(cmd, form, tui.NavFrame{Accessible: true}))`로 호출 인자만 하나 늘어난 줄로 허용되고, 그 test의 `value == "b"`와 `2. b` 단언 줄은 바뀌지 않은 채 통과한다. (i)–(iii) 밖에서 `assert.`·`require.` 줄이 바뀐 곳은 0이다
 
 ### S18: 실제 터미널 smoke
 Priority: Must
@@ -186,7 +188,8 @@ And wizard 기본 stream은 accessible이면 (os.Stdin, os.Stdout), 아니면 (o
 
 - 모든 Must 시나리오는 concrete expected output을 갖는다. header·footer·안내·요약·확인 블록 줄의 정확한 문자열과 순서, 결과 struct field 값, 오류 값(`tui.ErrNavBack`, `huh.ErrUserAborted`), 폼 제목 개수, seam 호출 수와 `Resume` 값, autopus.yaml key 값, view 줄 수와 `외 k개`의 k, NPD, 경로별 SHA-256·mtime이다. 파일 존재, heading, 종료 상태만으로 닫는 Must 시나리오는 없다.
 - 이동이 값을 바꾸지 않는다는 oracle은 대조 run의 NPD다(S1, S7, S10–S12, S14). 대조는 같은 test binary에서 뒤로와 다시 답하기만 뺀 입력으로 돈다. 폼이 열리지 않는 자리의 oracle은 8ec13935 base golden이다(S6, S15). NPD는 시간 field만 정규화하므로 다른 차이는 모두 드러난다(F-004).
-- 마지막 snapshot oracle(S7 (b))은 CAT-A에만 있는 `gpt-6.1-sol`이 생성 파일에 없는지와 CAT-B 대조의 NPD다. 첫 snapshot을 다시 쓰는 구현은 두 단언에서 모두 실패한다.
-- 기대 값은 2026-10-16에 코드를 읽고 정했다(`wizard_steps.go`, `wizard_rea_step.go`, `quality_compose_form*.go`, `quality_compose_groups.go`, `init.go`, `init_rea.go`, `rea_run.go`, `pkg/config/defaults.go`, `schema.go`, `schema_spec.go`). 실행으로 확인한 것은 probe A1·A2(`evidence/probe-nav-a1.md`)뿐이다. Claude Code 탭에서 fable·opus 그룹 뒤 effort 폼이 나오고 `low`가 자동 단계가 아니라는 S10·S11의 전제는 SPEC-MODELUX-003 REQ-MUX3-03에서 온다. 코드 사실과 다르면 test가 아니라 이 SPEC의 기대를 고친다.
+- 구성 상태의 보존과 폐기는 따로 판정한다. 보존(S7 (b))은 확인 화면에서 구성 메뉴로 돌아가 이어 한 run이 effort `low`를 남기는지, 폐기(S14 (c))는 구성 단계를 지나 wizard로 나간 run이 `low`와 `claude-custom`을 남기지 않는지다. 둘 다 시작값과 다른 값(`opus`, `low`)을 실제로 적용한 뒤 판정한다.
+- 마지막 snapshot oracle(S7 (b), S14 (c))은 CAT-A에만 있는 `gpt-6.1-sol`이 생성 파일에 없는지와 CAT-B 대조의 NPD다. 같은 입력을 CAT-A로만 돈 음성 대조((b′), (c′))가 `gpt-6.1-sol`을 보여 oracle이 두 snapshot을 구별함을 확인한다. 첫 snapshot을 다시 쓰는 구현은 두 단언에서 모두 실패한다.
+- 기대 값은 2026-10-16에 코드를 읽고 정했다(`wizard_steps.go`, `wizard_rea_step.go`, `quality_compose_form*.go`, `quality_compose_groups.go`, `init.go`, `init_rea.go`, `rea_run.go`, `pkg/config/defaults.go`, `schema.go`, `schema_spec.go`). 실행으로 확인한 것은 probe A1·A2(`evidence/probe-nav-a1.md`)뿐이다. Claude Code·Codex 탭에서 등급 뒤 effort 폼이 나오고 `low`가 자동 단계가 아니라는 S7·S10·S11·S14의 전제는 SPEC-MODELUX-003 REQ-MUX3-03에서 온다. balanced의 설계·판단 넷은 `fable`이므로(`role_model_policy_balanced.go:24-31`) 그 그룹의 `fable` 답만으로는 바뀌는 값이 없다. 코드 사실과 다르면 test가 아니라 이 SPEC의 기대를 고친다.
 - S4·S20은 byte를 한 write에 모아 쓴다. byte마다 나눠 쓰면 화살표의 `\x1b`가 Esc로 읽힌다(probe P2, Open Risk R1). 이 동작은 oracle이 아니라 위험으로 둔다.
 - accessible 출력은 입력을 echo하지 않는다. 줄 순서 판정은 header 줄 index 기준으로 한다. huh accessible 제목 줄은 끝에 공백 하나가 붙는다(probe P3 출력 `Q \n`).

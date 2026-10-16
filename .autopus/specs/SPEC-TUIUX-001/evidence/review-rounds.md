@@ -22,3 +22,15 @@
 
 - 리뷰 탭은 다시 확인했다. `f.warn` 두 곳(`quality_compose_review_check.go:27-31`, `quality_compose_review.go:228-241`)은 폼 오류가 아니라 리뷰 탭 코드는 바꾸지 않는다(REQ-TUX-14).
 - checklist FAIL 7개는 위 반영으로 닫았고 `research.md` `## Self-Verify Summary`에 attempt 2로 적었다.
+
+## Round 2 (2026-10-16, verdict REVISE)
+
+- Providers: claude는 429로 빠졌고 codex와 gemini가 판정했다. 12건 중 9건 resolved, major 3건(F-007, F-008, F-010)과 checklist FAIL 3개(Q-COMP-02, Q-COMP-05, Q-FEAS-03)가 남았다. revision 3에서 닫았다.
+
+| ID | 판정 | 근거(다시 확인) | 반영 |
+|---|---|---|---|
+| F-007 | 맞다 | 다섯 test 파일(`quality_compose_form_helpers_test.go`, `_failure_test.go`, `_line_golden_test.go`, `_review_gate_test.go`, `quality_compose_form_test.go`)은 모두 `package cli`이고 `internal/cli/tui`를 import하지 않는다(grep) | 분류 1과 S17이 `quality_compose_form_test.go:94`의 `require.NoError(t, composeRunForm(cmd, form, tui.NavFrame{Accessible: true}))`(호출 인자만, 기대 값 그대로)와 파일마다 tui import 한 줄·gofmt 정렬을 명시적으로 허용한다. plan T6, Existing Test Changes, research 분류 |
+| F-008 | 맞다 | `quality_compose_omp.go:161-200`: `ompPins`는 기본값 `완료`인 `에이전트를 고르세요` 목록을 먼저 묻고 에이전트를 고른 뒤에만 `ompPin`(`:208-222`, 제목 `<agent> (<capability>)`)을 부른다. native 에이전트는 scout·reviewer·security-reviewer·task·sonic(`omp_native_agents.go:6-7`) | S13 (b): `OMP 구성` 4번 `에이전트별 지정 (balanced 위에)` → `모델 계열` Enter → 목록 `task — 프로필 기본값` → `task (` model 폼 `b`. (b2): 목록에서 `b`. 두 경우 `ompFailed`(L93) 경로를 지나고, 조건이 넓혀지지 않으면 경고가 나와 도구 탭이 다시 안 나오므로 구별된다 |
+| F-010 | 맞다 | balanced 설계·판단 넷은 `fable`(`role_model_policy_balanced.go:24-31`)이라 S14 (c)의 `fable`은 NoChange였다. S12 (a)(b)도 같은 문제였다(이번에 함께 찾았다) | S7 (b) 보존: Codex `opus` + effort `low` 적용 → 확인 뒤로 → 메뉴 유지 → `low` 유지, 대조 K. S14 (c) 폐기: Claude effort `low` 적용 → 메뉴 뒤로 → wizard → 새 진입에서 Codex `opus` 적용 → `claude-custom`·`efforts` 없음, 대조 X. snapshot은 둘 다 첫 진입 CAT-A·둘째 CAT-B이고 CAT-A만 쓴 음성 대조가 `gpt-6.1-sol`을 보인다. A3 oracle을 (1) 보존 (2) 폐기 (3) snapshot으로 나눴다. S12는 `opus`로 바꿨다 |
+
+- checklist FAIL 3개는 위 반영으로 닫았고 `research.md` Self-Verify Summary에 attempt 3으로 적었다.

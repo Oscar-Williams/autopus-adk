@@ -2,7 +2,7 @@
 
 **Status**: draft
 **Created**: 2026-10-16
-**Revision**: 2 (review round 1, F-001–F-012 반영. 반영표 `evidence/review-rounds.md`)
+**Revision**: 3 (review round 1의 F-001–F-012, round 2의 F-007·F-008·F-010 반영. 반영표 `evidence/review-rounds.md`)
 **Domain**: TUIUX
 **Module**: autopus-adk
 **Release**: v0.50.126 (SPEC-REA-001, SPEC-REVMODEL-001, TEAMAUTO 작업과 같은 release). branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위)
@@ -293,7 +293,8 @@ THE SYSTEM SHALL fit every TUI navigation form into the terminal height by the H
 
 기존 test의 단언 의미는 바꾸지 않는다. 바뀌는 것은 아래 분류뿐이고, T1이 파일별 분류를 `research.md` `### 기존 test 분류`에 붙인다.
 
-1. seam 시그니처, 다섯 곳: `composeRunForm`에 값을 넣는 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)은 `tui.NavFrame` 인자 하나를 더한다. 기본 runner를 직접 부르는 1곳(`quality_compose_form_test.go:94`, `TestComposeRunForm_DefaultBindsTheCommandStreams`)은 `composeRunForm(cmd, form, tui.NavFrame{Accessible: true})`가 된다. 이 test가 기대는 accessible 실행, 숫자 입력, `2. b` 출력은 `Accessible`이 true인 `RunNav`가 지금 `form.Run()`과 같게 준다(REQ-TUX-16). 단언 줄의 기대 값은 그대로다.
+1. seam 시그니처, 다섯 곳: `composeRunForm`에 값을 넣는 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)은 `tui.NavFrame` 인자 하나를 더한다. 기본 runner를 직접 부르는 1곳(`quality_compose_form_test.go:94`, `TestComposeRunForm_DefaultBindsTheCommandStreams`)은 `require.NoError(t, composeRunForm(cmd, form, tui.NavFrame{Accessible: true}))`가 된다. 이 줄은 `require.` 줄이지만 호출 인자만 늘어난 시그니처 변경으로 허용하고, 그 test의 기대 값(`value == "b"`, `2. b`)은 그대로다. 이 test가 기대는 accessible 실행, 숫자 입력, accessible 출력은 `Accessible`이 true인 `RunNav`가 지금 `form.Run()`과 같게 준다(REQ-TUX-16).
+   - 다섯 파일은 모두 `package cli`이고 지금 `internal/cli/tui`를 import하지 않는다. 그래서 파일마다 `github.com/insajin/autopus-adk/internal/cli/tui` import 한 줄과 gofmt가 그 import block에 내는 정렬 변경을 허용한다. 그 밖의 줄은 바꾸지 않는다.
 2. init 확인 화면: form path로 init을 돌리는 test(`init_compose_form_test.go`, `init_compose_review_test.go`, `init_compose_omp_test.go`, form path라면 `init_rea_test.go`)는 마지막에 폼 하나를 더 만난다. (a) 입력이 옛 흐름 끝에서 끝나면 EOF가 적용을 고른다: 변경 없음. (b) 남는 줄이 빈 줄뿐이면 Enter가 적용이다: 변경 없음. (c) 남는 줄에 빈 줄이 아닌 답이 있으면 그 줄이 확인 화면에 닿기 전에 끝나도록 입력 모양만 고친다. init test에는 폼 실행 횟수를 단언하는 줄이 없다(grep `Equal(t, <n>, *` 0건). 있게 되면 회귀로 보고 멈춘다.
 3. 새 helper(`useNavComposeForms`)와 새 test는 새 파일에만 둔다(`[NEW] quality_compose_nav_helpers_test.go` 등). 기존 test 파일에 함수를 더하지 않는다.
 4. wizard test(`internal/cli/tui/*_test.go`)는 step builder와 제목이 그대로라 바꾸지 않는다. `RunInitWizard(Accessible: true)`는 지금처럼 폼 없이 기본값이다.

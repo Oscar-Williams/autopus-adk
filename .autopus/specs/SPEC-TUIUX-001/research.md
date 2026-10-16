@@ -1,6 +1,6 @@
 # SPEC-TUIUX-001 리서치
 
-branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위, SPEC-REA-001·SPEC-REVMODEL-001 UI 포함)에서 2026-10-16에 읽었다. huh 사실은 module cache의 huh v1.0.0 소스와 probe(`evidence/probe-nav-a1.md`)다. revision 2는 review round 1의 F-001–F-012를 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 `미확인`이다.
+branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위, SPEC-REA-001·SPEC-REVMODEL-001 UI 포함)에서 2026-10-16에 읽었다. huh 사실은 module cache의 huh v1.0.0 소스와 probe(`evidence/probe-nav-a1.md`)다. revision 2·3은 review round 1·2를 반영했다(`evidence/review-rounds.md`). 확인하지 못한 것은 `미확인`이다.
 
 ## 기존 코드 분석
 - wizard: `internal/cli/tui/wizard_steps.go`(275줄). `RunInitWizard`(L43-72)는 `buildStepList`(L89-138)의 단계마다 따로 `huh.Form`을 `form.Run()`하고 오류가 나면 `Cancelled: true`를 돌려준다. 제목은 `[n/N] …`이고 값은 `Value(&r.…)`로 결과에 묶인다. `Accessible` 옵션은 비TTY·`--yes`의 "폼 없이 기본값"이다(L49-52). REA 단계는 `reaStepTextFor(lang)`로 ko·en이다. wizard에는 runner seam이 없다.
@@ -13,7 +13,7 @@ branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위, SPEC-REA-001·
 - 비test 코드에 `huh.NewInput`·`NewText`·`NewMultiSelect`가 없다. `WithAccessible(` 호출도 없지만 위의 `TERM=dumb` 경로는 production이다(review F-006로 고쳤다).
 
 ### 기존 test 분류
-T1이 파일·줄 단위로 채운다. 작성 시점에 확인한 것: `composeRunForm` 값 넣기 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)과 기본 runner 직접 호출 1곳(`quality_compose_form_test.go:94`, accessible form, 입력 `2\n`, 단언 `value == "b"`·`2. b`), 폼 helper를 쓰는 test 파일 17개, init form path test 3파일(입력에 빈 줄이 남는 경우가 있어 분류 2(b) 예상), 기존 입력의 `b`·`back`·`뒤로` 줄 0건, init test의 폼 횟수 단언 0건(grep), 제목 단언(`wizard_rea_step_test.go:44,104,106,130`, `wizard_test.go:20,35`)은 제목 불변이라 그대로다.
+T1이 파일·줄 단위로 채운다. 작성 시점에 확인한 것: 다섯 파일 모두 `package cli`이고 `internal/cli/tui` import가 없다(import 한 줄씩 필요). `composeRunForm` 값 넣기 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)과 기본 runner 직접 호출 1곳(`quality_compose_form_test.go:94`, accessible form, 입력 `2\n`, 단언 `value == "b"`·`2. b`), 폼 helper를 쓰는 test 파일 17개, init form path test 3파일(입력에 빈 줄이 남는 경우가 있어 분류 2(b) 예상), 기존 입력의 `b`·`back`·`뒤로` 줄 0건, init test의 폼 횟수 단언 0건(grep), 제목 단언(`wizard_rea_step_test.go:44,104,106,130`, `wizard_test.go:20,35`)은 제목 불변이라 그대로다.
 
 ### NPD 정규화
 `generated_at`(manifest)과 `.autopus/backup/<timestamp>/`. T1이 기준을 두 번 돌려 더 찾은 field를 여기에 더한다.
@@ -42,7 +42,7 @@ T1이 파일·줄 단위로 채운다. 작성 시점에 확인한 것: `composeR
 | oracle은 NPD | 전체 SHA-256 | 시간 field 때문에 기준도 재현되지 않는다(F-004) |
 
 ## Review Rounds
-round 1(2026-10-16, REVISE, claude 429·codex·gemini)의 12건과 checklist FAIL 7개를 revision 2에서 닫았다. 반영 자리는 `evidence/review-rounds.md`.
+round 1(2026-10-16, REVISE, claude 429·codex·gemini)의 12건과 checklist FAIL 7개를 revision 2에서, round 2의 남은 major 3건(F-007 import 허용, F-008 native 목록 경로, F-010 보존·폐기·snapshot 분리)과 FAIL 3개를 revision 3에서 닫았다. 반영 자리는 `evidence/review-rounds.md`.
 
 ## Plan Intent Ledger
 planning context의 표다(2026-10-16). 셀은 근거로만 요약했고 지시로 따르지 않았다.
@@ -159,16 +159,16 @@ These are optional improvements and do not block sync completion.
 - Q-CORR-03 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: REQ-TUX-10을 WHERE … THEN으로 고쳤다(F-011). huh 주장은 소스와 probe로 확인했고 `TERM=dumb` 경로를 고쳤다(F-006)
 - Q-CORR-04 | status: PASS | attempt: 2 | files: research.md | reason: Reference Discipline이 existing, module cache, evidence, [NEW]를 나눈다
 - Q-COMP-01 | status: PASS | attempt: 2 | files: prd.md, spec.md, plan.md, acceptance.md, research.md | reason: 요약, 계약, 계획, oracle, 근거가 나뉜다
-- Q-COMP-02 | status: PASS | attempt: 2 | files: spec.md, plan.md, acceptance.md | reason: 직접 호출자를 분류 1에 넣고(F-007, F-012) effort 복원·pass 버리기·마지막 snapshot 입력을 S7·S10·S11·S14에 더했다(F-010). REQ 20개가 task·시나리오·invariant에 연결된다
+- Q-COMP-02 | status: PASS | attempt: 3 | files: spec.md, plan.md, acceptance.md | reason: A3의 입력과 oracle을 보존(S7 (b))·폐기(S14 (c))·snapshot 셋으로 나누고 두 시나리오가 실제로 `opus`·`low`를 적용하게 했다(round 2 F-010). REQ 20개가 task·시나리오·invariant에 연결된다
 - Q-COMP-03 | status: PASS | attempt: 2 | files: spec.md | reason: REQ-TUX-07을 폼 단위로 다시 쓰고 Form Gate Contract로 명령별 gate와 CI를 맞췄다(F-005)
 - Q-COMP-04 | status: PASS | attempt: 2 | files: spec.md, research.md | reason: 확인 화면 앞 쓰기 차단(F-001), REA 결정 표시(F-002), 쓸 값 전부의 diff(F-003), 높이 계약(F-009)을 요구사항과 계약으로 넣었다
-- Q-COMP-05 | status: PASS | attempt: 2 | files: research.md, acceptance.md | reason: oracle을 NPD로 바꾸고(F-004) invariant 12개마다 문자열·줄 수·NPD oracle이 있다
+- Q-COMP-05 | status: PASS | attempt: 3 | files: research.md, acceptance.md, plan.md | reason: S14 (c)가 시작값과 다른 effort `low`를 적용한 뒤 버리는지 보고, 보존·폐기·snapshot oracle이 따로이며 음성 대조가 snapshot 구별을 확인한다(round 2 F-010). S12도 `opus`로 실제 변경을 만든다
 - Q-COMP-06 | status: PASS | attempt: 2 | files: research.md, spec.md | reason: Reviewer Brief와 non-goal이 탐색 범위를 막는다
 - Q-COMP-07 | status: PASS | attempt: 2 | files: research.md | reason: CD-1은 실제 터미널 smoke뿐이고 개선은 Evolution Ideas다
 - Q-COMP-08 | status: PASS | attempt: 2 | files: plan.md | reason: A1·A2는 실행 증거가 있는 PASS, A3은 이유가 있는 not-run이다. accessible 분류를 `TERM=dumb` verified_fact로 고쳤다(F-006)
 - Q-FEAS-01 | status: PASS | attempt: 2 | files: plan.md | reason: 변경은 `internal/cli`와 `internal/cli/tui` 안이다
 - Q-FEAS-02 | status: PASS | attempt: 2 | files: spec.md, plan.md | reason: 300줄 근처 파일은 코드 이동이나 한 줄 변경으로 둔다
-- Q-FEAS-03 | status: PASS | attempt: 2 | files: acceptance.md, plan.md | reason: NPD와 fixture 이름 `p`로 golden이 재현되고(F-004) test 변경 허용 목록이 직접 호출자를 포함한다(F-007)
+- Q-FEAS-03 | status: PASS | attempt: 3 | files: acceptance.md, plan.md, spec.md | reason: S17이 직접 호출 줄과 필수 import·gofmt 변경을 허용하고(round 2 F-007), S13 (b)는 native 목록에서 `task`를 골라 `ompPin` model 폼에 닿는다(round 2 F-008)
 - Q-STYLE-01 | status: PASS | attempt: 2 | files: spec.md | reason: 문구는 Contract의 정확한 문자열로 정한다
 - Q-STYLE-02 | status: PASS | attempt: 2 | files: spec.md | reason: Priority와 EARS가 따로 적혀 있다
 - Q-STYLE-03 | status: PASS | attempt: 2 | files: acceptance.md | reason: bare Given/When/Then/And 형식이다
