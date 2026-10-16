@@ -90,7 +90,8 @@ func wizardStepValue(kind string, r *InitWizardResult, lang string) string {
 	case wizardStepReviewGate:
 		return wizardOnOff(r.ReviewGate, lang)
 	case wizardStepRea:
-		return wizardOnOff(r.Rea != nil && *r.Rea, lang)
+		// No answer leaves init's default, which is on (SPEC-REA-001).
+		return wizardOnOff(r.Rea == nil || *r.Rea, lang)
 	}
 	return wizardChoice(r.Methodology)
 }

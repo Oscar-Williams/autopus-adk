@@ -95,56 +95,41 @@ func newInitCmd() *cobra.Command {
 			}
 
 			// R9: detect existing profile from prior autopus.yaml for pre-selection.
+			// The interactive path reads it without writing a normalization
+			// back: nothing is written before the init review (SPEC-TUIUX-001
+			// REQ-TUX-11).
+			interactive := !yes && composeTTYProbe()
+			loadExisting := config.Load
+			if interactive {
+				loadExisting = config.LoadPreview
+			}
 			var existingProfile string
-			if existing, err := config.Load(dir); err == nil && existing.UsageProfile != "" {
+			if existing, err := loadExisting(dir); err == nil && existing.UsageProfile != "" {
 				existingProfile = string(existing.UsageProfile)
 			}
 
 			// Step 1: Configuration Wizard
 			tui.Step(out, 1, 5, "Configuration Wizard")
 			var snapshot driftGenerationSnapshot
-			if !yes && composeTTYProbe() {
-				result, err := runInitWizard(tui.InitWizardOpts{
-					Quality:         quality,
-					NoReviewGate:    noReviewGate,
-					Platforms:       platformList,
-					Accessible:      false,
-					Providers:       providerNames,
-					ExistingProfile: existingProfile,
-					Rea:             rea.wizardPreset(),
-				})
-				if err != nil {
+			if interactive {
+				run := &initInteractive{cmd: cmd, dir: dir, cfg: cfg, quality: quality, providers: providerNames, rea: rea,
+					opts: tui.InitWizardOpts{
+						Quality:         quality,
+						NoReviewGate:    noReviewGate,
+						Platforms:       platformList,
+						Providers:       providerNames,
+						ExistingProfile: existingProfile,
+						Rea:             rea.wizardPreset(),
+					}}
+				var cancelled bool
+				var err error
+				if snapshot, cancelled, err = run.run(); err != nil {
 					return fmt.Errorf("wizard failed: %w", err)
 				}
-				if result.Cancelled {
+				if cancelled {
 					fmt.Fprintln(out, "  init cancelled.")
 					return nil
 				}
-				// Apply wizard results to config.
-				cfg.UsageProfile = config.UsageProfile(result.UsageProfile)
-				cfg.Language.Comments = result.CommentsLang
-				cfg.Language.Commits = result.CommitsLang
-				cfg.Language.AIResponses = result.AILang
-				// Before the compose step: its review tab edits these keys,
-				// and nothing after it may overwrite them (SPEC-REVMODEL-001
-				// REQ-RVM-13).
-				cfg.Spec.ReviewGate.Enabled = result.ReviewGate
-				if result.ReviewGate {
-					cfg.Spec.ReviewGate.Providers = providerNames
-				}
-				var cancelled bool
-				if snapshot, cancelled = runInitComposeStepCancellable(cmd, dir, cfg, quality, result.Quality); cancelled {
-					fmt.Fprintln(out, "  init cancelled.")
-					return nil
-				}
-				if result.Methodology == "tdd" {
-					cfg.Methodology.Mode = "tdd"
-					cfg.Methodology.Enforce = true
-				} else {
-					cfg.Methodology.Mode = "none"
-					cfg.Methodology.Enforce = false
-				}
-				rea.decideInit(cmd, cfg, result.Rea)
 			} else {
 				// Non-interactive: apply flags or defaults.
 				cfg.UsageProfile = config.DefaultUsageProfile()

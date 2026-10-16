@@ -18,6 +18,8 @@ import (
 type composeNav struct {
 	command string
 	lang    string
+	// title follows the command in the header; empty is 모델 구성.
+	title string
 	// backOut makes the menu a form like any other: init's menu goes back to
 	// its wizard. Otherwise the menu is the flow's first form.
 	backOut bool
@@ -52,9 +54,13 @@ func (n *composeNav) enter(stage string) func() {
 
 // header is `<command> · 모델 구성[ › <stage>]…`.
 func (n *composeNav) header() string {
-	title := "Model composition"
-	if n.lang == "ko" {
+	title := n.title
+	switch {
+	case title != "":
+	case n.lang == "ko":
 		title = "모델 구성"
+	default:
+		title = "Model composition"
 	}
 	return strings.Join(append([]string{n.command + " · " + title}, n.path...), " › ")
 }
