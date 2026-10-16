@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/insajin/autopus-adk/pkg/adapter/omp"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -126,9 +127,9 @@ func (f *composeFormRun) ompPlan(opts ompProfileApplyOptions, runner omp.OMPMode
 // ompFailed ends the tab on a refusal, a failed plan, or an unreadable
 // catalog with one warning line naming the cause; init first says that OMP
 // models can be set after init instead (REQ-MUX2-23). Ctrl+C still ends the
-// step.
+// step, and Esc returns to the tool tab (SPEC-TUIUX-001 REQ-TUX-14).
 func (f *composeFormRun) ompFailed(err error) error {
-	if errors.Is(err, errComposeInterrupted) {
+	if errors.Is(err, errComposeInterrupted) || errors.Is(err, tui.ErrNavBack) {
 		return err
 	}
 	if f.options.OMP.memory && composeOMPCatalogFailure(err) {
