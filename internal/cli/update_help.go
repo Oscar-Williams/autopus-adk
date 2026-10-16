@@ -39,4 +39,5 @@ const updateCmdLong = "설치된 하네스 파일을 업데이트합니다.\n\n"
 	"보입니다. 결과는 프로필 없는 pin(role_model_policy: {version: v1, agents: …})이고 task는 자기 pin이 없으면\n" +
 	"planner를 따릅니다. 프로필 설정 위에서 적용하면 변환 줄과 확인 뒤 pin으로 옮기고, 바꾸지 않은 에이전트와 task는\n" +
 	"route가 그대로이며 ultra 프로필의 quality.presets.ultra 연동은 끝납니다. native mode, 줄 OMP 편집기,\n" +
-	"auto platform omp profile apply는 그대로 프로필을 씁니다."
+	"auto platform omp profile apply는 그대로 프로필을 씁니다.\n\n" +
+	reaUpdateHelp
