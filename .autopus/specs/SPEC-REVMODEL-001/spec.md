@@ -24,7 +24,7 @@
   - Migration 3 변경, `--multi`·`--providers` 의미 변경
   - 리뷰 정책 key(strategy, timeout, `enabled`, `max_revisions`, `min_providers`, `verdict_threshold`) 편집
   - CLI args 중 model·effort 값 밖의 항목 편집(그 항목은 bytes 그대로 남는다), OMP→CLI 되돌리기, `agy models` 밖의 agy model 원천
-  - `orchestra.providers` 항목 추가·삭제, `backend`·`binary`·`tools`·`subprocess` 변경
+  - `orchestra.providers` 항목 추가·삭제, `binary`·`tools`·`subprocess` 변경, REQ-RVM-23의 OMP 전환 밖의 `backend` 변경
   - review receipt `degraded_reasons` 규칙과 `auto doctor --provider-smoke` 동작 변경(Evolution Idea)
   - 확인 요청 자동 실행, 결과 저장(receipt·cache), 새 YAML key
 - Completion evidence: Must S1–S12, S15–S27 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
@@ -169,7 +169,7 @@ THE SYSTEM SHALL run every new path through the existing seams (composeRunForm, 
 ### REQ-RVM-20 OMP review backend 진단 줄
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL pass every config- or process-derived value through `terminalSafe` in the two stderr lines the OMP review backend writes (`omp_review_backend.go:52`, `:72-73`) and in the lines `reportCodexRuntimeFallback` writes for the model and effort, leaving their text unchanged for strings without control characters.
+THE SYSTEM SHALL pass every config- or process-derived value through `terminalSafe` in the two stderr lines the OMP review backend writes (`omp_review_backend.go:52`, `:72-73`) in the lines `reportCodexRuntimeFallback` writes for the model and effort, and in the binary name of the `filterInstalledProviders` warning (`spec_review_providers.go:23`), leaving their text unchanged for strings without control characters.
 
 - 이 두 줄은 `auto spec review`와 `auto doctor --provider-smoke`에서도 같다. 제어 문자가 없는 이름에서는 출력이 지금과 같다.
 

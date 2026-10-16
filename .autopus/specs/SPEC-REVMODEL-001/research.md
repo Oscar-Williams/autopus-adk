@@ -40,7 +40,7 @@
 
 2026-10-16 Read. CLI provider의 stderr는 터미널에 가지 않는다. `pkg/orchestra/command.go:50`의 `SetStderr`는 받은 writer를 그대로 쓰고, 확인 요청이 타는 subprocess backend는 그 writer로 buffer를 준다(`pkg/orchestra/subprocess_runner.go:58-60`, `provider_runner.go:46-51`). 그 내용은 `ProviderResponse.Error`와 오류 문자열로만 돌아오고, 탭은 결과 줄에 `terminalSafe`를 거친 첫 줄 200 rune까지만 쓴다. 그래서 `terminalSafeMultiline`을 더할 곳이 없다(implementation_assumption 확인).
 
-같은 경로에서 os.Stderr에 직접 쓰는 줄은 OMP review backend 두 줄(REQ-RVM-20, 이번에 `terminalSafe`) 말고 둘이 더 있다. 둘 다 이 SPEC 전부터 `auto spec review`·`auto doctor --provider-smoke`에도 있는 줄이고 REQ-RVM-20이 이름 짓지 않아 바꾸지 않았다(Scope Expansion Rule). `filterInstalledProviders`(`spec_review_providers.go:23`)의 `경고: <binary> 바이너리를 찾을 수 없습니다 (건너뜀)`은 CLI provider면 `orchestra.providers.<p>.binary`를 그대로 쓰고, `reportCodexRuntimeFallback`(`codex_catalog_runtime.go:63-80`)은 `model_policy: quality`인 CLI codex의 args model·effort를 쓴다. 고치려면 별도 SPEC이나 이 SPEC의 범위 확장 결정이 필요하다.
+같은 경로에서 os.Stderr에 직접 쓰는 줄은 OMP review backend 두 줄(REQ-RVM-20, 이번에 `terminalSafe`) 말고 둘이 더 있다. 둘 다 이 SPEC 전부터 `auto spec review`·`auto doctor --provider-smoke`에도 있는 줄이다. REQ-RVM-20이 두 줄 모두 이름 짓는다: Codex fallback 진단(`reportCodexRuntimeFallback`)은 T13, `filterInstalledProviders` 경고의 binary 이름은 T6에서 escape한다. `filterInstalledProviders`(`spec_review_providers.go:23`)의 `경고: <binary> 바이너리를 찾을 수 없습니다 (건너뜀)`은 CLI provider면 `orchestra.providers.<p>.binary`를 그대로 쓰고, `reportCodexRuntimeFallback`(`codex_catalog_runtime.go:63-80`)은 `model_policy: quality`인 CLI codex의 args model·effort를 쓴다. 이 확인 호출 경로에 직접 쓰는 진단 줄은 이로써 모두 escape된다.
 
 ## Plan Intent Ledger
 
@@ -177,7 +177,7 @@ These are optional improvements and do not block sync completion.
 ## Reviewer Brief
 
 - Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, judge, 미리보기)과 REQ-RVM-20–26 전부(진단 줄 escape, claude·codex·agy CLI model·effort, `agy models` 해석, OMP 전환, CLI baseline, raw 글자 미리보기), 줄 splice writer, opt-in 확인 요청, init 순서 수정. 이 항목들은 non-goal도 scope expansion도 아니다.
-- Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI backend model, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
+- Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI args의 model·effort 값 밖 항목, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Self-verified: A1·A2(실제 loader 경유 throwaway test), A3(v0.50.125 바이너리와 대조군 둘), catalog 정규화·재시도·CI gate 줄 번호, Traceability Matrix, oracle 시나리오, existing/[NEW] 구분.
 - Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1에서 확정된 G1-1·G1-2의 반영, 그리고 Completion Debt only.
 

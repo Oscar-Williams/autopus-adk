@@ -80,8 +80,8 @@ And (2)는 `적용했습니다` 줄 뒤 update가 끝난 파일에서 `spec.revi
 ### S12: 안전하지 않은 대상은 쓰지 않고 손으로 쓴 파일은 span 밖을 지킨다
 Priority: Must
 Given R3의 사본 셋과 RH가 있다: (a) `orchestra.providers.codex.model: ${CODEX_REVIEW_MODEL}`과 환경 변수 `CODEX_REVIEW_MODEL=openai-codex/gpt-6-astra:max`, (b) `orchestra.commands.review.providers: &rp [claude, codex, gemini]`와 `spec.review_gate.providers: *rp`, (c) `spec.review_gate.providers: &rp [claude, codex, gemini]`와 `orchestra.commands.review.providers: *rp`
-When (a)는 codex model `openai-codex/gpt-6-luna` → Enter → `적용`, (b)·(c)는 gemini `끄기` → `적용`, RH는 gemini `끄기`와 codex model `openai-codex/gpt-6-luna` → Enter → `적용`을 고른다
-Then (a)는 `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: orchestra.providers.codex.model`, (b)·(c)는 같은 줄에 `spec.review_gate.providers`를 쓰고, 세 파일의 SHA-256과 run의 `cfg.Orchestra`·`cfg.Spec.ReviewGate`는 적용 전과 같다
+When (a)는 리뷰 탭의 모든 Select를 Enter로 지나고, (b)·(c)는 gemini `끄기` → `적용`, RH는 gemini `끄기`와 codex model `openai-codex/gpt-6-luna` → Enter → `적용`을 고른다
+Then (a)는 codex model Select 대신 REQ-RVM-26의 사전 거부 줄 `codex의 model 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_REVIEW_MODEL}`을 쓰고 출력 어디에도 `openai-codex/gpt-6-astra:max`(펼친 값)가 없으며, (b)·(c)는 `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: spec.review_gate.providers`를 쓰고, 세 파일의 SHA-256과 run의 `cfg.Orchestra`·`cfg.Spec.ReviewGate`는 적용 전과 같다
 And RH의 결과는 목록 줄이 `    providers: [claude, codex] # reviewers`(4칸, review_gate 아래), codex model 줄의 값만 `openai-codex/gpt-6-luna:high`로 바뀐 두 줄 diff이고, 그 두 span 밖 bytes(주석 줄, 빈 줄, 2칸 들여쓰기)는 RH와 같다
 ### S13: 영어 문구와 메뉴 요약
 Priority: Should
