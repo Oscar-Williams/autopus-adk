@@ -31,7 +31,7 @@ func (e composeReviewReloadError) Error() string {
 	return "review settings were applied but could not be re-read: " + e.err.Error()
 }
 
-func (e composeReviewReloadError) Unwrap() error { return composeReloadError{err: e.err} }
+func (e composeReviewReloadError) Unwrap() error { return composeReloadError(e) }
 
 // reviewTarget is one key an edit writes (Config Write Contract): the
 // providers list, or one scalar.
