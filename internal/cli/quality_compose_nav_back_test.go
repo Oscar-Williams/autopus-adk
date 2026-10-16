@@ -236,3 +236,29 @@ func tuiuxReviewRV(t *testing.T) string {
 	t.Helper()
 	return writeReviewR3(t)
 }
+
+// The refresh path: 최신 기본값으로 갱신's confirmation and the 모든 도구 같게
+// pass it opens carry the refresh in their path; Esc on the confirmation
+// keeps editing, and Esc on the method returns to the menu, since no tool
+// tab was asked, with nothing written.
+func TestComposeNavBack_RefreshPathHeadersAndBack(t *testing.T) {
+	newTUIUXEnv(t, true, "")
+	dir, _ := composeSessionProject(t, "R")
+	before := tuiuxNPD(t, dir)
+	useNavComposeForms(t)
+
+	out, err := runQualityCompose(t, dir, formInput("2\n", "b\n", "1\n", "b\n", "b\n", "\n"))
+
+	require.NoError(t, err, out)
+	assert.Equal(t, []string{
+		"quality · 모델 구성",
+		"quality · 모델 구성 › 최신 기본값으로 갱신",
+		"quality · 모델 구성 › 최신 기본값으로 갱신 › 모든 도구 같게",
+		"quality · 모델 구성 › 최신 기본값으로 갱신 › 모든 도구 같게 › 역할 그룹",
+		"quality · 모델 구성 › 최신 기본값으로 갱신 › 모든 도구 같게",
+		"quality · 모델 구성",
+	}, tuiuxHeaders(out, "quality · "))
+	assert.Equal(t, 2, strings.Count(out, "구성을 바꿀까요? \n"))
+	assert.NotContains(t, out, composeTextKO.Cancelled)
+	assert.Equal(t, before, tuiuxNPD(t, dir))
+}
