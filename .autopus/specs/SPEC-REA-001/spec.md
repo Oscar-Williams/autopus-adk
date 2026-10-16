@@ -344,6 +344,16 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 7. OMP catalog fixture `ompCLIBalancedCatalogJSON`(`internal/cli/platform_omp_profile_flags_test.go:74`), `ompCLIProfileNativeCatalogJSON`(`:87`), `composeOMPCatalogML`(`quality_compose_omp_autopus_test.go:29`)에 `anthropic/claude-opus-5-5`와 `openai-codex/gpt-6.1-sol` 행을 더해 기존 OMP test가 reverse-engineer key를 갖게 한다. 그 목록을 단언하는 자리(`quality_compose_omp_autopus_test.go:113-115`)는 두 model만 더해진다. 기존 rung model을 뺀 blocker test는 바뀌지 않는다.
 8. 대화형 update·init 통합 test에서 REA 질문이 새로 열리는 실행은 입력에 Enter 하나를 더한다(SPEC-MODELUX-003 규칙 3과 같은 방식). 단언은 바꾸지 않는다.
 9. 생성 `.gitignore` 정책 test(`internal/cli/init_gitignore_policy_test.go`의 required 목록)와 gitignore 갱신 test에는 `.autopus/reverse/` 한 줄만 더해진다.
+10. `internal/cli/quality_compose_line_golden_test.go:36`(`update R enter`): golden은 SPEC-MODELUX-001 줄 출력과 bytes가 같아야 하므로 바꾸지 않는다. 대신 settled R fixture의 REA를 실제 비대화형 `auto update --no-rea`로 off로 미리 정한다(`reaSettledOff`). off는 REA 질문·hint·OMP·OpenCode 안내·옛 바이너리 줄이 모두 없는 유일한 결정이라 출력이 compose 단계의 것만 남는다(on은 안내 줄을 낸다).
+11. `internal/cli/json_contract_commands_test.go:56`(`TestJSONContract_PhaseOneCommandsRequireEnvelopeSupport`의 doctor 행): 따로 빌드한 `auto` binary에는 `TestMain`의 seam이 닿지 않아 doctor의 Node probe(`/bin/bash -l`)가 실제로 돈다. 결과가 개발자 기계의 login profile에 기대지 않도록 그 행만 자식 HOME을 `t.TempDir()`로 둔다(REQ-REA-20 결정성). envelope 단언은 그대로이고 Node 상태는 단언하지 않는다.
+12. `internal/cli/edit_guard_corpus_test.go:148`(합법 corpus fixture): `README.md`를 실제 프로젝트 파일로 심는다. 없는 상대 경로의 Gemini CLI `replace`는 host가 그 경로로 끝나는 workspace 파일로 바꿔 쓰므로(guard의 suffix search) 없는 `README.md`의 replace는 보호된 `.claude/hooks/README.md`를 고치는 편집이고 합법이 아니다. 기본 실행은 target마다 shape 하나를 index로 돌리는데, 생성 표면이 늘어 `README.md`가 index 1415(`1415 % 12 = 11`, Gemini replace)에 닿았다. `AUTOPUS_EDITGUARD_CORPUS_FULL=1`은 이 SPEC 전 corpus에서도 같은 deny로 실패한다. guard 판정, corpus 범주, target 수는 그대로이고 없는 파일의 search deny는 `pkg/editguard`의 `TestGeminiReplace_RelativePathNamingNoFile_DeniesTheProtectedFileItReaches`가 고정한다.
+13. Codex analysis rung 대체(T23 scope expansion, lead 결정 (a), commit `7b444d1b`): Codex catalog에 `gpt-6.1-sol`·`xhigh`가 없는 compose golden(`table-D-CAT-B.golden`)에서는 reverse-engineer의 Codex 칸이 `세션 모델`이고 footer에 대체 줄 1개가 더해진다.
+
+- 규칙 1은 정규 에이전트 집합을 literal로 적은 map·목록(기본 등급, 표준 배치, role 행, test 이름의 수)에 reverse-engineer를 그 기본값으로 더하는 것과, 17번째 에이전트로 하나씩 느는 파생 수(사용자 수정 `N개 다름`, Codex `대체 N칸`, compose `*` 칸 수, OMP 표면 줄 수, catalog를 모를 때 보고하는 profile 수)를 포함한다.
+- 규칙 2는 route 수(20 → 21)를 고정한 OMP test와 reverse를 더한 GT-ROUTE task의 digest를 담은 `evals/harness/baseline.json`을 포함한다.
+- 규칙 3은 golden 밖 compose test의 같은 표시와, 새 행 때문에 넓어진 열 폭(`table-O1-CAT-A.golden`, 값 변화 없음)을 포함한다. 탐색·보조 그룹에 opus 멤버가 생겨 effort 선택지가 두 모델을 함께 보이고 그 선택이 저장하는 efforts key가 바뀌는 것도 이 규칙이다.
+- 규칙 7은 목록에 두 model이 더해져 같은 model을 고르는 입력 번호가 하나씩 밀리는 것을 포함한다.
+- 새 기능 test가 쓰는 helper 추가(`internal/cli/tui/export_test.go`의 alias 2개)는 기존 단언을 바꾸지 않는다. `pkg/worker/a2a/control_plane_test.go`는 같은 branch에 들어온 이 SPEC 밖의 commit `33b5bb55`(A2A `redline_instructions.v1` capability)다. 파일별 분류는 `evidence/test-classification.md`다.
 
 ## 생성 파일 상세
 
