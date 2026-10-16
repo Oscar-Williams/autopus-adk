@@ -15,15 +15,22 @@ type reviewTabState struct {
 	baseline reviewBaseline
 	working  reviewComposition
 	catalog  *reviewCatalog
+	agy      reviewAgyCatalog
 	attested reviewAttestation
 }
 
 // reviewTab runs the tab from its baseline until the operator leaves,
-// cancels, or applies. The catalog is read on the run's OMP catalog runner
-// at most once per entry, and only when a participating OMP-backed provider
-// asks its model.
+// cancels, or applies. The baseline reads the run's config and, for update
+// and quality, the raw document. The catalog is read on the run's OMP
+// catalog runner at most once per entry, and only when a provider needs it.
 func (f *composeFormRun) reviewTab() error {
-	tab := &reviewTabState{baseline: newReviewBaseline(f.shared.cfg), catalog: &reviewCatalog{}, attested: reviewAttestation{}}
+	var raw map[string]reviewRawProvider
+	if f.shared.writer == composeSessionFile {
+		raw = readReviewRaw(f.shared.dir, f.shared.cfg)
+	}
+	tab := &reviewTabState{
+		baseline: newReviewBaseline(f.shared.cfg, raw), catalog: &reviewCatalog{}, agy: reviewAgyCatalog{}, attested: newReviewAttestation(),
+	}
 	tab.working = tab.baseline.reviewComposition.clone()
 	if f.options.OMP != nil && f.options.OMP.deps.newRunner != nil {
 		tab.catalog.runner = f.options.OMP.deps.newRunner()
@@ -99,18 +106,22 @@ func (f *composeFormRun) reviewParticipation(tab *reviewTabState) error {
 	return nil
 }
 
-// reviewModels asks the model of every participating OMP-backed provider
-// and prints the CLI note for every participating CLI-backend one
-// (REQ-RVM-06, 08); an unreadable catalog prints its note once per pass.
+// reviewModels asks the model of every participating provider: an OMP one
+// by REQ-RVM-06, a CLI one by its CLI Model Contract row (REQ-RVM-08). A
+// provider whose target value is an environment placeholder gets the refusal
+// line instead (REQ-RVM-26); an unreadable OMP catalog prints its note once
+// per pass.
 func (f *composeFormRun) reviewModels(tab *reviewTabState) error {
 	text := f.reviewText()
 	noted := false
 	for _, name := range tab.baseline.Visible {
-		switch {
-		case !tab.working.takesPart(name):
+		if !tab.working.takesPart(name) || f.reviewPlaceholderRefused(tab, name) {
 			continue
-		case !tab.baseline.OMP[name]:
-			f.reviewLine(fmt.Sprintf(text.CLINote, name))
+		}
+		if !tab.working.OMP[name] {
+			if err := f.reviewCLI(tab, name); err != nil {
+				return err
+			}
 			continue
 		}
 		attested, ok := tab.catalog.load(commandContext(f.cmd), f.out, f.form.OMPAttestedOnly)
@@ -121,8 +132,8 @@ func (f *composeFormRun) reviewModels(tab *reviewTabState) error {
 			}
 			continue
 		}
-		tab.attested[name] = reviewModelChoices(name, attested)
-		if err := f.reviewModel(tab, name, tab.attested[name]); err != nil {
+		tab.attested.OMP[name] = reviewModelChoices(name, attested)
+		if err := f.reviewModel(tab, name, tab.attested.OMP[name]); err != nil {
 			return err
 		}
 	}
@@ -222,9 +233,9 @@ func (f *composeFormRun) reviewConfirm(tab *reviewTabState) (bool, error) {
 func (f *composeFormRun) reviewApply(tab *reviewTabState) error {
 	var err error
 	if f.shared.writer == composeSessionMemory {
-		err = applyReviewCompositionMemory(f.shared.cfg, tab.baseline.reviewComposition, tab.working)
+		err = applyReviewCompositionMemory(f.shared.cfg, tab.baseline, tab.working)
 	} else {
-		err = saveReviewComposition(f.shared.dir, f.shared.cfg, tab.baseline.reviewComposition, tab.working)
+		err = saveReviewComposition(f.shared.dir, f.shared.cfg, tab.baseline, tab.working)
 	}
 	var refusal reviewWriteRefusal
 	var reload composeReviewReloadError

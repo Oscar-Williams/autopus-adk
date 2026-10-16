@@ -17,70 +17,15 @@ type reviewLineEdit struct {
 	lines       []string
 }
 
-// spliceReviewTargets replaces the value span of every target in source by
-// the Line Splice Writer Contract, locating each through the raw document
-// (no environment expansion) and encoding new values with OMPYAMLScalar. A
-// target it cannot edit safely refuses the whole edit with its path.
-func spliceReviewTargets(source []byte, targets []reviewTarget) ([]byte, error) {
-	// A line break yaml.v3 sees but a split at \n does not moves node lines
-	// away from the lines the splice cuts, as for the quality writers.
-	if hasYAMLOnlyLineBreak(source) {
-		return nil, reviewWriteRefusal{key: targets[0].key()}
-	}
-	document, _, err := parseAutopusConfigDocument(source)
-	if err != nil {
-		return nil, reviewWriteRefusal{key: targets[0].key()}
-	}
-	aliased := yamlAliasTargets(document)
-	lines := strings.SplitAfter(string(source), "\n")
-	newline := detectConfigNewline(source)
-	edits := make([]reviewLineEdit, 0, len(targets))
-	for _, target := range targets {
-		edit, ok := planReviewSpan(document.Content[0], aliased, lines, newline, target)
-		if !ok {
-			return nil, reviewWriteRefusal{key: target.key()}
-		}
-		edits = append(edits, edit)
-	}
-	return applyReviewLineEdits(lines, edits, newline), nil
-}
-
-// planReviewSpan finds one target's span. Every mapping on the way must be a
-// block mapping no alias names, so nothing else in the file shares what the
-// edit changes; the parent may hold no merge key; the key and value carry
-// no anchor or alias. Only a missing judge is added.
-func planReviewSpan(root *yaml.Node, aliased map[*yaml.Node]bool, lines []string, newline string, target reviewTarget) (reviewLineEdit, bool) {
-	node := root
-	for depth, step := range target.path {
-		if node.Kind != yaml.MappingNode || node.Style&yaml.FlowStyle != 0 || aliased[node] {
-			return reviewLineEdit{}, false
-		}
-		key, value := yamlMappingPair(node, step)
-		if depth < len(target.path)-1 {
-			if key == nil || value == nil {
-				return reviewLineEdit{}, false
-			}
-			node = value
-			continue
-		}
-		switch {
-		case yamlMappingHasMerge(node):
-			return reviewLineEdit{}, false
-		case key == nil && step == "judge":
-			return insertReviewJudge(node, lines, newline, target.value)
-		case key == nil || key.Anchor != "" || value.Anchor != "" || value.Kind == yaml.AliasNode || aliased[value]:
-			return reviewLineEdit{}, false
-		case target.isList:
-			return spliceReviewList(value, lines, newline, target.list)
-		}
-		return spliceReviewScalar(key, value, lines, target.value)
-	}
-	return reviewLineEdit{}, false
-}
-
 // spliceReviewScalar replaces the value token on its key's line: plain,
 // '…', or "…", keeping a leading tag and the inline comment.
 func spliceReviewScalar(key, value *yaml.Node, lines []string, replacement string) (reviewLineEdit, bool) {
+	return spliceReviewScalarText(key, value, lines, content.OMPYAMLScalar(replacement))
+}
+
+// spliceReviewScalarText is spliceReviewScalar for text already encoded,
+// such as a flow list for a null args value.
+func spliceReviewScalarText(key, value *yaml.Node, lines []string, text string) (reviewLineEdit, bool) {
 	if value.Kind != yaml.ScalarNode || value.Line != key.Line || value.Line > len(lines) ||
 		value.Style&(yaml.LiteralStyle|yaml.FoldedStyle) != 0 || strings.Contains(value.Value, "${") {
 		return reviewLineEdit{}, false
@@ -100,8 +45,7 @@ func spliceReviewScalar(key, value *yaml.Node, lines []string, replacement strin
 	if !strings.HasSuffix(head, " ") && !strings.HasSuffix(head, "\t") {
 		head += " "
 	}
-	line := head + content.OMPYAMLScalar(replacement) + body[end:] + ending
-	return reviewLineEdit{first: index, last: index, lines: []string{line}}, true
+	return reviewLineEdit{first: index, last: index, lines: []string{head + text + body[end:] + ending}}, true
 }
 
 // spliceReviewList replaces a list of plain one-line scalars: a flow list
@@ -164,9 +108,9 @@ func spliceReviewList(value *yaml.Node, lines []string, newline string, names []
 	return reviewLineEdit{first: first, last: last, lines: replaced}, true
 }
 
-// insertReviewJudge adds `judge: <j>` after the last line of the review_gate
-// mapping, at the indentation of its keys.
-func insertReviewJudge(mapping *yaml.Node, lines []string, newline, judge string) (reviewLineEdit, bool) {
+// insertReviewKeys adds one `<key>: <value>` line per text after the last
+// line of mapping, at the indentation of its keys, in the given order.
+func insertReviewKeys(mapping *yaml.Node, lines []string, newline string, texts []string) (reviewLineEdit, bool) {
 	if len(mapping.Content) == 0 || mapping.Content[0].Line > len(lines) {
 		return reviewLineEdit{}, false
 	}
@@ -185,8 +129,11 @@ func insertReviewJudge(mapping *yaml.Node, lines []string, newline, judge string
 		}
 		last++
 	}
-	line := body[:indent] + "judge: " + content.OMPYAMLScalar(judge) + newline
-	return reviewLineEdit{first: last + 1, last: last, lines: []string{line}}, true
+	added := make([]string, len(texts))
+	for i, text := range texts {
+		added[i] = body[:indent] + text + newline
+	}
+	return reviewLineEdit{first: last + 1, last: last, lines: added}, true
 }
 
 // applyReviewLineEdits applies edits from the bottom up, so every earlier

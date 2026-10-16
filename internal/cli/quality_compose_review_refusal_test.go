@@ -102,11 +102,11 @@ func TestSaveReviewComposition_RefusesUnsafeTargets(t *testing.T) {
 			}
 			before := readReviewFile(t, dir)
 			orchestra, gate := cfg.Orchestra, cfg.Spec.ReviewGate
-			baseline := newReviewBaseline(cfg)
+			baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
 			working := baseline.reviewComposition.clone()
 			tc.change(&working)
 
-			err = saveReviewComposition(dir, cfg, baseline.reviewComposition, working)
+			err = saveReviewComposition(dir, cfg, baseline, working)
 
 			var refusal reviewWriteRefusal
 			require.True(t, errors.As(err, &refusal), "%v", err)
@@ -127,11 +127,11 @@ func TestSaveReviewComposition_RefusesYAMLOnlyLineBreaks(t *testing.T) {
 	require.NoError(t, err)
 	text := strings.Replace(readReviewFile(t, dir), "project_name: p\n", "project_name: \"p \"\n", 1)
 	require.NoError(t, os.WriteFile(path, []byte(text), 0o644))
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
 	working := baseline.reviewComposition.clone()
 	working.Providers = []string{"claude", "codex"}
 
-	err = saveReviewComposition(dir, cfg, baseline.reviewComposition, working)
+	err = saveReviewComposition(dir, cfg, baseline, working)
 
 	var refusal reviewWriteRefusal
 	require.True(t, errors.As(err, &refusal), "%v", err)

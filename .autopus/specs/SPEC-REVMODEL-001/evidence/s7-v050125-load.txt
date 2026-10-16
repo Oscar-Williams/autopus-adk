@@ -1,4 +1,4 @@
-SPEC-REVMODEL-001 S7 — v0.50.125 loads the files this branch's review writer leaves
+SPEC-REVMODEL-001 S7 and S22 — v0.50.125 loads the files this branch's review writer leaves
 date: 2026-10-16 · branch feat/revmodel-001 · no model call · no network
 
 binary
@@ -18,6 +18,12 @@ files (each written by saveReviewComposition from its start file)
   S5(3)  B0, gemini google-antigravity/gemini-3.8-flash:high
   S9(b)  RN, judge codex inserted
   control  S1 file + spec.review_gate.reviewers: [claude]
+  S22 (from B1 = RL)
+  S19(1) claude args --model claude-opus-5-5 --effort xhigh
+  S19(2) claude args --model claude-haiku-4-5 (effort pair removed)
+  S20    codex model_policy: pinned, args -m gpt-6.1-sol, model_reasoning_effort="high"
+  S21    gemini backend: omp, model: google-antigravity/gemini-3.8-flash:high (binary, args stay)
+  control  S20 file + orchestra.providers.codex.models: [x]
 
 result
   --- PASS: TestReviewCompat_S7KeyPathsStayTheStartFiles (S1, S2, S3(b), S5(3), S9(b))
@@ -25,3 +31,7 @@ result
   --- PASS: TestReviewCompat_S7V050125LoadsTheWrittenFiles
       S1 S2 S3(b) S5(3) S9(b): `auto config get usage_profile` exit 0, output "developer"
       control: exit 1, "field reviewers not found in type config.ReviewGateConf"
+      S19(1) S19(2) S20 S21: exit 0, output "developer"; key paths equal B1's, S21 adds
+      orchestra.providers.gemini.backend and .model only
+      S22 control: exit 1, "field models not found"
+date of the S22 run: 2026-10-16 (same binary)

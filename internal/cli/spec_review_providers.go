@@ -20,7 +20,9 @@ func filterInstalledProviders(all []orchestra.ProviderConfig) []orchestra.Provid
 			available = append(available, provider)
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "경고: %s 바이너리를 찾을 수 없습니다 (건너뜀)\n", binary)
+		// The binary comes from autopus.yaml and reaches the terminal, so it
+		// passes through terminalSafe (SPEC-REVMODEL-001 REQ-RVM-20).
+		fmt.Fprintf(os.Stderr, "경고: %s 바이너리를 찾을 수 없습니다 (건너뜀)\n", terminalSafe(binary))
 	}
 	return available
 }

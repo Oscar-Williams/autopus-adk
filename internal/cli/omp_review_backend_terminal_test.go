@@ -2,8 +2,9 @@ package cli
 
 // SPEC-REVMODEL-001 T6 (REQ-RVM-20; acceptance S16(a)): the two stderr lines
 // the OMP review backend writes pass the provider, the selector, the tools,
-// and the retry reason through terminalSafe, and stay byte for byte the
-// same for text without control characters.
+// and the retry reason through terminalSafe, the missing-binary warning
+// passes the configured binary, and each stays byte for byte the same for
+// text without control characters.
 
 import (
 	"context"
@@ -60,4 +61,21 @@ func TestOMPReviewBackend_StderrLinesKeepPlainText(t *testing.T) {
 	require.GreaterOrEqual(t, len(lines), 2, stderr)
 	assert.Equal(t, "OMP 리뷰 세션: provider=reviewer model=openai/model:high tools=read\n", lines[0])
 	assert.Equal(t, "OMP 리뷰 세션 재시도: provider=reviewer attempt=2/3 reason=OMP pipeline turn failed with provider error status 529: overloaded_error\n", lines[1])
+}
+
+// The missing-binary warning of the review provider filter spells the
+// binary from autopus.yaml through terminalSafe.
+func TestFilterInstalledProviders_WarningIsTerminalSafe(t *testing.T) {
+	useReviewPath(t)
+	warn := func(binary string) string {
+		return captureStderr(t, func() {
+			filterInstalledProviders([]orchestra.ProviderConfig{{Name: "gemini", Binary: binary}})
+		})
+	}
+
+	stderr := warn("agy\x1b[2J")
+
+	assert.NotContains(t, stderr, "\x1b")
+	assert.Equal(t, `경고: agy\x1b[2J 바이너리를 찾을 수 없습니다 (건너뜀)`+"\n", stderr)
+	assert.Equal(t, "경고: agy 바이너리를 찾을 수 없습니다 (건너뜀)\n", warn("agy"))
 }

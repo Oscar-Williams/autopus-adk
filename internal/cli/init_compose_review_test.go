@@ -55,13 +55,13 @@ const reviewInitTab = "어느 도구를 바꿀까요? \n1. 모든 도구 같게\
 func TestInitComposeReview_S10TabEditSurvivesInit(t *testing.T) {
 	t.Run("(a) gemini off", func(t *testing.T) {
 		newReviewInitRun(t, true)
-		// 구성 편집, 멀티프로바이더 리뷰, claude·codex Enter, gemini 끄기, judge Enter,
-		// 확인 호출 Enter, 적용, 유지.
-		dir, out, err := runComposeInit(t, formInput("2\n", "4\n", "\n", "\n", "2\n", "\n", "\n", "2\n", "\n"))
+		// 구성 편집, 멀티프로바이더 리뷰, claude·codex Enter, gemini 끄기, claude·codex
+		// model Enter, judge Enter, 확인 호출 Enter, 적용, 유지.
+		dir, out, err := runComposeInit(t, formInput("2\n", "4\n", "\n", "\n", "2\n", "\n", "\n", "\n", "\n", "2\n", "\n"))
 
 		require.NoError(t, err, out)
 		assert.Contains(t, out, reviewInitTab+"4. 멀티프로바이더 리뷰\n")
-		assert.Contains(t, out, "claude는 CLI backend라 model을 바꾸지 않습니다")
+		assert.Contains(t, out, "claude model \n1. 그대로 — claude-fable-5-1 · max\n")
 		assert.Contains(t, out, "구성을 적용했습니다.\n")
 		saved := reviewInitSaved(t, dir)
 		assert.True(t, saved.Spec.ReviewGate.Enabled)

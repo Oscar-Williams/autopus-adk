@@ -54,9 +54,25 @@ func verifyReviewLineEdit(original, edited []byte, targets []reviewTarget) error
 		case target.path[0] == "spec":
 			want.Spec.ReviewGate.Judge = target.value
 		default:
-			entry := want.Orchestra.Providers[target.path[2]]
-			entry.Model = target.value
-			want.Orchestra.Providers[target.path[2]] = entry
+			name := target.path[2]
+			entry := want.Orchestra.Providers[name]
+			switch target.path[3] {
+			case "model":
+				entry.Model = target.value
+			case "backend":
+				entry.Backend = target.value
+			case "model_policy":
+				entry.ModelPolicy = target.value
+			case "args":
+				// The expanded list has the raw list's shape, so the same edit
+				// planned on it is what the edited file loads to.
+				if len(entry.Args) == 0 {
+					entry.Args = slices.Clone(target.list)
+				} else {
+					entry.Args = target.args.planned(entry.Args)
+				}
+			}
+			want.Orchestra.Providers[name] = entry
 		}
 	}
 	if !reflect.DeepEqual(want, got) {
@@ -70,7 +86,7 @@ func (t reviewTarget) heldBy(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	if !t.isList {
+	if !t.isList && t.args == nil {
 		return node.Kind == yaml.ScalarNode && node.ShortTag() == "!!str" && node.Value == t.value
 	}
 	if node.Kind != yaml.SequenceNode || len(node.Content) != len(t.list) {

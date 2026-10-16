@@ -42,3 +42,42 @@ checklist FAIL(Q-COMP-02/04/05/08, Q-CORR-03, Q-FEAS-01/03, Q-STYLE-01, Q-SEC-01
 - G1-1 확정: 참여 끄기는 `auto spec review`(`spec.review_gate.providers`)에만 적용한다. 미리보기의 명령 안내 줄을 유지한다(`spec.md` Open Issues resolved).
 - G1-2 확정: model 편집은 OMP backend provider만 한다. CLI backend provider에는 탭이 이유 줄을 보인다(Form Text CLI 안내, S8).
 - 이 repo의 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`로 바뀐다(live: `gemini-3.1-pro:high` 404, `gemini-3-pro` stream 끊김, `3.8-flash` ok). research 증거와 S15 목표 값으로만 쓰고 fixture는 기대지 않는다.
+
+## Gate 1 개정 (2026-10-16, 실제 터미널 설정 뒤 사용자 결정)
+
+- G1-2 superseded: 새 `auto init`은 claude·codex·gemini를 CLI backend로 만들어 "OMP backend만"이면 세 provider 모두 이유 줄만 보였다.
+- 새 결정과 반영: claude CLI는 Claude 탭 model을 args `--model`로(REQ-RVM-21), codex CLI는 run의 Codex catalog model을 `model_policy: pinned` + `-m` args로 써서 `CodexOrchestraProfile`이 더 덮지 않게(REQ-RVM-22), model 목록을 증명할 수 없는 CLI는 OMP 설치 시 `backend: omp` + 증명된 model로 전환, 아니면 이유 줄(REQ-RVM-23). S8 개정, S19–S22 추가, T12–T14 추가, probe A1·A3 확장(행은 validator 상한 3이라 새 행 대신 두 행에 3차 증거를 더함).
+- probe(`evidence/probe-cli-model.md`, model 호출 없음): argv는 `Config.Args` 그대로, CLI는 `Model`을 쓰지 않음, codex quality는 profile이 `-m gpt-6-astra`로 덮고 pinned는 쓴 `-m`을 지킴, claude `--model`은 남음, 설정된 gemini binary는 `agy`이고 `agy`는 `--model`·`models`가 있음(`gemini` CLI는 `-m`), v0.50.125는 pinned·전환 파일을 읽음.
+- G1-3 open: agy는 model flag가 있지만 Autopus에 증명할 목록 해석기가 없어 OMP 전환만 준다. agy model Select는 scope expansion이다.
+
+## Round 4 (2026-10-16, claude provider 429로 빠짐, codex·gemini 판정)
+
+| Finding | 반영 |
+|---|---|
+| J-002 major: backend stderr와 `reportCodexRuntimeFallback`의 model·effort가 escape 없음 | REQ-RVM-20을 두 경로 모두로 넓힘, 미룸 없음(T13, S16 And) |
+| F-002 major: `auto quality`는 `LoadPreview`라 migration 없이 읽음 | REQ-RVM-25: CLI baseline은 `MigrateOrchestraConfig` 뒤 사본, stored와 다르면 migration args에 값만 바꿔 씀(S24) |
+| F-003: CLI 값의 공통 검증·미리보기 | REQ-RVM-05·09에 CLI Model Contract 포함, 미리보기 순서에 `backend`·`model`·`model_policy`·`args`(S26) |
+| F-004: Codex helper가 다른 args를 정규화 | `ApplyCodexProviderProfile` 대신 `editCLIArgs`(값만 교체, 중복 `--json`도 보존, S24) |
+| F-005: 빈 effort 교집합 | 그런 Codex model은 보이지 않음, planner 오류(S25) |
+| F-006: non-goal·INV-RVM-06이 CLI 편집과 충돌 | Reviewer Brief·non-goal 정리, INV-RVM-06에 전환·pinned key 포함 |
+
+## G1-3 (2026-10-16, 사용자 결정)
+
+- `agy models` 해석기를 더한다(REQ-RVM-24, Agy Catalog Contract): 15초·64 KiB, 머리 줄 건너뜀, `<id>\t<display name>` 엄격 해석, 어긋나면 목록 없음과 이유 줄, provider family 같은 id만, 기본 이름 → 실제 있는 effort 접미사의 두 단계(쓰는 값은 늘 목록의 id). `OMP backend로 전환`은 다른 선택지로 남는다. 목록에 있다고 호출되는 것은 아니라 확인 요청을 권장한다(gemini-3.1-pro 404). 관측 sample은 S23에 그대로 쓴다.
+
+## Round 5 (2026-10-16, REJECT, claude 429, codex·gemini 판정)
+
+| Finding | 반영 |
+|---|---|
+| V-001/F-003 security: CLI 미리보기가 env가 펼쳐진 args 전체를 보임 | REQ-RVM-26: 바뀐 flag 값만 raw 글자로, 다른 args는 안 보임, 대상 값이 placeholder거나 raw와 load가 다르면 거부(S26 미리보기 줄, 새 S27: `${REVIEW_TOKEN}` 값·이름·다른 flag가 출력에 없음, `-m ${CODEX_MODEL}`은 거부·bytes 불변) |
+| V-002: CLI baseline 하나로 | REQ-RVM-25: 현재 값 결정은 migration 뒤 사본, 편집은 raw `args` node(쌍 삽입, raw args 없으면 migration args 삽입, alias·anchor·merge·block·placeholder 거부). S24가 결정과 raw bytes 보존을 함께 판정 |
+| V-003: Outcome·Reviewer Brief 범위 | research Outcome Lock·Reviewer Brief와 spec Outcome Boundary에 REQ-RVM-21–26, agy 해석, S15–S27 반영 |
+| acceptance 200줄 | fixture와 AGY sample을 `evidence/acceptance-fixtures.md`로 옮기고 시나리오 사이 빈 줄을 줄임 |
+
+## Round 6 (2026-10-16, REVISE, 24 resolved, checklist FAIL 5, claude 429)
+
+| Finding | 반영 |
+|---|---|
+| V-004 placeholder 규칙 하나로 | 바꾸는 대상 값(model·effort flag 값, OMP model scalar)에 `${`가 있을 때만 거부. 다른 args의 placeholder는 대상 span만 바꾸므로 bytes 그대로(REQ-RVM-25·26, Line Splice Writer, CLI Model Contract). 없는 flag는 마지막 raw 항목 뒤에 쌍으로(S23 기대 args 수정) |
+| V-005 S27 비노출 oracle | sentinel 값 `rvm-sentinel-7f3a9c`·`rvm-model-sentinel-41`과 이름 `REVIEW_TOKEN`만 찾아 catalog·표 출력에 걸리지 않게 함. flow 목록의 placeholder는 따옴표로(YAML 문법) |
+| V-006 범위 선언 | Reviewer Brief에 REQ-RVM-20–26을 범위 안으로 명시, plan Scope Expansion 예시와 prd 범위 밖에서 agy 해석·CLI args 편집 제거 |

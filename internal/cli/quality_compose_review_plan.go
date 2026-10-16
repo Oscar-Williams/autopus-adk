@@ -4,55 +4,79 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/orchestra"
 )
 
 // reviewComposition is one value of the review tab (SPEC-REVMODEL-001
-// Review Tab Contract): spec.review_gate.providers, the model selector of
-// every OMP-backed provider, and spec.review_gate.judge.
+// Review Tab Contract): spec.review_gate.providers, the backend, model, and
+// effort of every provider, and spec.review_gate.judge.
 type reviewComposition struct {
 	Providers []string
-	Models    map[string]string
-	Judge     string
+	// OMP holds the providers that run on the OMP backend; a switch adds one.
+	OMP map[string]bool
+	// Models is the model selector of every OMP provider.
+	Models map[string]string
+	// CLI is the model and effort of every CLI provider.
+	CLI   map[string]reviewCLIValue
+	Judge string
 }
 
 func (c reviewComposition) clone() reviewComposition {
-	return reviewComposition{Providers: slices.Clone(c.Providers), Models: maps.Clone(c.Models), Judge: c.Judge}
+	return reviewComposition{
+		Providers: slices.Clone(c.Providers), OMP: maps.Clone(c.OMP), Models: maps.Clone(c.Models),
+		CLI: maps.Clone(c.CLI), Judge: c.Judge,
+	}
 }
 
 // takesPart reports a provider that spec.review_gate.providers names.
 func (c reviewComposition) takesPart(name string) bool { return slices.Contains(c.Providers, name) }
 
-// reviewBaseline is the tab's start, taken from the run's config when the
-// tab opens (REQ-RVM-02). Change lines, the no-change check, and every write
-// compare against it; the working value only seeds the selects.
+// reviewBaseline is the tab's start, taken from the run's config and the raw
+// document when the tab opens (REQ-RVM-02). Change lines, the no-change
+// check, and every write compare against it; the working value only seeds
+// the selects.
 type reviewBaseline struct {
 	reviewComposition
 	// Visible lists the orchestra.providers entries in sortedProviderKeys
 	// order: only they get a participation select and count.
-	Visible []string
-	// OMP holds the providers whose entry has backend: omp.
-	OMP map[string]bool
+	Visible  []string
+	Binaries map[string]string
+	// Raw is the raw document's view of each provider. CLI values in a
+	// preview and placeholder checks read only it (REQ-RVM-26).
+	Raw map[string]reviewRawProvider
+	// Migrated is each CLI provider's args after config.MigrateOrchestraConfig,
+	// which decide its current model and effort (REQ-RVM-25).
+	Migrated map[string][]string
 }
 
-func newReviewBaseline(cfg *config.HarnessConfig) reviewBaseline {
+// newReviewBaseline takes the baseline from cfg and raw, the raw document's
+// view; nil raw reads cfg itself, as for init's config.
+func newReviewBaseline(cfg *config.HarnessConfig, raw map[string]reviewRawProvider) reviewBaseline {
+	if raw == nil {
+		raw = reviewRawOf(cfg)
+	}
 	baseline := reviewBaseline{
 		reviewComposition: reviewComposition{
 			Providers: slices.Clone(cfg.Spec.ReviewGate.Providers),
-			Models:    map[string]string{},
-			Judge:     cfg.Spec.ReviewGate.Judge,
+			OMP:       map[string]bool{}, Models: map[string]string{}, CLI: map[string]reviewCLIValue{},
+			Judge: cfg.Spec.ReviewGate.Judge,
 		},
-		Visible: sortedProviderKeys(cfg.Orchestra.Providers),
-		OMP:     map[string]bool{},
+		Visible:  sortedProviderKeys(cfg.Orchestra.Providers),
+		Binaries: map[string]string{}, Raw: raw, Migrated: map[string][]string{},
 	}
+	migrated := reviewMigratedConfig(cfg)
 	for name, entry := range cfg.Orchestra.Providers {
+		baseline.Binaries[name] = entry.Binary
 		if entry.Backend == config.ProviderBackendOMP {
 			baseline.OMP[name] = true
 			baseline.Models[name] = entry.Model
+			continue
 		}
+		args := slices.Clone(migrated.Orchestra.Providers[name].Args)
+		baseline.Migrated[name] = args
+		baseline.CLI[name] = reviewCLIValueOf(reviewArgsRowFor(entry.Binary), args)
 	}
 	return baseline
 }
@@ -89,10 +113,18 @@ func (b reviewBaseline) participants(value reviewComposition) int {
 	return count
 }
 
-// reviewAttestation is the attested model list of each OMP-backed provider
-// (REQ-RVM-06). A provider without a list, such as one read from an
-// unreadable catalog, attests no model.
-type reviewAttestation map[string][]ompCustomModelChoice
+// reviewAttestation is what the tab entry offers per provider: the attested
+// OMP models (REQ-RVM-06) and the models of its CLI Model Contract row. A
+// provider without a list, such as one read from an unreadable catalog,
+// accepts no changed model.
+type reviewAttestation struct {
+	OMP map[string][]ompCustomModelChoice
+	CLI map[string][]reviewCLIModel
+}
+
+func newReviewAttestation() reviewAttestation {
+	return reviewAttestation{OMP: map[string][]ompCustomModelChoice{}, CLI: map[string][]reviewCLIModel{}}
+}
 
 // reviewPlanError is a validation error; its text is the Form Text line.
 type reviewPlanError string
@@ -112,9 +144,9 @@ type reviewPlan struct {
 
 // planReviewComposition validates working against the baseline (REQ-RVM-05)
 // and describes it: fewer than two participating visible providers, a judge
-// that takes no part, or a changed model the provider's attested list does
-// not hold, with a level that model reports, is an error. A model equal to
-// the baseline is not held against the catalog.
+// that takes no part, or a changed model, thinking, or effort its provider's
+// list does not offer is an error. A value equal to the baseline is not held
+// against any list.
 func planReviewComposition(b reviewBaseline, working reviewComposition, attested reviewAttestation, text composeReviewText) (reviewPlan, error) {
 	if n := b.participants(working); n < 2 {
 		return reviewPlan{}, reviewPlanError(fmt.Sprintf(text.ErrCount, n))
@@ -123,33 +155,19 @@ func planReviewComposition(b reviewBaseline, working reviewComposition, attested
 		return reviewPlan{}, reviewPlanError(fmt.Sprintf(text.ErrJudge, working.Judge))
 	}
 	for _, name := range b.Visible {
-		if selector := working.Models[name]; selector != b.Models[name] {
-			if err := attestReviewModel(name, selector, attested[name], text); err != nil {
-				return reviewPlan{}, err
-			}
+		var err error
+		switch {
+		case working.OMP[name] && working.Models[name] != b.Models[name]:
+			err = attestReviewModel(name, working.Models[name], attested.OMP[name], text)
+		case !working.OMP[name] && working.CLI[name] != b.CLI[name]:
+			err = attestReviewCLI(name, working.CLI[name], attested.CLI[name], text)
+		}
+		if err != nil {
+			return reviewPlan{}, err
 		}
 	}
 	plan := reviewPlan{Table: reviewAfterTable(b, working, text)}
-	turnedOff, modelChanged := false, false
-	if !slices.Equal(working.Providers, b.Providers) {
-		plan.Changes = append(plan.Changes, "spec.review_gate.providers "+reviewListText(b.Providers)+" → "+reviewListText(working.Providers))
-		turnedOff = slices.ContainsFunc(b.Visible, func(name string) bool { return b.takesPart(name) && !working.takesPart(name) })
-	}
-	for _, name := range b.Visible {
-		if working.Models[name] != b.Models[name] {
-			plan.Changes = append(plan.Changes, "orchestra.providers."+name+".model "+b.Models[name]+" → "+working.Models[name])
-			modelChanged = true
-		}
-	}
-	if working.Judge != b.Judge {
-		plan.Changes = append(plan.Changes, "spec.review_gate.judge "+reviewJudgeText(b.Judge, text)+" → "+reviewJudgeText(working.Judge, text))
-	}
-	if turnedOff {
-		plan.Notes = append(plan.Notes, text.CommandsNote)
-	}
-	if modelChanged {
-		plan.Notes = append(plan.Notes, text.ModelNote)
-	}
+	plan.Changes, plan.Notes = reviewChangeLines(b, working, text)
 	plan.Changed = len(plan.Changes) > 0
 	return plan, nil
 }
@@ -168,54 +186,17 @@ func attestReviewModel(name, selector string, choices []ompCustomModelChoice, te
 	return nil
 }
 
-// reviewAfterTable is the after table of the Review Tab Contract: one row
-// per visible provider, its review state, its model (CLI backend for a CLI
-// provider), and the judge mark, each changed cell ending in `*`.
-func reviewAfterTable(b reviewBaseline, working reviewComposition, text composeReviewText) composeTableLayout {
-	layout := composeTableLayout{header: []string{text.ColProvider, text.ColReview, text.ColModel, text.Judge}}
-	for _, name := range b.Visible {
-		on := working.takesPart(name)
-		state := text.Off
-		if on {
-			state = text.On
-		}
-		model := text.CLIBackend
-		if b.OMP[name] {
-			model = working.Models[name]
-		}
-		judge := ""
-		if working.Judge == name {
-			judge = text.Judge
-		}
-		layout.rows = append(layout.rows, []string{
-			name,
-			reviewMarked(state, on != b.takesPart(name)),
-			reviewMarked(model, working.Models[name] != b.Models[name]),
-			reviewMarked(judge, (working.Judge == name) != (b.Judge == name)),
-		})
+// attestReviewCLI holds a changed CLI value against the provider's row: its
+// model must be offered and its effort one the model takes, none for a model
+// that takes none.
+func attestReviewCLI(name string, value reviewCLIValue, choices []reviewCLIModel, text composeReviewText) error {
+	index := slices.IndexFunc(choices, func(model reviewCLIModel) bool { return model.ID == value.Model })
+	if index < 0 {
+		return reviewPlanError(fmt.Sprintf(text.ErrCLIModel, name, value.Model))
 	}
-	return escapeComposeTableLayout(layout)
-}
-
-func reviewMarked(cell string, changed bool) string {
-	switch {
-	case !changed:
-		return cell
-	case cell == "":
-		return "*"
+	if efforts := choices[index].Efforts; len(efforts) == 0 && value.Effort != "" ||
+		len(efforts) > 0 && !slices.Contains(efforts, value.Effort) {
+		return reviewPlanError(fmt.Sprintf(text.ErrCLIEffort, name, value.Effort, value.Model))
 	}
-	return cell + " *"
-}
-
-// reviewListText writes a provider list as `[a, b]`.
-func reviewListText(names []string) string {
-	return "[" + strings.Join(names, ", ") + "]"
-}
-
-// reviewJudgeText names a judge, or judge 없음 for the empty one.
-func reviewJudgeText(judge string, text composeReviewText) string {
-	if judge == "" {
-		return text.NoJudge
-	}
-	return judge
+	return nil
 }
