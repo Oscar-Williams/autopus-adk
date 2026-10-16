@@ -2,6 +2,7 @@ package cli
 
 import (
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -47,10 +48,15 @@ func reviewClaudeModels() []reviewCLIModel {
 	return models
 }
 
+// reviewCodexSlug is a Codex catalog slug the tab offers: one that reads as
+// a model name, never as a flag, a path climb, or control characters.
+var reviewCodexSlug = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]*$`)
+
 // reviewCodexModels is the codex row: the run's Codex catalog snapshot models
 // that report at least one of low–max, by name, each with those levels in
-// ladder order (REQ-RVM-22). A model whose levels miss the ladder entirely
-// is left out. It reports false for a snapshot it cannot read.
+// ladder order (REQ-RVM-22). A model whose levels miss the ladder entirely,
+// or whose slug does not read as a model name, is left out. It reports false
+// for a snapshot it cannot read.
 func reviewCodexModels(snapshot driftGenerationSnapshot) ([]reviewCLIModel, bool) {
 	if !snapshot.codexCatalogFixed || len(snapshot.codexCatalog) == 0 {
 		return nil, false
@@ -61,6 +67,9 @@ func reviewCodexModels(snapshot driftGenerationSnapshot) ([]reviewCLIModel, bool
 	}
 	var models []reviewCLIModel
 	for _, entry := range catalog.Models {
+		if !reviewCodexSlug.MatchString(entry.Slug) {
+			continue
+		}
 		model := reviewCLIModel{ID: entry.Slug}
 		for _, level := range config.QualityEfforts() {
 			if slices.ContainsFunc(entry.SupportedReasoningLevels, func(reported config.CodexCatalogReasoningLevel) bool {

@@ -162,8 +162,12 @@ func (e reviewArgsEdit) written(args []string) []bool {
 // planReviewArgsEdit plans setting args to want under row: a named flag whose
 // value differs gets the new value in place, a missing one is appended as a
 // pair, and claude's empty effort (haiku) removes its effort flag. Flags that
-// already hold the wanted value produce no operation.
-func planReviewArgsEdit(args []string, row reviewArgsRow, want reviewCLIValue) reviewArgsEdit {
+// already hold the wanted value produce no operation. A wanted value starting
+// with `-` would read as a flag of its own, so it refuses the edit (false).
+func planReviewArgsEdit(args []string, row reviewArgsRow, want reviewCLIValue) (reviewArgsEdit, bool) {
+	if strings.HasPrefix(want.Model, "-") || strings.HasPrefix(want.Effort, "-") {
+		return reviewArgsEdit{}, false
+	}
 	edit := reviewArgsEdit{set: map[int]string{}}
 	setValue := func(found reviewArgValue, flag, value string) {
 		switch {
@@ -198,5 +202,5 @@ func planReviewArgsEdit(args []string, row reviewArgsRow, want reviewCLIValue) r
 			edit.set[effort.index] = effort.prefix + quoted
 		}
 	}
-	return edit
+	return edit, true
 }

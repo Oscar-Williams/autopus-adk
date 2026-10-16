@@ -151,7 +151,9 @@ func applyReviewCompositionMemory(cfg *config.HarnessConfig, baseline reviewBase
 	candidate.Orchestra.Providers = maps.Clone(cfg.Orchestra.Providers)
 	candidate.Spec.ReviewGate.Providers = slices.Clone(working.Providers)
 	candidate.Spec.ReviewGate.Judge = working.Judge
-	applyReviewEntries(candidate.Orchestra.Providers, baseline, working)
+	if err := applyReviewEntries(candidate.Orchestra.Providers, baseline, working); err != nil {
+		return err
+	}
 	if err := candidate.Validate(); err != nil {
 		return fmt.Errorf("validate config: %w", err)
 	}
@@ -163,9 +165,10 @@ func applyReviewCompositionMemory(cfg *config.HarnessConfig, baseline reviewBase
 // applyReviewEntries sets every provider entry value working changes, as the
 // line writer writes it: a switch's backend and model, an OMP model, and a
 // CLI change's model_policy and args, edited from the entry's args or, when
-// they are empty, the migrated ones. Init's config and the live check
+// they are empty, the migrated ones. A CLI value the planner refuses keeps
+// its entry and refuses with the args key. Init's config and the live check
 // candidate share it.
-func applyReviewEntries(providers map[string]config.ProviderEntry, b reviewBaseline, working reviewComposition) {
+func applyReviewEntries(providers map[string]config.ProviderEntry, b reviewBaseline, working reviewComposition) error {
 	for _, name := range b.Visible {
 		entry := providers[name]
 		switch {
@@ -180,10 +183,15 @@ func applyReviewEntries(providers map[string]config.ProviderEntry, b reviewBasel
 			if len(args) == 0 {
 				args = b.Migrated[name]
 			}
-			entry.Args = planReviewArgsEdit(args, row, working.CLI[name]).apply(args)
+			edit, ok := planReviewArgsEdit(args, row, working.CLI[name])
+			if !ok {
+				return reviewWriteRefusal{key: "orchestra.providers." + name + ".args"}
+			}
+			entry.Args = edit.apply(args)
 		default:
 			continue
 		}
 		providers[name] = entry
 	}
+	return nil
 }

@@ -106,7 +106,7 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	switch {
 	case err != nil || choice == "":
 		return err
-	case choice == reviewSwitchValue:
+	case choice == reviewSwitchValue && len(switchTo) > 0:
 		return f.reviewSwitch(tab, name, switchTo)
 	case row.kind == reviewRowAgy:
 		id, err := f.reviewAgyEffort(name, models, choice, working)
@@ -169,6 +169,9 @@ func (f *composeFormRun) reviewSwitchChoices(tab *reviewTabState, name string) [
 // the attested models of its family, then its thinking; the write adds
 // backend: omp and model and keeps binary, args, and the rest.
 func (f *composeFormRun) reviewSwitch(tab *reviewTabState, name string, choices []ompCustomModelChoice) error {
+	if len(choices) == 0 {
+		return nil
+	}
 	text := f.reviewText()
 	options := make([]composeOption[string], 0, len(choices))
 	for _, choice := range choices {

@@ -92,8 +92,9 @@ func planReviewSpan(root *yaml.Node, aliased map[*yaml.Node]bool, lines []string
 		case key == nil && target.isList:
 			return nil, nil, false
 		case key == nil && target.args != nil:
-			target.list = target.args.planned(target.args.migrated)
-			return nil, &reviewInsert{mapping: node, text: step + ": " + reviewFlowListText(target.list), key: target.key()}, true
+			list, ok := target.args.planned(target.args.migrated)
+			target.list = list
+			return nil, &reviewInsert{mapping: node, text: step + ": " + reviewFlowListText(list), key: target.key()}, ok
 		case key == nil:
 			return nil, &reviewInsert{mapping: node, text: step + ": " + content.OMPYAMLScalar(target.value), key: target.key()}, true
 		case key.Anchor != "" || value.Anchor != "" || value.Kind == yaml.AliasNode || aliased[value]:
@@ -111,9 +112,11 @@ func planReviewSpan(root *yaml.Node, aliased map[*yaml.Node]bool, lines []string
 	return nil, nil, false
 }
 
-// planned is the args list the edit leaves from args.
-func (t *reviewArgsTarget) planned(args []string) []string {
-	return planReviewArgsEdit(args, t.row, t.want).apply(args)
+// planned is the args list the edit leaves from args, or false when the
+// planner refuses the wanted values.
+func (t *reviewArgsTarget) planned(args []string) ([]string, bool) {
+	edit, ok := planReviewArgsEdit(args, t.row, t.want)
+	return edit.apply(args), ok
 }
 
 // spliceReviewArgsTarget edits the raw args node (REQ-RVM-25): a non-empty
@@ -123,21 +126,26 @@ func (t *reviewArgsTarget) planned(args []string) []string {
 func spliceReviewArgsTarget(key, value *yaml.Node, lines []string, newline string, target *reviewTarget) ([]reviewLineEdit, bool) {
 	switch {
 	case value.Kind == yaml.SequenceNode && len(value.Content) == 0:
-		target.list = target.args.planned(target.args.migrated)
-		edit, ok := spliceReviewList(value, lines, newline, target.list)
-		return []reviewLineEdit{edit}, ok
+		list, planned := target.args.planned(target.args.migrated)
+		target.list = list
+		edit, ok := spliceReviewList(value, lines, newline, list)
+		return []reviewLineEdit{edit}, ok && planned
 	case value.Kind == yaml.SequenceNode:
 		raw := reviewArgsValues(value)
-		edit := planReviewArgsEdit(raw, target.args.row, target.args.want)
+		edit, ok := planReviewArgsEdit(raw, target.args.row, target.args.want)
+		if !ok {
+			return nil, false
+		}
 		target.written = edit.written(raw)
 		if target.list = edit.apply(raw); edit.empty() {
 			return nil, true
 		}
 		return spliceReviewArgs(value, lines, newline, edit)
 	case value.Kind == yaml.ScalarNode && value.ShortTag() == "!!null":
-		target.list = target.args.planned(target.args.migrated)
-		edit, ok := spliceReviewScalarText(key, value, lines, reviewFlowListText(target.list))
-		return []reviewLineEdit{edit}, ok
+		list, planned := target.args.planned(target.args.migrated)
+		target.list = list
+		edit, ok := spliceReviewScalarText(key, value, lines, reviewFlowListText(list))
+		return []reviewLineEdit{edit}, ok && planned
 	}
 	return nil, false
 }

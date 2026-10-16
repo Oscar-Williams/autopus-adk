@@ -66,11 +66,14 @@ func verifyReviewLineEdit(original, edited []byte, targets []reviewTarget) error
 			case "args":
 				// The expanded list has the raw list's shape, so the same edit
 				// planned on it is what the edited file loads to.
-				if len(entry.Args) == 0 {
-					entry.Args = slices.Clone(target.list)
-				} else {
-					entry.Args = target.args.planned(entry.Args)
+				planned, ok := slices.Clone(target.list), true
+				if len(entry.Args) > 0 {
+					planned, ok = target.args.planned(entry.Args)
 				}
+				if !ok {
+					return reviewWriteRefusal{key: target.key()}
+				}
+				entry.Args = planned
 			}
 			want.Orchestra.Providers[name] = entry
 		}
