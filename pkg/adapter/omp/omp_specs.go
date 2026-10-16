@@ -97,4 +97,8 @@ var workflowSpecs = []workflowSpec{
 		Name:        "auto-doctor",
 		Description: "상태 진단 — 하네스 설치 상태와 플랫폼 wiring을 점검합니다",
 	},
+	{
+		Name:        "auto-reverse",
+		Description: "역공학 재구현 — REA 증거로 분석한 행동 명세를 메인 세션에서 확인한 뒤 그 명세만으로 기능을 다시 구현합니다",
+	},
 }

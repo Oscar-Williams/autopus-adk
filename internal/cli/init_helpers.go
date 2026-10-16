@@ -79,6 +79,9 @@ var gitignorePatterns = []string{
 	".autopus/backup/",
 	".autopus/cache/",
 	".autopus/docs/",
+	// /auto reverse behaviour specifications quote a third-party target, so
+	// they stay local in single, module, and meta repositories alike.
+	".autopus/reverse/",
 	".autopus/qa/runs/",
 	".autopus/qa/cache/",
 	".autopus/qa/gui/",

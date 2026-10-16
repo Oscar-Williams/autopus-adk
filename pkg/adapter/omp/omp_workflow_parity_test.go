@@ -25,11 +25,11 @@ func TestOMP002_WorkflowParity_GenerateEmitsCanonicalCommandsAndSkills(t *testin
 		want[spec.Name] = true
 		wantWorkflowTargets[filepath.ToSlash(filepath.Join(".omp", "skills", spec.Name, "SKILL.md"))] = true
 	}
-	require.Len(t, want, 20, "workflowSpecs is the canonical twenty-name authority")
+	require.Len(t, want, 21, "workflowSpecs is the canonical twenty-one-name authority")
 	workflow, err := a.prepareWorkflowSkillMappings(configForOMP())
 	require.NoError(t, err)
 	assert.Equal(t, wantWorkflowTargets, mappingTargetSet(workflow),
-		"the workflow emitter, not the extended emitter, must own all twenty targets")
+		"the workflow emitter, not the extended emitter, must own all twenty-one targets")
 	extended, err := a.prepareExtendedSkillMappings(configForOMP())
 	require.NoError(t, err)
 	for _, file := range extended {

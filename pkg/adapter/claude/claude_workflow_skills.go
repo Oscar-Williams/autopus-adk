@@ -39,6 +39,7 @@ var claudeWorkflowRoutes = []claudeWorkflowRoute{
 	{name: "dev", start: "## dev —", end: "## ADK Management —", context: "core + selected SPEC lifecycle"},
 	{name: "canary", start: "## canary —", end: "## fix —", context: "core + canary"},
 	{name: "doctor", context: "core + workspace", customBody: claudeDoctorContract},
+	{name: "reverse", context: "core + the named reverse target", customBody: claudeReverseContract},
 }
 
 func isClaudeWorkflowDetailSource(filename string) bool {

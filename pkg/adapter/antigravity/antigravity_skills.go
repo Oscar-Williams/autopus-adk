@@ -79,6 +79,7 @@ func (a *Adapter) prepareSkillMappings(cfg *config.HarnessConfig) ([]adapter.Fil
 			}
 			rendered = string(tmplContent)
 		}
+		rendered = expandReverseRouteContract(rendered)
 
 		relPath := filepath.Join(".gemini", "skills", "autopus", skillName, "SKILL.md")
 		files = append(files, adapter.FileMapping{

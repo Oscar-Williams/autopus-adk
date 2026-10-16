@@ -96,7 +96,12 @@ func (a *Adapter) removeManagedSettingsKeys() error {
 			delete(currentServers, name)
 		}
 	}
-	if len(currentServers) == 0 {
+	// The managed rea entry goes whatever the current render holds; other_pin
+	// and user-owned rea entries stay.
+	if err := a.applyAntigravityReaMCP(settings, config.ReaMCPRemove); err != nil {
+		return err
+	}
+	if currentServers, _ = settings["mcpServers"].(map[string]any); len(currentServers) == 0 {
 		delete(settings, "mcpServers")
 	}
 	if len(settings) == 0 {

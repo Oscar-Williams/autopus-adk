@@ -149,7 +149,7 @@ func TestUpdateCompose_LineBreakTheSpliceCannotSee_WarnsAndUpdateContinues(t *te
 			var out string
 			err = withoutPanic(func() error {
 				var runErr error
-				out, runErr = runComposeUpdate(t, strings.NewReader(input), "--dir", dir)
+				out, runErr = runComposeUpdate(t, reaEnter(strings.NewReader(input)), "--dir", dir)
 				return runErr
 			})
 

@@ -11,13 +11,13 @@
       "kind": "contains",
       "platform": "codex",
       "path": ".codex/skills/codex-auto/SKILL.md",
-      "needle": "load the matching detailed workflow surface (`$codex-auto-setup`, `$codex-auto-status`, `$codex-auto-goal`, `$codex-auto-update`, `$codex-auto-plan`, `$codex-auto-go`, `$codex-auto-fix`, `$codex-auto-review`, `$codex-auto-sync`, `$codex-auto-idea`, `$codex-auto-map`, `$codex-auto-why`, `$codex-auto-verify`, `$codex-auto-secure`, `$codex-auto-test`, `$codex-auto-qa`, `$codex-auto-dev`, `$codex-auto-canary`, `$codex-auto-doctor`) before answering or acting."
+      "needle": "load the matching detailed workflow surface (`$codex-auto-setup`, `$codex-auto-status`, `$codex-auto-goal`, `$codex-auto-update`, `$codex-auto-plan`, `$codex-auto-go`, `$codex-auto-fix`, `$codex-auto-review`, `$codex-auto-sync`, `$codex-auto-idea`, `$codex-auto-map`, `$codex-auto-why`, `$codex-auto-verify`, `$codex-auto-secure`, `$codex-auto-test`, `$codex-auto-qa`, `$codex-auto-dev`, `$codex-auto-canary`, `$codex-auto-doctor`, `$codex-auto-reverse`) before answering or acting."
     },
     {
       "kind": "contains",
       "platform": "codex",
       "path": ".autopus/plugins/auto/skills/auto/SKILL.md",
-      "needle": "load the matching detailed workflow surface (`$codex-auto-setup`, `$codex-auto-status`, `$codex-auto-goal`, `$codex-auto-update`, `$codex-auto-plan`, `$codex-auto-go`, `$codex-auto-fix`, `$codex-auto-review`, `$codex-auto-sync`, `$codex-auto-idea`, `$codex-auto-map`, `$codex-auto-why`, `$codex-auto-verify`, `$codex-auto-secure`, `$codex-auto-test`, `$codex-auto-qa`, `$codex-auto-dev`, `$codex-auto-canary`, `$codex-auto-doctor`) before answering or acting."
+      "needle": "load the matching detailed workflow surface (`$codex-auto-setup`, `$codex-auto-status`, `$codex-auto-goal`, `$codex-auto-update`, `$codex-auto-plan`, `$codex-auto-go`, `$codex-auto-fix`, `$codex-auto-review`, `$codex-auto-sync`, `$codex-auto-idea`, `$codex-auto-map`, `$codex-auto-why`, `$codex-auto-verify`, `$codex-auto-secure`, `$codex-auto-test`, `$codex-auto-qa`, `$codex-auto-dev`, `$codex-auto-canary`, `$codex-auto-doctor`, `$codex-auto-reverse`) before answering or acting."
     },
     {
       "kind": "contains",
@@ -132,6 +132,12 @@
       "platform": "codex",
       "path": ".codex/skills/codex-auto-doctor/SKILL.md",
       "needle": "name: codex-auto-doctor\n"
+    },
+    {
+      "kind": "contains",
+      "platform": "codex",
+      "path": ".codex/skills/codex-auto-reverse/SKILL.md",
+      "needle": "name: codex-auto-reverse\n"
     }
   ],
   "provenance": {

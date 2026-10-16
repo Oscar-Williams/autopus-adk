@@ -58,6 +58,9 @@ func (a *Adapter) prepareMCPConfig(cfg *config.HarnessConfig) ([]adapter.FileMap
 			existingServers = typed
 		}
 		for name, server := range existingServers {
+			if name == claudeReaServerName {
+				continue
+			}
 			if isManagedClaudeMCPServer(name, server) {
 				delete(existingServers, name)
 			}
@@ -70,6 +73,9 @@ func (a *Adapter) prepareMCPConfig(cfg *config.HarnessConfig) ([]adapter.FileMap
 		newMCP = existing
 	} else if !os.IsNotExist(readErr) {
 		return nil, fmt.Errorf("기존 MCP JSON 읽기 실패: %w", readErr)
+	}
+	if _, err := a.applyClaudeReaMCP(newMCP, claudeReaAction(cfg)); err != nil {
+		return nil, err
 	}
 
 	out, err := json.MarshalIndent(newMCP, "", "  ")

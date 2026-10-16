@@ -145,7 +145,11 @@ func plantLegitimateFixtures(t *testing.T, root string) (map[string]*corpusEntry
 		require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
 		require.NoError(t, os.WriteFile(full, []byte(content), 0o644))
 	}
-	for _, rel := range []string{"pkg/foo.go", "pkg/main.go", "internal/foo/foo.go", "config.toml",
+	// README.md is the project's own source file. Missing, a Gemini CLI replace
+	// of it would edit the protected .claude/hooks/README.md instead (the
+	// host's suffix search), which is no legitimate edit; the rotating shape
+	// plan reaches that pairing whenever the generated surface changes size.
+	for _, rel := range []string{"pkg/foo.go", "pkg/main.go", "internal/foo/foo.go", "config.toml", "README.md",
 		".autopus/brainstorms/BS-001.md", ".autopus/specs/SPEC-X-001/spec.md", "M/pkg/foo.go",
 		"M/.claude/skills/auto-fix/SKILL.md", ".claude/worktrees/agent-x/pkg/foo.go",
 		".claude/worktrees/agent-y/.claude/skills/auto-fix/SKILL.md"} {
