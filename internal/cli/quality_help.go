@@ -103,4 +103,20 @@ ${NAME} is left alone. Only those values are rewritten, so comments and
 layout stay. Orchestra commands (brainstorm, plan, review, secure) and
 auto spec review --multi keep every provider. An optional live check sends
 one request to each of n review providers (at most 3n model calls with
-retries) and writes nothing.`
+retries) and writes nothing.
+
+Every form shows a header with the path that reached it, for example
+quality · Model composition › edit the composition › Codex, the values
+chosen so far in an edit pass (Chosen so far), and the footer Arrows move ·
+Enter select · Esc back · Ctrl+C cancel, all inside the terminal height
+(SPEC-TUIUX-001). Esc goes back one form, and a form shown again keeps the
+earlier answer selected: an edit pass returns to the form it asked before,
+the method to the tool tab, and the tool tab to the menu. Esc on Apply? or
+on the override question keeps editing, and the OMP and Multi-provider
+review tabs go back to the tool tab as a whole. The menu is the first form:
+Esc there prints "This is the first step; press Ctrl+C to cancel." and
+stays. Esc never undoes a write already applied. In accessible line mode
+(TERM=dumb) a line b, back, or 뒤로 is Esc; the line prompts have no back.
+Before it writes any file, auto init shows Settings to apply (the answers,
+every changed setting key, and the REA decision) and asks apply, back, or
+cancel (auto init --help).`

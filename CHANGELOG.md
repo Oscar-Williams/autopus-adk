@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
+  폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
+  - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인
+    화면의 폼에서 Esc가 한 폼 뒤로 가고 다시 보인 폼은 앞 답을 고른 채다. 역할 그룹·에이전트별 편집은 바로 앞에 물은
+    폼(그 폼이 보이기 직전 등급·effort로 되돌린다), 방식은 도구 탭, 도구 탭은 메뉴, init 구성 메뉴는 wizard 마지막
+    단계(그 구성은 버린다)로 간다. `적용할까요?`와 override 질문의 Esc는 계속 편집이고 OMP·멀티프로바이더 리뷰 탭은 탭
+    단위로 도구 탭에 돌아간다. 첫 폼(wizard 첫 단계, update·quality 메뉴)은 `첫 단계입니다. 취소하려면 Ctrl+C를
+    누르세요.`를 보이고 머문다. Ctrl+C는 그대로이고 이미 적용한 쓰기는 되돌리지 않는다. `TERM=dumb`의 줄 입력에서는
+    `b`·`back`·`뒤로` 한 줄이 Esc다.
+  - frame: 폼마다 `init · 4/6 리뷰 게이트`, `update · 모델 구성 › 구성 편집 › Codex › 역할 그룹` 같은 header, 지금까지
+    고른 값(`지금까지 고른 값`), `방향키 이동 · Enter 선택 · Esc 뒤로 · Ctrl+C 취소` footer가 터미널 높이 안에 보인다.
+    요약이 넘치면 머리 줄, `… 외 k개`, 마지막 답만 남긴다.
+  - init 확인 화면: 폼으로 묻는 init은 아무 파일도 쓰기 전에 `적용할 설정`(답한 값, 새 설정과의 YAML 차이로 바뀌는
+    설정 key 전부, REA 결정과 동작)을 보이고 `이대로 적용할까요?`에 적용(기본값)·뒤로·취소를 묻는다. 뒤로는 구성 단계가
+    폼을 물었으면 그 메뉴를 구성 그대로 이어 하고 아니면 wizard 마지막 단계로 간다. 취소와 Ctrl+C는 `init cancelled.`를
+    쓰고 아무것도 쓰지 않는다(플랫폼 이름 정규화가 필요한 기존 autopus.yaml도 그대로다). 확인 화면에 없는 것: 그 뒤의
+    orchestra 정규화, statusLine·parent rule 질문과 결과, 생성 뒤 정하는 `features.rea`, 생성 파일. 구성 단계에 다시
+    들어가면 Codex catalog를 다시 읽고 마지막 진입의 표대로 생성한다.
+  - 그대로: 쓰는 값·key·기본값·폼이 열리는 조건, `--yes`·TTY가 아닌 입력·CI update·줄 질문의 출력은 이전과 bytes가
+    같다.
 - **v0.50.126: 구성 UI의 멀티프로바이더 리뷰 탭** (2026-10-16, SPEC-REVMODEL-001): `auto spec review`의
   provider·model·judge는 autopus.yaml을 손으로 고쳐야만 바뀌었고, catalog에 있는 model이 실제로 답하는지(예:
   `google-antigravity/gemini-3.1-pro:high`의 HTTP 404) 확인할 길이 없었다.

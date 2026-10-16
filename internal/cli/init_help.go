@@ -32,4 +32,17 @@ const initCmdLong = "코딩 CLI에 Autopus 하네스를 설치합니다. autopus
 	"pinned, agy는 agy models가 보인 id의 --model만 바꾸고, omp가 그 family의 model을 증명하면 OMP backend로 전환할 수\n" +
 	"있습니다. 끈 provider도 orchestra 명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속\n" +
 	"돕니다. 확인 호출을 고르면 provider n개에 요청 1회씩(재시도 포함 최대 3n회 model 호출) 보내고 결과 줄만 씁니다." +
-	"\n\n" + reaInitHelp
+	"\n\n" + tuiuxInitHelp + "\n\n" + reaInitHelp
+
+// tuiuxInitHelp is init's navigation, frame, and review (SPEC-TUIUX-001).
+const tuiuxInitHelp = "wizard와 구성 단계의 폼마다 맨 위에 `init · 4/6 리뷰 게이트`나 `init · 모델 구성 › 구성 편집 › Codex`\n" +
+	"같은 단계 header, 그 아래 지금까지 고른 값, 맨 아래 `방향키 이동 · Enter 선택 · Esc 뒤로 · Ctrl+C 취소` footer가\n" +
+	"터미널 높이 안에 보입니다(SPEC-TUIUX-001). Esc는 한 폼 뒤로 가고 다시 보인 폼은 앞 답을 고른 채입니다. 첫 단계의\n" +
+	"Esc는 `첫 단계입니다. 취소하려면 Ctrl+C를 누르세요.`를 보이고 머뭅니다. 구성 메뉴의 Esc는 wizard 마지막 단계로\n" +
+	"돌아가고 그 구성을 버립니다. TERM=dumb의 줄 입력에서는 `b`·`back`·`뒤로` 한 줄이 Esc입니다.\n\n" +
+	"폼으로 묻는 init은 아무 파일도 쓰기 전에 `적용할 설정`을 보입니다: 답한 값, 그 값이 바꾸는 설정 key 전부\n" +
+	"(새 설정과의 YAML 차이), REA 결정과 동작(등록·그대로·제거). 그 뒤 `이대로 적용할까요?`에 적용(기본값)·뒤로·취소를\n" +
+	"고릅니다. 뒤로는 구성 단계가 폼을 물었으면 그 메뉴를 이어 하고 아니면 wizard 마지막 단계로 가며, 취소와 Ctrl+C는\n" +
+	"init cancelled.를 쓰고 아무것도 만들거나 바꾸지 않습니다. 확인 화면에 없는 것: 그 뒤의 orchestra 정규화,\n" +
+	"statusLine·parent rule 질문과 그 결과, 생성 뒤 정하는 features.rea, 생성 파일. --yes, TTY가 아닌 입력, 줄 질문(파이프\n" +
+	"stdout의 구성 단계 포함)에는 뒤로와 확인 화면이 없습니다."

@@ -51,4 +51,15 @@ const updateCmdLong = "설치된 하네스 파일을 업데이트합니다.\n\n"
 	"않으며, ${NAME}에서 오는 값은 바꾸지 않습니다. 그 값만 바꿔 써서 주석과 서식이 그대로입니다. 끈 provider도\n" +
 	"orchestra 명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속 돕니다. 확인 호출을 고르면\n" +
 	"provider n개에 요청 1회씩(재시도 포함 최대 3n회 model 호출) 보내고 결과 줄만 쓰며 아무것도 저장하지 않습니다." +
-	"\n\n" + reaUpdateHelp
+	"\n\n" + tuiuxUpdateHelp + "\n\n" + reaUpdateHelp
+
+// tuiuxUpdateHelp is the composition forms' navigation and frame
+// (SPEC-TUIUX-001).
+const tuiuxUpdateHelp = "구성 단계의 폼마다 맨 위에 `update · 모델 구성 › 구성 편집 › Codex › 역할 그룹` 같은 단계 header, 편집 중에는\n" +
+	"지금까지 고른 값, 맨 아래 `방향키 이동 · Enter 선택 · Esc 뒤로 · Ctrl+C 취소` footer가 터미널 높이 안에 보입니다\n" +
+	"(SPEC-TUIUX-001). Esc는 한 폼 뒤로 갑니다: 역할 그룹·에이전트별 편집은 바로 앞에 물은 폼, 방식은 도구 탭, 도구 탭은\n" +
+	"메뉴이고, 다시 보인 폼은 앞 답을 고른 채입니다. 적용할까요?와 override 질문의 Esc는 계속 편집, OMP·멀티프로바이더\n" +
+	"리뷰 탭은 탭 단위로 도구 탭에 돌아갑니다. 메뉴는 첫 폼이라 Esc가 `첫 단계입니다. 취소하려면 Ctrl+C를 누르세요.`를\n" +
+	"보이고 머뭅니다. 이미 적용한 쓰기는 뒤로가 되돌리지 않습니다. TERM=dumb의 줄 입력에서는 `b`·`back`·`뒤로` 한 줄이\n" +
+	"Esc이고 줄 질문에는 뒤로가 없습니다. auto init은 아무 파일도 쓰기 전에 `적용할 설정`(답한 값, 바뀌는 설정, REA)을\n" +
+	"보이고 적용·뒤로·취소를 묻습니다(auto init --help)."
