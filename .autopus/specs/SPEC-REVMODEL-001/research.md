@@ -176,7 +176,7 @@ These are optional improvements and do not block sync completion.
 
 ## Reviewer Brief
 
-- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, claude·codex·agy CLI model·effort와 `agy models` 해석, OMP 전환, judge, 미리보기), 줄 splice writer와 raw 글자 미리보기, opt-in 확인 요청, 진단 줄 escape, init 순서 수정. CLI model 편집은 범위 안이다(REQ-RVM-21–26).
+- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, judge, 미리보기)과 REQ-RVM-20–26 전부(진단 줄 escape, claude·codex·agy CLI model·effort, `agy models` 해석, OMP 전환, CLI baseline, raw 글자 미리보기), 줄 splice writer, opt-in 확인 요청, init 순서 수정. 이 항목들은 non-goal도 scope expansion도 아니다.
 - Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI backend model, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Self-verified: A1·A2(실제 loader 경유 throwaway test), A3(v0.50.125 바이너리와 대조군 둘), catalog 정규화·재시도·CI gate 줄 번호, Traceability Matrix, oracle 시나리오, existing/[NEW] 구분.
 - Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1에서 확정된 G1-1·G1-2의 반영, 그리고 Completion Debt only.

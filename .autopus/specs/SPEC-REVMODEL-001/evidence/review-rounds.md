@@ -73,3 +73,11 @@ checklist FAIL(Q-COMP-02/04/05/08, Q-CORR-03, Q-FEAS-01/03, Q-STYLE-01, Q-SEC-01
 | V-002: CLI baseline 하나로 | REQ-RVM-25: 현재 값 결정은 migration 뒤 사본, 편집은 raw `args` node(쌍 삽입, raw args 없으면 migration args 삽입, alias·anchor·merge·block·placeholder 거부). S24가 결정과 raw bytes 보존을 함께 판정 |
 | V-003: Outcome·Reviewer Brief 범위 | research Outcome Lock·Reviewer Brief와 spec Outcome Boundary에 REQ-RVM-21–26, agy 해석, S15–S27 반영 |
 | acceptance 200줄 | fixture와 AGY sample을 `evidence/acceptance-fixtures.md`로 옮기고 시나리오 사이 빈 줄을 줄임 |
+
+## Round 6 (2026-10-16, REVISE, 24 resolved, checklist FAIL 5, claude 429)
+
+| Finding | 반영 |
+|---|---|
+| V-004 placeholder 규칙 하나로 | 바꾸는 대상 값(model·effort flag 값, OMP model scalar)에 `${`가 있을 때만 거부. 다른 args의 placeholder는 대상 span만 바꾸므로 bytes 그대로(REQ-RVM-25·26, Line Splice Writer, CLI Model Contract). 없는 flag는 마지막 raw 항목 뒤에 쌍으로(S23 기대 args 수정) |
+| V-005 S27 비노출 oracle | sentinel 값 `rvm-sentinel-7f3a9c`·`rvm-model-sentinel-41`과 이름 `REVIEW_TOKEN`만 찾아 catalog·표 출력에 걸리지 않게 함. flow 목록의 placeholder는 따옴표로(YAML 문법) |
+| V-006 범위 선언 | Reviewer Brief에 REQ-RVM-20–26을 범위 안으로 명시, plan Scope Expansion 예시와 prd 범위 밖에서 agy 해석·CLI args 편집 제거 |

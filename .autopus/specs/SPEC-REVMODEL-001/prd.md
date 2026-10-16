@@ -31,7 +31,7 @@
 
 ## 4. 범위 밖
 
-`orchestra.commands.*.providers`·`orchestra.judge`·Migration 3(명령 목록은 load마다 모든 provider로 다시 채워진다), 리뷰 정책 key, CLI args의 model·effort 밖 flag 편집, agy model 목록 증명(G1-3), OMP→CLI 되돌리기, provider 항목 추가·삭제, `--multi`·`--providers` 의미, receipt `degraded_reasons` 규칙, doctor 변경, 확인 요청 자동 실행과 결과 저장.
+`orchestra.commands.*.providers`·`orchestra.judge`·Migration 3(명령 목록은 load마다 모든 provider로 다시 채워진다), 리뷰 정책 key, CLI args의 model·effort 밖 flag 편집, `agy models` 밖의 agy model 원천, OMP→CLI 되돌리기, provider 항목 추가·삭제, `--multi`·`--providers` 의미, receipt `degraded_reasons` 규칙, doctor 변경, 확인 요청 자동 실행과 결과 저장.
 
 ## 5. 성공 기준과 위험
 

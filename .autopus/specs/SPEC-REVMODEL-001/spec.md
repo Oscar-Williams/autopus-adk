@@ -34,7 +34,7 @@
 - SPEC-MODELUX-001·002 Trust Model을 그대로 따른다. `autopus.yaml`은 반쯤 신뢰한다. writer는 loader가 환경 변수를 펼친 값을 쓰기 원천으로 쓰지 않고 raw 줄과 raw node를 쓴다.
 - 새 비신뢰 입력은 넷이다. (0) `agy models` 출력은 Agy Catalog Contract의 엄격한 해석만 거친다. (1) OMP catalog 출력은 기존 `readInstalledOMPModelChoices`의 정규화만 거친다. (2) 확인 요청의 응답과 오류는 `classifyProviderSmokeResult`가 판정하고 결과 줄에는 `terminalSafe`를 거친 첫 줄 200 rune까지만 쓴다. (3) provider 이름과 model 문자열은 폼 라벨·결과 줄에 넣기 전에 `terminalSafe`를 거친다.
 - 확인 요청 동안 터미널에 닿는 다른 출력도 같은 경계 안에 둔다. OMP review backend가 stderr에 직접 쓰는 두 줄은 provider·model·tools·사유를 `terminalSafe`로 감싼다(REQ-RVM-20). 이름이 `terminalSafe`로 바뀌는 provider가 하나라도 있으면 확인 요청을 시작하지 않는다(REQ-RVM-10).
-- 미리보기·after 표의 CLI 값은 raw document 글자이고 바뀐 flag 값 밖의 args는 보이지 않는다. 대상 값이 placeholder면 편집하지 않는다(REQ-RVM-26).
+- 미리보기·after 표의 CLI 값은 raw document 글자이고 바뀐 flag 값 밖의 args는 보이지 않는다. 바꾸는 대상 값에 `${`가 있을 때만 편집하지 않고, 다른 args의 placeholder는 그대로 둔다(REQ-RVM-26).
 - 확인 요청은 model 호출이라 비용이 든다. OMP backend는 일시 오류에 한 요청을 최대 3회 시도한다(`ompReviewMaxAttempts`). 그래서 기본값은 호출 없음이고 선택지 라벨이 최대 호출 수를 적는다. 새 secret, 승인 단계, 유료 CI는 없다.
 
 ## Requirements
@@ -188,7 +188,7 @@ WHEN the tab asks the model of a participating CLI provider whose binary is `cod
 ### REQ-RVM-23 agy model과 OMP 전환
 Priority: Must · EARS: EventDriven
 
-WHEN the tab asks the model of a participating CLI provider whose binary is neither `claude` nor `codex`, THEN THE SYSTEM SHALL offer 그대로, the agy models of REQ-RVM-24 when the binary is `agy` and its catalog is readable, and `OMP backend로 전환` when `omp` is installed and its catalog is readable, write an agy choice by `editCLIArgs` as the value after `--model` (inserting `--model <id>` at the start of args when absent), write a switch as `backend: omp` and an attested `model`, and print the no-model reason line when neither list is available.
+WHEN the tab asks the model of a participating CLI provider whose binary is neither `claude` nor `codex`, THEN THE SYSTEM SHALL offer 그대로, the agy models of REQ-RVM-24 when the binary is `agy` and its catalog is readable, and `OMP backend로 전환` when `omp` is installed and its catalog is readable, write an agy choice by `editCLIArgs` as the value after `--model` (inserting `--model <id>` after the last raw arg when absent), write a switch as `backend: omp` and an attested `model`, and print the no-model reason line when neither list is available.
 
 - 사용자 결정 G1-3(2026-10-16). 전환은 `binary`·`args`·`prompt_via_args`·`subprocess`를 남긴다(probe: 조립 `backend="omp"`, read-only 정책 통과).
 
@@ -200,14 +200,14 @@ WHEN the tab needs the models of an `agy` provider, THEN THE SYSTEM SHALL run `<
 ### REQ-RVM-25 CLI baseline
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL decide the current model and effort of every CLI provider from a detached copy of the run's config after `config.MigrateOrchestraConfig`, so that `auto quality` (which reads through `LoadPreview` without that migration), `auto update`, and `auto init` decide on the args the runtime runs, and SHALL compute and apply the edit against the raw `orchestra.providers.<p>.args` node by the Line Splice Writer Contract, inserting the flag pair when absent, inserting the migrated args with only the target values changed when the raw args are absent or empty, and refusing alias, anchor, merge, block-scalar, and placeholder nodes.
+THE SYSTEM SHALL decide the current model and effort of every CLI provider from a detached copy of the run's config after `config.MigrateOrchestraConfig`, so that `auto quality` (which reads through `LoadPreview` without that migration), `auto update`, and `auto init` decide on the args the runtime runs, and SHALL compute and apply the edit against the raw `orchestra.providers.<p>.args` node by the Line Splice Writer Contract, changing only the raw text span of the target value or inserting a missing flag pair after the last raw arg, inserting the migrated args with only the target values changed when the raw args are absent or empty, and refusing only when the args node is an alias, an anchor, a merge, or a block scalar, or when the target value being changed contains `${`; every other args element, placeholders included, stays byte-identical.
 
 - round 4 F-002, round 5 V-002: 결정은 migration 뒤 값, 쓰기는 raw node다. 그래서 args가 비었거나 옛 기본 argv인 codex도 쓴 `-m`이 load 뒤 남고 raw의 다른 bytes는 그대로다(S24).
 
 ### REQ-RVM-26 CLI 값 표시와 placeholder
 Priority: Must · EARS: Unwanted
 
-IF a CLI edit is previewed or its target flag value in the raw document is a `${` placeholder or differs from the loaded value, THEN THE SYSTEM SHALL show only the changed flag values taken from the raw document text and never any other args element, and for a placeholder or differing target SHALL print the CLI value refusal line, keep that provider unchanged, and write nothing for it.
+IF a CLI edit is previewed, or the target value it changes (a model or effort flag value, or the OMP model scalar) contains `${` in the raw document, THEN THE SYSTEM SHALL show only the changed flag values taken from the raw document text and never any other args element, and when the target value contains `${` SHALL print the CLI value refusal line, keep that provider unchanged, and write nothing for it, while a placeholder in a non-target args element stays byte-identical and never blocks the edit.
 
 - round 5 V-001. 미리보기는 env가 펼쳐진 run cfg에서 args 전체를 보이지 않는다. `terminalSafe`는 가림이 아니다.
 
@@ -244,12 +244,12 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 
 | binary | 선택지 | 쓰기(`editCLIArgs`, 다른 args 항목은 bytes 그대로) | 근거 |
 |---|---|---|---|
-| `claude` | `그대로`, `claude-fable-5-1`·`claude-opus-5-5`·`claude-sonnet-5-5`·`claude-haiku-4-5`, effort low–max(haiku 없음) | `--model`·`--effort` 값, 없으면 print flag 뒤에 쌍 삽입, haiku는 `--effort` 쌍 삭제 | `claude_provider.go:36-47`, `quality_tier.go:8-11, 104-115` |
+| `claude` | `그대로`, `claude-fable-5-1`·`claude-opus-5-5`·`claude-sonnet-5-5`·`claude-haiku-4-5`, effort low–max(haiku 없음) | `--model`·`--effort` 값의 raw span, 없으면 마지막 raw 항목 뒤에 쌍 삽입, haiku는 `--effort` 쌍의 span 삭제 | `claude_provider.go:36-47`, `quality_tier.go:8-11, 104-115` |
 | `codex` | `그대로`, 단계 교집합이 비지 않은 Codex catalog model, 그 effort | `model_policy: pinned`, `-m`/`--model` 값, `-c model_reasoning_effort=` 값 | `codex_profile.go:66-75`, probe A1 3차 |
-| `agy` | `그대로`, Agy Catalog Contract의 같은 family id(기본 이름 → effort 접미사) | `--model` 값, 없으면 args 맨 앞에 `--model <id>` | 사용자 관측 agy 1.4.0, G1-3 |
+| `agy` | `그대로`, Agy Catalog Contract의 같은 family id(기본 이름 → effort 접미사) | `--model` 값의 raw span, 없으면 마지막 raw 항목 뒤에 `--model <id>` | 사용자 관측 agy 1.4.0, G1-3 |
 | 모든 CLI | OMP가 설치되고 catalog를 읽으면 `OMP backend로 전환` 추가 | `backend: omp` + `model` | REQ-RVM-23 |
 
-- `editCLIArgs`(`[NEW]`)는 이름 붙은 flag 바로 뒤 값만 바꾸고, 없으면 정해진 자리에 쌍을 넣으며, 그 밖의 항목·순서·중복(`--json` 두 번 등)을 그대로 둔다. 쓰기 전 validation(REQ-RVM-05)과 미리보기 줄(REQ-RVM-09)은 이 행들의 선택지와 쓰기 값으로 계산한다(F-003).
+- `editCLIArgs`(`[NEW]`)는 이름 붙은 flag 바로 뒤 값만 바꾸고, 없으면 마지막 raw 항목 뒤에 쌍을 넣으며, 그 밖의 항목·순서·중복(`--json` 두 번 등)을 그대로 둔다. 쓰기 전 validation(REQ-RVM-05)과 미리보기 줄(REQ-RVM-09)은 이 행들의 선택지와 쓰기 값으로 계산한다(F-003).
 
 ### Agy Catalog Contract
 
@@ -271,7 +271,7 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | claude CLI model·effort | `orchestra.providers.<p>.args`의 `--model`·`--effort` 값 | 그 provider의 모든 CLI 실행 |
 | codex CLI model·effort | `orchestra.providers.<p>.model_policy: pinned`, `args`의 `-m`·`-c model_reasoning_effort` 값 | 그 provider의 모든 CLI 실행. `CodexOrchestraProfile`은 더 적용되지 않는다 |
 | OMP 전환 | `orchestra.providers.<p>.backend: omp`와 `model` | 그 provider가 OMP review backend로 돈다 |
-| agy model | `orchestra.providers.<p>.args`의 `--model` 값(없으면 맨 앞에 쌍) | 그 provider의 모든 CLI 실행 |
+| agy model | `orchestra.providers.<p>.args`의 `--model` 값(없으면 마지막 항목 뒤에 쌍) | 그 provider의 모든 CLI 실행 |
 | judge | `spec.review_gate.judge` = j. baseline에 key가 없으면 review_gate mapping 끝에 더하고, `""`면 그 값만 바꾼다 | `auto spec review` judge |
 | 쓰지 않음 | `orchestra.commands.*`(Migration 3 소유), `orchestra.judge`, 리뷰 정책 key, `binary`, `tools`, `subprocess`, `prompt_via_args`, 위 행이 말하지 않는 args 항목, provider 항목 추가·삭제 | — |
 
@@ -282,7 +282,7 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | 항목 | 규칙 |
 |---|---|
 | 원천 | 디스크의 bytes. `saveQualityBlock`처럼 먼저 `pruneRetiredConfig`(`config_retired_keys.go:37`)를 거친다(SPEC-PANERM-001 REQ-10). 대상 위치는 raw document(`parseAutopusConfigDocument`, `platform_omp_config.go:45`, 환경 변수 펼침 없음)의 node `Line`·`Column`으로 찾는다 |
-| 바꾸는 span | scalar(`judge`, `model`): 그 key 줄의 값 token(plain, `'…'`, `"…"`)만. 같은 줄의 inline 주석은 남는다. flow 목록: 같은 줄의 `[`부터 짝 `]`까지. block 목록: 항목 줄들을 같은 들여쓰기의 `- <name>` 줄로 바꾼다. 없는 `judge` key: review_gate mapping의 마지막 줄 뒤에 그 mapping 들여쓰기로 `judge: <j>` 한 줄. 없는 `model_policy`·`backend`·`model` key도 같은 방식으로 그 provider mapping 끝에 넣는다. CLI args는 목록 token 전체를 새 목록으로 바꾼다(model·effort 값 밖의 항목과 순서는 그대로). 새 값은 `OMPYAMLScalar`(`pkg/content/agent_transformer_omp.go:25`)로 encode한다 |
+| 바꾸는 span | scalar(`judge`, `model`): 그 key 줄의 값 token(plain, `'…'`, `"…"`)만. 같은 줄의 inline 주석은 남는다. flow 목록: 같은 줄의 `[`부터 짝 `]`까지. block 목록: 항목 줄들을 같은 들여쓰기의 `- <name>` 줄로 바꾼다. 없는 `judge` key: review_gate mapping의 마지막 줄 뒤에 그 mapping 들여쓰기로 `judge: <j>` 한 줄. 없는 `model_policy`·`backend`·`model` key도 같은 방식으로 그 provider mapping 끝에 넣는다. CLI args는 대상 값 token의 raw span만 바꾸고 없는 flag는 마지막 raw 항목 뒤에 쌍으로 넣는다. 다른 항목은 placeholder를 포함해 bytes 그대로다. 그래서 대상 값 밖의 `${`는 거부 사유가 아니다(REQ-RVM-26). 새 값은 `OMPYAMLScalar`(`pkg/content/agent_transformer_omp.go:25`)로 encode한다 |
 | 거부 | 대상 key·값 node나 span 안의 node가 anchor 또는 alias, 부모 mapping에 merge key, 대상 값에 `${`, 부모가 flow mapping, 값이 block scalar(`|`, `>`)이거나 목록 항목이 scalar가 아님, block 목록 span 안의 주석 줄. 문구는 Form Text의 쓰기 거부 줄이고 `<key>`는 첫 거부 경로다 |
 | 검사 | `[NEW] verifyReviewLineEdit`: `verifyQualityLineEdit`(`quality_config_verify.go:20`)처럼 대상 경로를 뺀 두 문서가 같은 data(alias는 가리키는 data로)이고, 대상 경로가 계획 값이며, strict load와 `Validate`를 지나 load 결과가 baseline cfg에 계획 값만 바꾼 것과 같아야 한다. 하나라도 어긋나면 쓰지 않는다 |
 | 쓰기 | `atomicWriteQualityConfig`(`quality_config.go:258`)와 같은 atomic replace. 파일 mode는 그대로다 |

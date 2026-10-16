@@ -15,9 +15,9 @@
 - [ ] T9: Should. 메뉴 요약 1줄(`f.draw()` 뒤) (REQ-RVM-16).
 - [ ] T10: Should. Form Text en, help·README·CHANGELOG v0.50.126. 생성 표면을 고치면 `make generate-templates` (REQ-RVM-17, 18).
 - [ ] T11: 회귀와 smoke. `go test ./internal/cli/... ./pkg/...` 필터 없이, 300줄, `GOOS=windows GOARCH=amd64 go build ./...`, golangci-lint, test 변경이 T1 분류와 같은지. 이 repo의 실제 터미널에서 S15를 하고 `evidence/manual-smoke-revmodel.txt`에 경로를 치환해 남긴다. 빠지면 CD-1이 남는다 (REQ-RVM-19).
-- [ ] T12: CLI 공통과 claude. 소유: `[NEW] internal/cli/quality_compose_review_cli.go`(+test). 현재 값은 migration 뒤 사본에서 결정하고 편집은 raw `args` node에(`editCLIArgs`, 대상 flag 값만, 없으면 쌍 삽입, raw args가 없으면 migration args 삽입, alias·anchor·merge·block·placeholder 거부), 미리보기는 바뀐 flag 값만 raw 글자로, claude 네 model·effort·haiku, CLI 값 validation (REQ-RVM-05, 08, 09, 21, 25, 26).
+- [ ] T12: CLI 공통과 claude. 소유: `[NEW] internal/cli/quality_compose_review_cli.go`(+test). 현재 값은 migration 뒤 사본에서 결정하고 편집은 raw `args` node에(`editCLIArgs`, 대상 값의 raw span만, 없으면 마지막 raw 항목 뒤에 쌍, raw args가 없으면 migration args 삽입, args node가 alias·anchor·merge·block이거나 대상 값에 `${`가 있을 때만 거부, 다른 placeholder는 bytes 그대로), 미리보기는 바뀐 flag 값만 raw 글자로, claude 네 model·effort·haiku, CLI 값 validation (REQ-RVM-05, 08, 09, 21, 25, 26).
 - [ ] T13: codex CLI. 소유: T12 파일. 교집합이 빈 model 제외, effort 기본값, `model_policy: pinned`, `-m`/`--model`·`model_reasoning_effort=` 값만 교체(`ApplyCodexProviderProfile` 쓰지 않음), 못 읽음 안내, `reportCodexRuntimeFallback` 줄 escape (REQ-RVM-20, 22).
-- [ ] T14: agy와 OMP 전환. 소유: `[NEW] internal/cli/quality_compose_review_agy.go`(+test), T12 파일. `agyModelsRunner` seam, 15초·64 KiB, 엄격 해석과 family·묶음, `--model` 값 교체·맨 앞 삽입, 모든 CLI의 `OMP backend로 전환`, 이유 줄 (REQ-RVM-23, 24).
+- [ ] T14: agy와 OMP 전환. 소유: `[NEW] internal/cli/quality_compose_review_agy.go`(+test), T12 파일. `agyModelsRunner` seam, 15초·64 KiB, 엄격 해석과 family·묶음, `--model` 값 교체·마지막 raw 항목 뒤 삽입, 모든 CLI의 `OMP backend로 전환`, 이유 줄 (REQ-RVM-23, 24).
 
 ## Implementation Strategy
 
@@ -142,7 +142,7 @@ Wireframe B: 편집 없이 확인 요청을 한 뒤(바뀐 것이 없으니 확�
 
 ## Scope Expansion Rule
 
-- 구현 중 요구사항보다 넓은 제약이나 동작(예: Migration 3 변경으로 명령 목록에서 provider 빼기, agy model 목록 해석(G1-3), CLI args의 model·effort 밖 flag 편집, `orchestra.judge` 쓰기, CLI backend args 편집, 확인 요청 자동 실행, `degraded_reasons` 규칙 변경, `--multi` 의미 변경)이 필요해 보이면 요구사항으로 올리지 않는다. scope expansion으로 표시하고 위 표에 probe 행을 더해 fan-out 전에 실제 loader(`loadHarnessConfigForFlags`) 경로에서 확인한다(행은 셋을 넘기지 않으므로 가장 덜 위험한 행과 바꾼다).
+- 구현 중 요구사항보다 넓은 제약이나 동작(예: Migration 3 변경으로 명령 목록에서 provider 빼기, CLI args의 model·effort 값 밖 항목 편집, `orchestra.judge` 쓰기, 확인 요청 자동 실행, `degraded_reasons` 규칙 변경, `--multi` 의미 변경)이 필요해 보이면 요구사항으로 올리지 않는다. scope expansion으로 표시하고 위 표에 probe 행을 더해 fan-out 전에 실제 loader(`loadHarnessConfigForFlags`) 경로에서 확인한다(행은 셋을 넘기지 않으므로 가장 덜 위험한 행과 바꾼다).
 - 새 ACL·호환성 제한·보안 제한도 같다. 이 SPEC은 새 key를 쓰지 않으므로 v0.50.125 호환 제한을 더하는 것은 scope expansion이다.
 
 ## Gate Applicability

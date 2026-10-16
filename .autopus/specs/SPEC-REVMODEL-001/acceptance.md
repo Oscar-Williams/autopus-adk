@@ -150,7 +150,7 @@ And 더해진 key는 S21의 `orchestra.providers.gemini.backend`·`orchestra.pro
 Priority: Must
 Given RL, temp bin의 `omp`와 CATG가 있고, `agyModelsRunner`가 (1) `evidence/acceptance-fixtures.md`의 AGY(관측 sample 다섯 줄 그대로), (2) AGY에 `gemini-3.8-flash-low\tGemini 3.8 Flash (Low)`를 더한 것, (3) 탭 없는 줄·대문자 id·display name의 ESC·머리 줄만·exit 1·64 KiB 초과 여섯 변형을 낸다
 When (1)에서 gemini model `gemini-4-argon` → `적용`, (2)에서 gemini model `gemini-3.8-flash` → effort `low` → `적용`, (3)의 각 변형으로 gemini model Select까지 연다
-Then (1)의 gemini 선택지는 정확히 `그대로 — agy`, `gemini-3.8-flash`, `gemini-4-argon`, `OMP backend로 전환`이고 effort Select 없이 args가 `[--model, gemini-4-argon-medium, --print, ""]`가 된다(다른 항목 bytes 그대로)
+Then (1)의 gemini 선택지는 정확히 `그대로 — agy`, `gemini-3.8-flash`, `gemini-4-argon`, `OMP backend로 전환`이고 effort Select 없이 args가 `[--print, "", --model, gemini-4-argon-medium]`가 된다(다른 항목 bytes 그대로)
 And (2)의 effort Select는 `high — Gemini 3.8 Flash (High)`, `low — Gemini 3.8 Flash (Low)`이고 args의 `--model` 값은 `gemini-3.8-flash-low`다
 And (3)은 모두 `gemini(agy) model 목록을 읽지 못해 agy model은 그대로입니다`를 쓰고 agy model 선택지 없이 `그대로 — agy`, `OMP backend로 전환`만 보인다
 ### S24: CLI baseline과 다른 args 보존
@@ -173,10 +173,10 @@ Then 오류는 차례로 `claude model claude-opus-9는 이 provider의 선택�
 And 탭의 바뀌는 설정은 정확히 `orchestra.providers.claude.args --model claude-fable-5-1 → claude-opus-5-5`, `orchestra.providers.claude.args --effort max → xhigh`, `orchestra.providers.gemini.args --model 없음 → gemini-4-argon-medium` 순서이고 다른 args 항목은 어느 줄에도 없다
 ### S27: CLI 미리보기는 비밀을 보이지 않는다
 Priority: Must
-Given RL에서 claude args가 `[--print, --api-key, ${REVIEW_TOKEN}, --model, claude-fable-5-1, --effort, max]`이고 환경 변수 `REVIEW_TOKEN=s3cr3t-review-value`인 사본과, codex args의 `-m` 값이 `${CODEX_MODEL}`(환경 변수 `CODEX_MODEL=gpt-6-astra`)인 사본이 있다
-When 첫 사본에서 claude model `claude-opus-5-5` → Enter → 확인 호출 Enter → `적용`, 둘째 사본에서 codex model `gpt-6-luna` → `적용`을 고른다
-Then 첫 사본의 stdout·stderr 어디에도 `s3cr3t-review-value`, `${REVIEW_TOKEN}`, `--api-key`가 없고 바뀌는 설정은 `orchestra.providers.claude.args --model claude-fable-5-1 → claude-opus-5-5` 한 줄이며, 파일에서는 `${REVIEW_TOKEN}` 글자가 그대로다
-And 둘째 사본은 `codex의 -m 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_MODEL}`을 쓰고 파일 SHA-256이 적용 전과 같으며 출력에 `gpt-6-astra`가 없다
+Given RL에서 claude args가 `[--print, --api-key, "${REVIEW_TOKEN}", --model, claude-fable-5-1, --effort, max]`이고 환경 변수 `REVIEW_TOKEN=rvm-sentinel-7f3a9c`인 사본(T1)과, codex args의 `-m` 값이 `"${CODEX_MODEL}"`이고 `CODEX_MODEL=rvm-model-sentinel-41`인 사본(T2)이 있다
+When T1에서 claude model `claude-opus-5-5` → Enter → 확인 호출 Enter → `적용`을 고르고, T2에서 리뷰 탭의 모든 Select를 Enter로 지난다
+Then T1의 stdout·stderr(미리보기 포함) 어디에도 `rvm-sentinel-7f3a9c`, `REVIEW_TOKEN`, `--api-key`가 없고 바뀌는 설정은 `orchestra.providers.claude.args --model claude-fable-5-1 → claude-opus-5-5` 한 줄이며, 적용은 성공해 파일의 args 줄에서 `claude-fable-5-1` token만 `claude-opus-5-5`로 바뀌고 `"${REVIEW_TOKEN}"` 글자는 그대로다
+And T2는 codex model Select 대신 `codex의 -m 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_MODEL}`을 쓰고, 출력 어디에도 `rvm-model-sentinel-41`이 없으며 파일 SHA-256이 같다. 두 판정은 sentinel 문자열만 찾으므로 catalog·표의 정상 출력에 걸리지 않는다
 
 ## Oracle Acceptance Notes
 
