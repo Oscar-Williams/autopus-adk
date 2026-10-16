@@ -51,7 +51,8 @@ func runInitComposeStepCancellable(
 		warnUpdateCompose(cmd.OutOrStdout(), lang, err)
 		return driftGenerationSnapshot{}, false
 	}
-	session := newComposeSession(dir, cfg, sources, lang, composeSessionMemory, nil)
+	session := newComposeSession(dir, cfg, sources, lang, composeSessionMemory, nil).
+		withReaFallbackNotice(cmd.Context())
 	var snapshot driftGenerationSnapshot
 	if composing {
 		var result composeDriverResult

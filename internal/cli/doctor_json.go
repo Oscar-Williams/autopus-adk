@@ -22,6 +22,7 @@ type doctorJSONData struct {
 	RuleConflicts []doctorRuleConflictPayload   `json:"rule_conflicts,omitempty"`
 	InstalledCLIs []doctorCLIPayload            `json:"installed_clis,omitempty"`
 	Hygiene       *statusHygienePayload         `json:"hygiene,omitempty"`
+	Rea           *doctorReaPayload             `json:"rea,omitempty"`
 }
 
 type doctorConfigPayload struct {
@@ -134,6 +135,7 @@ func collectDoctorJSONReport(cmd *cobra.Command, opts doctorOptions) doctorJSONR
 		report.collectHookChecks(opts.dir)
 	}
 	report.collectEditGuardChecks(opts.dir, cfg)
+	report.collectReaChecks(ctx, opts.dir, cfg)
 	report.collectRetiredOrchestraChecks(opts.dir, cfg)
 	report.collectContextWeightChecks(opts.dir)
 	report.collectHygieneChecks(opts.dir)

@@ -22,6 +22,7 @@ type InitWizardOpts struct {
 	Accessible      bool     // true for non-TTY / --yes mode
 	Providers       []string // detected orchestra providers
 	ExistingProfile string   // pre-set profile; non-empty skips the profile step
+	Rea             *bool    // pre-set from --rea/--no-rea or an existing decision; non-nil skips the REA step
 }
 
 // InitWizardResult holds all wizard selections.
@@ -31,6 +32,7 @@ type InitWizardResult struct {
 	AILang       string
 	Quality      string // ultra, balanced, or QualityRoleGroups
 	ReviewGate   bool
+	Rea          *bool // register the project-scope REA MCP; nil leaves it to init's default (SPEC-REA-001)
 	Methodology  string
 	UsageProfile string
 	Cancelled    bool
@@ -113,6 +115,10 @@ func buildStepList(opts InitWizardOpts) []stepBuilder {
 		entries = append(entries, entry{"reviewgate", func(idx, total int, r *InitWizardResult) *huh.Form {
 			return buildReviewGateStep(idx, total, r, opts)
 		}})
+	}
+
+	if reaStepWanted(opts) {
+		entries = append(entries, entry{"rea", buildReaStep})
 	}
 
 	entries = append(entries, entry{"methodology", func(idx, total int, r *InitWizardResult) *huh.Form {
@@ -249,6 +255,7 @@ func defaultResult(opts InitWizardOpts) *InitWizardResult {
 		AILang:       sysLang,
 		Quality:      "balanced",
 		ReviewGate:   len(opts.Providers) >= 2,
+		Rea:          reaDefault(opts),
 		Methodology:  "tdd",
 		UsageProfile: "developer",
 	}

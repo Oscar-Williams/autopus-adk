@@ -31,6 +31,9 @@ func cloneHarnessConfig(cfg *config.HarnessConfig) (*config.HarnessConfig, error
 	if err := yaml.Unmarshal(data, &clone); err != nil {
 		return nil, fmt.Errorf("unmarshal config clone: %w", err)
 	}
+	// The round trip drops yaml:"-" fields; the run's REA action must survive
+	// it so a preview and a detected platform write what the run decided.
+	clone.Runtime.ReaMCP = cfg.Runtime.ReaMCP
 	return &clone, nil
 }
 

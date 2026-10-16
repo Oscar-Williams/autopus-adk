@@ -33,6 +33,7 @@ func TestComposeLineInput_MatchesTheSPECMODELUX001Output(t *testing.T) {
 	t.Run("update R enter", func(t *testing.T) {
 		run := newComposeUpdateRun(t, true, "")
 		dir := run.settled(t, "R")
+		run.reaSettledOff(t, dir)
 		runs := countComposeFormRuns(t)
 
 		out, err := runComposeUpdate(t, strings.NewReader("\n"), "--dir", dir)
