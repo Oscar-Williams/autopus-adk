@@ -261,7 +261,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - 실행 모드: subagent는 fork·background로 돌 수 있고 Claude가 foreground를 고를 수 없을 수 있다(review round 1의 문서 근거). 이 계약은 실행 모드에 기대지 않는다. 에이전트는 사용자와 대화하지 않고 동의·확인은 메인 세션이 받는다. background에서도 MCP 도구와 Read·Grep·Glob은 남는다.
 - `permissionMode: default`는 메인 세션이 `acceptEdits`·`auto`·`bypassPermissions`면 덮일 수 있다. 그래서 도구 권한 질문을 runtime capture 동의로 보지 않는다(REQ-REA-21).
 - Claude Code 문서(2026-10-15): `tools`는 `mcp__<server>`와 `mcp__<server>__*`를 받고, 해석되는 항목이 하나라도 있으면 실행된다. REA가 등록되지 않아도 Read·Grep·Glob이 해석되어 에이전트가 미등록 문장을 낸다.
-- 보안 감사 M2(2026-10-16, lead 결정): subagent는 runtime capture 도구를 갖지 않는다. 도구 분류는 `evidence/rea-tool-catalog-6.5.0.md`(rea-agents@6.5.0 `dist/contracts/toolEffects.js`의 206개 effect audit을 실행 없이 읽은 결과: 정적 135, runtime 67, 호출자 경로 쓰기 4)이고 코드의 원천은 `pkg/reamcp/tools.go`다. pin을 바꾸면 이 분류를 다시 한다.
+- 보안 감사 M2(2026-10-16, lead 결정): subagent는 runtime capture 도구를 갖지 않는다. 도구 분류는 `evidence/rea-tool-catalog-6.5.0.md`(rea-agents@6.5.0 `dist/contracts/toolEffects.js`의 207개 effect audit을 실행 없이 읽은 결과: 정적 135, runtime 68, 호출자 경로 쓰기 4)이고 코드의 원천은 `pkg/reamcp/tools.go`다. pin을 바꾸면 이 분류를 다시 한다.
 
 ### Reverse Route Contract
 

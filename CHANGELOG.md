@@ -96,7 +96,7 @@ All notable changes to this project will be documented in this file.
     project MCP 자동 승인은 쓰지 않는다.
 - **REA reverse-engineer 도구 표면을 정적 분석으로 좁힌다** (2026-10-16, SPEC-REA-001 보안 감사 M1–M3):
   - Claude Code·Antigravity의 reverse-engineer는 REA 서버 전체(`mcp__rea`, `mcp_rea_*`) 대신 rea-agents@6.5.0의
-    정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 67개와 호출자가 고른 경로에
+    정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 68개와 호출자가 고른 경로에
     쓰는 도구 4개는 메인 세션만 부르고, runtime 도구는 운영자의 `허용` 답 뒤에만 부른다(`--auto`도 묻는다).
     분류와 근거는 `.autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md`다.
   - Codex reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`를 쓴다. Codex 역할에는 도구 목록이 없고 MCP
