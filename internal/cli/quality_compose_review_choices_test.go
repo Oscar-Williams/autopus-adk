@@ -54,15 +54,17 @@ func TestReviewThinking_FollowsTheOMPAutopusRule(t *testing.T) {
 func TestReviewModelOptions_MarkAModelOffTheCatalog(t *testing.T) {
 	gemini := reviewModelChoices("gemini", reviewChoicesOf(t, reviewCatalogCATN))
 
-	options := reviewModelOptions("그대로", "google-antigravity/gemini-3.1-pro:high", gemini, composeReviewTextKO)
+	options := reviewModelOptions("그대로", "google-antigravity/gemini-3.1-pro:high", "google-antigravity/gemini-3.1-pro:high", gemini, composeReviewTextKO)
 
 	require.Len(t, options, 2)
 	assert.Equal(t, composeOption[string]{"그대로 — google-antigravity/gemini-3.1-pro:high (catalog에 없음)", ""}, options[0])
 	assert.Equal(t, composeOption[string]{"google-antigravity/gemini-3.8-flash", "google-antigravity/gemini-3.8-flash"}, options[1])
 
 	codex := reviewModelChoices("codex", reviewCATGChoices(t))
-	options = reviewModelOptions("그대로", "openai-codex/gpt-6-astra:max", codex, composeReviewTextKO)
+	options = reviewModelOptions("그대로", "openai-codex/gpt-6-astra:max", "openai-codex/gpt-6-astra:max", codex, composeReviewTextKO)
 	assert.Equal(t, "그대로 — openai-codex/gpt-6-astra:max", options[0].label)
+	options = reviewModelOptions("그대로", "openai-codex/gpt-6-astra:max", `"openai-codex/gpt-6-astra:max"`, codex, composeReviewTextKO)
+	assert.Equal(t, `그대로 — "openai-codex/gpt-6-astra:max"`, options[0].label, "the label shows the text it is given")
 }
 
 // S4(c), REQ-RVM-14: the catalog is read once per tab entry, and a failed

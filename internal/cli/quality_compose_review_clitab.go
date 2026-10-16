@@ -23,17 +23,20 @@ func (f *composeFormRun) reviewRawRefused(tab *reviewTabState, name string) bool
 }
 
 // reviewPlaceholderRefused prints the CLI value refusal line and reports true
-// when a value the provider's model select could change is an environment
-// placeholder in the raw document: the OMP model scalar, or a model or effort
-// flag value. The provider then keeps every value (REQ-RVM-26); a placeholder
-// in any other args element blocks nothing.
+// when a value the provider's model select reads or could change is an
+// environment placeholder in the raw document: the OMP model scalar, or a
+// CLI provider's binary, which decides its row, or its model or effort flag
+// value. The provider then keeps every value (REQ-RVM-26); a placeholder in
+// any other args element blocks nothing.
 func (f *composeFormRun) reviewPlaceholderRefused(tab *reviewTabState, name string) bool {
 	raw := tab.baseline.Raw[name]
 	flag, value := "model", raw.Model
 	if !tab.working.OMP[name] {
 		flag, value = "", ""
 		row := reviewArgsRowFor(tab.baseline.Binaries[name])
-		for _, found := range []reviewArgValue{findReviewArg(raw.Args, row.model), reviewEffortArg(row, raw.Args)} {
+		for _, found := range []reviewArgValue{
+			{found: true, spelling: "binary", value: raw.Binary}, findReviewArg(raw.Args, row.model), reviewEffortArg(row, raw.Args),
+		} {
 			if found.found && strings.Contains(found.value, "${") {
 				flag, value = found.spelling, found.value
 				break
@@ -77,14 +80,14 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	switchTo := f.reviewSwitchChoices(tab, name)
 	if len(models) == 0 && len(switchTo) == 0 {
 		if row.kind != reviewRowClaude && row.kind != reviewRowCodex {
-			f.reviewLine(fmt.Sprintf(text.NoModelList, name, binary))
+			f.reviewLine(fmt.Sprintf(text.NoModelList, name, tab.baseline.binaryText(name)))
 		}
 		return nil
 	}
 	working := tab.working.CLI[name]
 	keep := text.CLIBackend
 	if listed {
-		keep = reviewCLIKeepText(binary, working)
+		keep = reviewCLIKeepText(tab.baseline.binaryText(name), working)
 	}
 	options := []composeOption[string]{{f.form.Keep + " — " + keep, ""}}
 	for _, model := range models {

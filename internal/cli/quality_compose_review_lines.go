@@ -24,7 +24,7 @@ func reviewChangeLines(b reviewBaseline, working reviewComposition, text compose
 		changes = append(changes, lines...)
 	}
 	if working.Judge != b.Judge {
-		changes = append(changes, "spec.review_gate.judge "+reviewJudgeText(b.Judge, text)+" → "+reviewJudgeText(working.Judge, text))
+		changes = append(changes, "spec.review_gate.judge "+reviewJudgeText(b.RawJudge, text)+" → "+reviewJudgeText(working.Judge, text))
 	}
 	if turnedOff {
 		notes = append(notes, text.CommandsNote)
@@ -35,9 +35,9 @@ func reviewChangeLines(b reviewBaseline, working reviewComposition, text compose
 	return changes, notes
 }
 
-// reviewProviderChanges is one provider's change lines. Old CLI values come
-// from the raw document, never from the expanded config, and only the flags
-// the edit changes appear (REQ-RVM-26).
+// reviewProviderChanges is one provider's change lines. Old values come from
+// the raw document, never from the expanded config, and of a CLI provider
+// only the flags the edit changes appear (REQ-RVM-26).
 func reviewProviderChanges(b reviewBaseline, working reviewComposition, name string, text composeReviewText) []string {
 	key, raw := "orchestra.providers."+name+".", b.Raw[name]
 	switch {
@@ -48,7 +48,7 @@ func reviewProviderChanges(b reviewBaseline, working reviewComposition, name str
 		}
 	case working.OMP[name]:
 		if working.Models[name] != b.Models[name] {
-			return []string{key + "model " + b.Models[name] + " → " + working.Models[name]}
+			return []string{key + "model " + reviewOrNone(raw.Model, text) + " → " + working.Models[name]}
 		}
 	case working.CLI[name] != b.CLI[name]:
 		row := reviewArgsRowFor(b.Binaries[name])
@@ -93,8 +93,8 @@ func reviewArgsChangeLines(prefix string, row reviewArgsRow, raw []string, want 
 // per visible provider, its review state, its model, and the judge mark,
 // each changed cell ending in `*`. An unchanged model cell shows the raw
 // document's text, so an environment value never reaches the table: a CLI
-// cell reads `<binary> <model> · <effort>`, and a cell without raw text shows
-// only its binary or backend.
+// cell reads `<binary> <model> · <effort>` with the binary as written, and a
+// cell without raw text shows only its binary or backend.
 func reviewAfterTable(b reviewBaseline, working reviewComposition, text composeReviewText) composeTableLayout {
 	layout := composeTableLayout{header: []string{text.ColProvider, text.ColReview, text.ColModel, text.Judge}}
 	for _, name := range b.Visible {
@@ -118,7 +118,10 @@ func reviewAfterTable(b reviewBaseline, working reviewComposition, text composeR
 			if changed = value != b.CLI[name]; !changed {
 				value = reviewCLIValueOf(reviewArgsRowFor(b.Binaries[name]), b.Raw[name].Args)
 			}
-			model = reviewCLICellText(b.Binaries[name], value)
+			model = text.CLIBackend
+			if binary := b.binaryText(name); binary != "" {
+				model = reviewCLICellText(binary, value)
+			}
 		}
 		judge := ""
 		if working.Judge == name {

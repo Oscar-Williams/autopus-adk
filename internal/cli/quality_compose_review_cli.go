@@ -1,12 +1,9 @@
 package cli
 
 import (
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -78,86 +75,6 @@ func reviewCodexModels(snapshot driftGenerationSnapshot) ([]reviewCLIModel, bool
 	}
 	slices.SortFunc(models, func(a, b reviewCLIModel) int { return strings.Compare(a.ID, b.ID) })
 	return models, true
-}
-
-// reviewRawProvider is the raw document's view of one provider, without
-// environment expansion: its args values (nil when the key is absent or not a
-// list) and its model, model_policy, and backend scalars. Previews read CLI
-// values only from here (REQ-RVM-26).
-type reviewRawProvider struct {
-	Args    []string
-	Model   string
-	Policy  string
-	Backend string
-}
-
-// reviewRawOf is the view of a config no file holds, such as init's.
-func reviewRawOf(cfg *config.HarnessConfig) map[string]reviewRawProvider {
-	raw := make(map[string]reviewRawProvider, len(cfg.Orchestra.Providers))
-	for name, entry := range cfg.Orchestra.Providers {
-		raw[name] = reviewRawProvider{Args: entry.Args, Model: entry.Model, Policy: entry.ModelPolicy, Backend: entry.Backend}
-	}
-	return raw
-}
-
-// readReviewRaw reads the view of every provider from dir's autopus.yaml.
-// A file that cannot be read or parsed, or that holds no providers mapping,
-// gives no provider a view, never the expanded config's: the tab then keeps
-// every model rather than show or decide on a value it cannot read as
-// written (REQ-RVM-26).
-func readReviewRaw(dir string) map[string]reviewRawProvider {
-	raw := map[string]reviewRawProvider{}
-	data, err := os.ReadFile(filepath.Join(dir, "autopus.yaml"))
-	if err != nil {
-		return raw
-	}
-	document, _, err := parseAutopusConfigDocument(data)
-	if err != nil {
-		return raw
-	}
-	providers := yamlPathValue(document, []string{"orchestra", "providers"})
-	if providers == nil || providers.Kind != yaml.MappingNode {
-		return raw
-	}
-	for i := 0; i+1 < len(providers.Content); i += 2 {
-		if view, ok := reviewRawViewOf(providers.Content[i+1]); ok {
-			raw[providers.Content[i].Value] = view
-		}
-	}
-	return raw
-}
-
-// reviewRawViewOf is the view of one provider entry, or false when the entry
-// takes a value from elsewhere: it is an alias or holds a merge key, or its
-// args, model, model_policy, backend, or an args element is an alias.
-// Nothing such an entry holds reads as written, and the line writer refuses
-// it anyway.
-func reviewRawViewOf(entry *yaml.Node) (reviewRawProvider, bool) {
-	if entry.Kind != yaml.MappingNode || yamlMappingHasMerge(entry) {
-		return reviewRawProvider{}, false
-	}
-	for _, key := range []string{"args", "model", "model_policy", "backend"} {
-		if _, value := yamlMappingPair(entry, key); value != nil && value.Kind == yaml.AliasNode {
-			return reviewRawProvider{}, false
-		}
-	}
-	view := reviewRawProvider{
-		Model: reviewRawScalar(entry, "model"), Policy: reviewRawScalar(entry, "model_policy"), Backend: reviewRawScalar(entry, "backend"),
-	}
-	if _, args := yamlMappingPair(entry, "args"); args != nil && args.Kind == yaml.SequenceNode {
-		if slices.ContainsFunc(args.Content, func(item *yaml.Node) bool { return item.Kind == yaml.AliasNode }) {
-			return reviewRawProvider{}, false
-		}
-		view.Args = reviewArgsValues(args)
-	}
-	return view, true
-}
-
-func reviewRawScalar(mapping *yaml.Node, key string) string {
-	if _, value := yamlMappingPair(mapping, key); value != nil && value.Kind == yaml.ScalarNode {
-		return value.Value
-	}
-	return ""
 }
 
 // reviewMigratedConfig is a detached copy of cfg after

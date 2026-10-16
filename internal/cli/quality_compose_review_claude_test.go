@@ -144,26 +144,24 @@ func TestReviewCLI_S26ClaudeValidationAndLines(t *testing.T) {
 	}, plan.Changes)
 }
 
-// A file session whose autopus.yaml can no longer be read has no raw view:
-// each participating provider gets the reason line instead of its model
-// select, so an expanded placeholder never reaches the screen, and nothing
-// is written (REQ-RVM-26).
+// A file session whose autopus.yaml can no longer be read has nothing to
+// show as written: the tab prints its refusal line before any select, so an
+// expanded placeholder never reaches the screen, and nothing is written
+// (REQ-RVM-26).
 func TestReviewTab_NoRawViewKeepsEveryModel(t *testing.T) {
 	t.Setenv("REVIEW_MODEL", "rvm-sentinel-7f3a9c")
 	dir := writeReviewRL(t)
 	replaceReviewFile(t, dir, "--model, claude-fable-5-1,", `--model, "${REVIEW_MODEL}",`)
 	path := filepath.Join(dir, "autopus.yaml")
 
-	// participation ×3, judge Enter, check Enter, the menu's default.
+	// the menu's default after the refusal.
 	run := runReviewCLIFormsLate(t, dir, mustReadComposeCatalog(t, "CAT-E"), nil,
-		func() { require.NoError(t, os.Remove(path)) }, reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n"})...)
+		func() { require.NoError(t, os.Remove(path)) }, reviewLines(reviewOpen, []string{"\n"})...)
 
 	require.NoError(t, run.err, run.out)
-	for _, name := range []string{"claude", "codex", "gemini"} {
-		assert.Equal(t, 1, strings.Count(run.out, "autopus.yaml 원문에서 "+name+" 항목을 읽지 못해 이 탭에서 model을 바꾸지 않습니다\n"), name)
-		assert.NotContains(t, run.out, name+" model \n")
-	}
-	assert.Contains(t, run.out, "변경 없음\n")
+	assert.Contains(t, run.out, "autopus.yaml의 리뷰 설정을 원문 그대로 읽을 수 없어 이 탭은 아무것도 바꾸지 않습니다\n")
+	assert.NotContains(t, run.out, "리뷰 참여")
+	assert.NotContains(t, run.out, "멀티프로바이더 리뷰: ")
 	assert.NotContains(t, run.out, "rvm-sentinel-7f3a9c")
 	_, err := os.Stat(path)
 	assert.True(t, os.IsNotExist(err), "nothing is written")
@@ -177,21 +175,27 @@ func TestReadReviewRaw_NoViewWithoutAReadableFile(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "autopus.yaml"), []byte(text), 0o644))
 		return dir
 	}
-	assert.Empty(t, readReviewRaw(t.TempDir()), "no file")
-	assert.Empty(t, readReviewRaw(write("orchestra: [\n")), "no YAML")
-	assert.Empty(t, readReviewRaw(write("mode: full\n")), "no providers mapping")
+	for name, raw := range map[string]*reviewRawDocument{
+		"no file": readReviewRaw(t.TempDir()), "no YAML": readReviewRaw(write("orchestra: [\n")),
+	} {
+		assert.Empty(t, raw.Providers, name)
+		assert.False(t, raw.Names, name)
+	}
+	bare := readReviewRaw(write("mode: full\n"))
+	assert.Empty(t, bare.Providers, "no providers mapping")
+	assert.True(t, bare.Names, "the defaults' names are no one's placeholder")
 
 	t.Setenv("REVIEW_MODEL", "rvm-sentinel-7f3a9c")
 	dir := writeReviewRL(t)
 	replaceReviewFile(t, dir, "--model, claude-fable-5-1,", `--model, "${REVIEW_MODEL}",`)
-	assert.Equal(t, []string{"--print", "--model", "${REVIEW_MODEL}", "--effort", "max"}, readReviewRaw(dir)["claude"].Args)
+	assert.Equal(t, []string{"--print", "--model", "${REVIEW_MODEL}", "--effort", "max"}, readReviewRaw(dir).Providers["claude"].Args)
 }
 
-// Without a raw view, an unchanged after table cell names only the binary
-// or the backend, never a value of the expanded config.
+// Without a raw view, an unchanged after table cell names only the backend,
+// never a value of the expanded config, the binary included.
 func TestReviewAfterTable_NoRawViewShowsNoValue(t *testing.T) {
 	cells := func(cfg *config.HarnessConfig) []string {
-		baseline := newReviewBaseline(cfg, map[string]reviewRawProvider{})
+		baseline := newReviewBaseline(cfg, &reviewRawDocument{Providers: map[string]reviewRawProvider{}, Names: true})
 		var cells []string
 		for _, row := range reviewAfterTable(baseline, baseline.reviewComposition.clone(), composeReviewTextKO).rows {
 			cells = append(cells, row[2])
@@ -201,7 +205,7 @@ func TestReviewAfterTable_NoRawViewShowsNoValue(t *testing.T) {
 	assert.Equal(t, []string{"omp", "omp", "omp"}, cells(reviewR3Config()))
 	cli := reviewR3Config()
 	reviewRLConfig(cli)
-	assert.Equal(t, []string{"claude", "codex", "agy"}, cells(cli))
+	assert.Equal(t, []string{"CLI backend", "CLI backend", "CLI backend"}, cells(cli))
 }
 
 // An entry that takes a value from elsewhere — an alias, a merge key, or an
@@ -233,7 +237,7 @@ func TestReadReviewRaw_NoViewForAnEntryFromElsewhere(t *testing.T) {
             args: [--print, --model, claude-fable-5-1]
 `), 0o644))
 
-	raw := readReviewRaw(dir)
+	raw := readReviewRaw(dir).Providers
 
 	assert.Equal(t, []string{"codex", "plain"}, slices.Sorted(maps.Keys(raw)))
 	assert.Equal(t, "openai-codex/gpt-6-astra:max", raw["codex"].Model)

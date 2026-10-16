@@ -72,17 +72,17 @@ func reviewCandidate(cfg *config.HarnessConfig, b reviewBaseline, working review
 // reviewCheckModels is the model a result line names for each OMP provider:
 // a model the tab chose, as chosen, and an unchanged one as the raw document
 // writes it. The check runs the candidate's expanded model, but an
-// environment value never reaches the line (REQ-RVM-26); a provider with no
-// raw model names none.
+// environment value never reaches the line (REQ-RVM-26): a provider with no
+// raw model, or one written as a placeholder, names none.
 func reviewCheckModels(b reviewBaseline, working reviewComposition) map[string]string {
 	shown := map[string]string{}
 	for _, name := range b.Visible {
-		switch {
+		switch raw := b.Raw[name].Model; {
 		case !working.OMP[name]:
 		case !b.OMP[name] || working.Models[name] != b.Models[name]:
 			shown[name] = working.Models[name]
-		default:
-			shown[name] = b.Raw[name].Model
+		case raw != "" && !strings.Contains(raw, "${"):
+			shown[name] = raw
 		}
 	}
 	return shown

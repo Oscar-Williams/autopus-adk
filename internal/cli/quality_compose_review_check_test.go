@@ -103,28 +103,28 @@ func TestReviewCheckLine_ResultShapes(t *testing.T) {
 }
 
 // The shown model of an OMP provider: the chosen one, the raw text of an
-// unchanged one, and none without raw text; never the expanded value.
+// unchanged one, and none without raw text or for a placeholder; never the
+// expanded value.
 func TestReviewCheckModels_ChosenOrRaw(t *testing.T) {
 	cfg := reviewR3Config()
 	cfg.Orchestra.Providers["codex"] = reviewOMPEntry("openai-codex/rvm-sentinel-7f3a9c:max")
-	baseline := newReviewBaseline(cfg, map[string]reviewRawProvider{
+	baseline := newReviewBaseline(cfg, &reviewRawDocument{Names: true, Providers: map[string]reviewRawProvider{
 		"claude": {Backend: "omp", Model: "anthropic/claude-fable-5-1:max"},
 		"codex":  {Backend: "omp", Model: "${CODEX_REVIEW_MODEL}"},
-	})
+	}})
 	working := baseline.reviewComposition.clone()
 	working.Models["claude"] = "anthropic/claude-opus-5-5:high"
 
-	assert.Equal(t, map[string]string{
-		"claude": "anthropic/claude-opus-5-5:high", "codex": "${CODEX_REVIEW_MODEL}", "gemini": "",
-	}, reviewCheckModels(baseline, working))
+	assert.Equal(t, map[string]string{"claude": "anthropic/claude-opus-5-5:high"}, reviewCheckModels(baseline, working))
+	working.Models["claude"] = baseline.Models["claude"]
+	assert.Equal(t, map[string]string{"claude": "anthropic/claude-fable-5-1:max"}, reviewCheckModels(baseline, working))
 	assert.Equal(t, "확인 호출 gemini: 통과", reviewCheckLine(cfg, reviewCheckModels(baseline, working),
 		providerSmokeResult{Provider: "gemini", Status: "pass"}, composeReviewTextKO))
 }
 
-// The result line names an unchanged OMP model as autopus.yaml writes it:
-// the check runs the expanded placeholder, but its value never reaches the
-// screen.
-func TestReviewTab_CheckLineNamesTheRawModel(t *testing.T) {
+// The result line names no model written as a placeholder: the check runs
+// the expanded value, but it never reaches the screen.
+func TestReviewTab_CheckLineOmitsAPlaceholderModel(t *testing.T) {
 	t.Setenv("CODEX_REVIEW_MODEL", "openai-codex/rvm-sentinel-7f3a9c:max")
 	dir := writeReviewR3(t)
 	replaceReviewFile(t, dir, "model: openai-codex/gpt-6-astra:max", "model: ${CODEX_REVIEW_MODEL}")
@@ -134,7 +134,7 @@ func TestReviewTab_CheckLineNamesTheRawModel(t *testing.T) {
 
 	require.NoError(t, run.err, run.out)
 	assert.Contains(t, run.out, "codex의 model 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_REVIEW_MODEL}\n")
-	assert.Contains(t, run.out, "확인 호출 codex (${CODEX_REVIEW_MODEL}): 통과\n")
+	assert.Contains(t, run.out, "확인 호출 codex: 통과\n")
 	assert.NotContains(t, run.out, "rvm-sentinel-7f3a9c")
 	requests := run.smoke.recorded()
 	require.Len(t, requests, 3)
