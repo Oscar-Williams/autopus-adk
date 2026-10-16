@@ -5,6 +5,7 @@ package tui_test
 // token as Esc, leaving the line after it for the next form.
 
 import (
+	"errors"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -106,4 +107,44 @@ func TestNavAccessible_FollowsTERMDumb(t *testing.T) {
 	assert.True(t, tui.NavAccessible())
 	t.Setenv("TERM", "xterm-256color")
 	assert.False(t, tui.NavAccessible())
+}
+
+// An invalid answer before the back token: the token ends the current
+// prompt with its default, so huh never takes the invalid line as the answer.
+// A Select would otherwise index outside its options (9 → [8], x → [-1]) and
+// an Input would keep the rejected text.
+func TestRunNavAccessible_InvalidAnswerThenBack(t *testing.T) {
+	for _, input := range []string{"9\nb\n", "x\nb\n", "0\nback\n", "4\n뒤로\n3\n"} {
+		value := "b"
+		var err error
+		assert.NotPanics(t, func() {
+			err = tui.RunNavAccessible(abcSelect(&value), tui.NavFrame{}, strings.NewReader(input), &strings.Builder{})
+		}, "%q", input)
+		assert.ErrorIs(t, err, tui.ErrNavBack, "%q", input)
+		assert.Equal(t, "b", value, "%q keeps the select's value", input)
+	}
+	confirmed := true
+	confirm := huh.NewForm(huh.NewGroup(huh.NewConfirm().Title("C").Value(&confirmed)))
+	assert.ErrorIs(t, tui.RunNavAccessible(confirm, tui.NavFrame{}, strings.NewReader("x\nb\n"), &strings.Builder{}), tui.ErrNavBack)
+	assert.True(t, confirmed)
+
+	reject := func(text string) error {
+		if text == "" || text == "bad" || text == "x" {
+			return errors.New("rejected")
+		}
+		return nil
+	}
+	for _, input := range []string{"bad\nb\n", "x\nback\n", "\nb\n"} {
+		text := "keep"
+		form := huh.NewForm(huh.NewGroup(huh.NewInput().Title("I").Validate(reject).Value(&text)))
+		err := tui.RunNavAccessible(form, tui.NavFrame{}, strings.NewReader(input), &strings.Builder{})
+		assert.ErrorIs(t, err, tui.ErrNavBack, "%q", input)
+		assert.Equal(t, "keep", text, "%q keeps the input's value", input)
+	}
+	// The line after the token still answers the next form.
+	in := iotest.OneByteReader(strings.NewReader("9\nb\n3\n"))
+	value := "b"
+	assert.ErrorIs(t, tui.RunNavAccessible(abcSelect(&value), tui.NavFrame{}, in, &strings.Builder{}), tui.ErrNavBack)
+	require.NoError(t, tui.RunNavAccessible(abcSelect(&value), tui.NavFrame{}, in, &strings.Builder{}))
+	assert.Equal(t, "c", value)
 }

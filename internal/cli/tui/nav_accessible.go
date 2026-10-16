@@ -12,9 +12,10 @@ import (
 // the frame: the header (none when empty), the summary block, and the
 // accessible footer, one plain line each and never cut. A line that is a back
 // token (navBackToken) is Esc: on a first form it prints the notice and the
-// next line answers the same question; otherwise the rest of the form reads
-// end of input, so huh keeps every remaining value, and the helper returns
-// ErrNavBack. The line after the token stays unread for the next form.
+// next line answers the same question; otherwise the prompt it answers reads
+// an empty line, its default, and the rest of the form reads end of input, so
+// huh keeps every remaining value, and the helper returns ErrNavBack. The line
+// after the token stays unread for the next form.
 func RunNavAccessible(form *huh.Form, frame NavFrame, in io.Reader, out io.Writer) error {
 	text := navTextFor(frame.Lang)
 	if frame.Header != "" {
@@ -53,7 +54,7 @@ type navLineReader struct {
 }
 
 func (r *navLineReader) Read(p []byte) (int, error) {
-	if r.back {
+	if r.back && len(r.pending) == 0 {
 		return 0, io.EOF
 	}
 	for len(r.pending) == 0 {
@@ -66,8 +67,12 @@ func (r *navLineReader) Read(p []byte) (int, error) {
 			break
 		}
 		if !r.first {
+			// An empty line ends the token's prompt with its default. A bare
+			// end of input would leave huh the prompt's last invalid answer,
+			// which a Select indexes its options with.
 			r.back = true
-			return 0, io.EOF
+			r.pending = []byte("\n")
+			break
 		}
 		fmt.Fprintln(r.out, r.notice)
 	}
