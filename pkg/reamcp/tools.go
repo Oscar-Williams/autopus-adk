@@ -3,7 +3,7 @@ package reamcp
 // Tool classification of rea-agents@6.5.0 (SPEC-REA-001 security audit M2),
 // recorded with its method in
 // .autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md. Every one of
-// the 206 public tools of the pin is in exactly one list; a tool a new
+// the 207 public tools of the pin is in exactly one list; a tool a new
 // pin adds is in none until it is audited, so it is never granted by default.
 
 // staticAnalysisTools reads local targets and retained evidence without
@@ -68,7 +68,7 @@ var runtimeCaptureTools = []string{
 	"list_adb_features", "list_adb_packages", "list_adb_processes", "list_adb_services",
 	"list_browser_targets", "list_cutter_sessions", "list_electron_targets", "list_frida_devices",
 	"list_frida_processes", "list_javascript_runtime_targets", "list_jeb_units",
-	"load_frida_script", "observe_javascript_runtime", "observe_native_ui",
+	"load_frida_script", "observe_javascript_runtime", "observe_native_calls", "observe_native_ui",
 	"observe_web_execution", "observe_web_session", "open_jeb_project", "pull_adb_file",
 	"pull_adb_package", "push_adb_file", "read_adb_logcat", "read_adb_setting",
 	"resolve_adb_packages", "resume_frida_session", "rizin_debug_command",

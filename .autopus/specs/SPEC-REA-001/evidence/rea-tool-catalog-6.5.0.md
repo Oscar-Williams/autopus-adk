@@ -6,7 +6,7 @@ Recorded 2026-10-16 for the REA security audit finding M2 (SPEC-REA-001). The `r
 
 - `npm pack rea-agents@6.5.0 --ignore-scripts` into a scratch directory (download only), then `tar -xzf`. No REA code was installed or executed.
 - Tarball sha256 `531717a06e92ca651aab52691190f916fac044272c01f875e22c5e293218e699`, npm shasum `7ea5e6f669bc18c45dbf5dba653edaa1ada07ab3`, 1650 files, `dist/generatedPackageMetadata.js` version `6.5.0`.
-- The package does not ship `docs/mcp-contracts.md` (the README links it). The authoritative per-tool inventory it ships is `dist/contracts/toolEffects.js` `TOOL_EFFECTS` ("Explicit effect audit for every public tool"), which `dist/contracts/toolContracts.js` resolves for every registered contract (`toolContractMetadata` throws on a tool without an audit). It was parsed as text: 206 tools, each with `executesForeignCode`, `mutatesDevice`, `changesUiState`, `accessesNetwork`, `launchesProcess`, `writesFilesystem`, `mutatesTarget`, `mutatesSession`, `mayDiscardData`, `idempotent`.
+- The package does not ship `docs/mcp-contracts.md` (the README links it). The authoritative per-tool inventory it ships is `dist/contracts/toolEffects.js` `TOOL_EFFECTS` ("Explicit effect audit for every public tool"), which `dist/contracts/toolContracts.js` resolves for every registered contract (`toolContractMetadata` throws on a tool without an audit). It was parsed as text: 207 tools (the first audit pass missed `observe_native_calls`, the entry after the comment at `toolEffects.js:546`; added 2026-10-16 after the verify review), each with `executesForeignCode`, `mutatesDevice`, `changesUiState`, `accessesNetwork`, `launchesProcess`, `writesFilesystem`, `mutatesTarget`, `mutatesSession`, `mayDiscardData`, `idempotent`.
 - Tool descriptions were read from `dist/contracts/**` to confirm borderline rows (for example `analyze_web_bundle` captures from a live CDP page; `observe_native_ui` attaches to a running app; `inspect_web_network_capture` reads a retained local HAR file).
 
 ## Rules (first match wins)
@@ -158,12 +158,13 @@ Claude Code grants each as `mcp__rea__<tool>`, Antigravity as `mcp_rea_<tool>`. 
 | `verify_unknown_resolution` | `......` |
 | `xrefs` | `......` |
 
-## Runtime — main session only, after an explicit 허용 (67)
+## Runtime — main session only, after an explicit 허용 (68)
 
 The agent names one of these with its arguments in a `## Runtime Capture Request`; the main session asks the operator once and calls the tool itself only on 허용. `--auto` never skips the question.
 
 | Tool | Effects (X D U N P W) | Why runtime |
 |---|---|---|
+| `observe_native_calls` | `X . U N P W` | launches the target under LLDB and executes it (executesForeignCode, launchesProcess) |
 | `analyze_web_bundle` | `...N..` | accessesNetwork |
 | `capture_adb_screen` | `...NPW` | Android device (adb) |
 | `capture_browser_scenario` | `X.UNPW` | target capture |
