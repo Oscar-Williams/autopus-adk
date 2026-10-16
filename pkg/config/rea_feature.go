@@ -8,9 +8,6 @@ type ReaFeaturesConf struct {
 	Enabled *bool `yaml:"enabled,omitempty"`
 }
 
-// Decided reports whether autopus.yaml stores an explicit REA decision.
-func (c ReaFeaturesConf) Decided() bool { return c.Enabled != nil }
-
 // ReaMCPAction tells a platform adapter what to do with the managed rea MCP
 // entry during one run. The zero value keeps the file as it is, so any
 // generation path that does not resolve the REA decision neither adds nor

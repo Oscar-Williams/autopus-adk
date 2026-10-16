@@ -185,6 +185,30 @@ func reaSameKey(a, b *bool) bool {
 	return *a == *b
 }
 
+// reaSweepPreviewItems lists, for a preview whose run turns REA off, each
+// unselected target file the off sweep would change, so `auto update --plan`
+// shows every file the run writes. Any other run lists nothing.
+func reaSweepPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem {
+	if cfg == nil || cfg.Runtime.ReaMCP != config.ReaMCPRemove {
+		return nil
+	}
+	var items []previewItem
+	for _, p := range reamcp.Platforms() {
+		if containsPlatform(cfg.Platforms, string(p)) {
+			continue
+		}
+		data, err := readReaTarget(dir, p)
+		if err != nil || data == nil {
+			continue
+		}
+		if _, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove); err == nil && changed {
+			items = append(items, previewItem{Path: reamcp.TargetRelPath(p), Kind: "update", Scope: string(p),
+				Reason: "REA off would remove the managed rea entry of this unselected platform"})
+		}
+	}
+	return items
+}
+
 // sweepReaUnselected removes the managed rea entry from the target file of
 // every REA target platform outside platforms (the off sweep). No adapter runs
 // for those files, so the CLI applies the same reamcp transform itself.

@@ -75,6 +75,33 @@ func TestUpdateRea_NoReaSweepsUnselectedTarget(t *testing.T) {
 	assert.Equal(t, [3]int{0, 0, 1}, reaCounts(out), out)
 }
 
+// The off sweep shows in a preview: `--plan --no-rea` lists each unselected
+// target file whose managed entry the run would remove and writes nothing; a
+// preview that does not turn REA off lists none.
+func TestUpdateRea_PlanShowsTheOffSweep(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	stubDriverProbes(t, false, "")
+	dir := reaQ(t)
+	cfg, err := config.Load(dir)
+	require.NoError(t, err)
+	cfg.Platforms = []string{"claude-code"}
+	require.NoError(t, config.Save(dir, cfg))
+	before := reaSums(t, dir)
+
+	out, err := reaUpdate(t, strings.NewReader(""), dir, "--plan", "--no-rea")
+
+	require.NoError(t, err, out)
+	assert.Equal(t, before, reaSums(t, dir))
+	const sweep = " — REA off would remove the managed rea entry of this unselected platform"
+	assert.Contains(t, out, "update .codex/config.toml (codex)"+sweep)
+	assert.Contains(t, out, "update .gemini/settings.json (antigravity-cli)"+sweep)
+	assert.NotContains(t, out, "(claude-code)"+sweep, "the selected file is the adapter's to plan")
+
+	plain, err := reaUpdate(t, strings.NewReader(""), dir, "--plan")
+	require.NoError(t, err, plain)
+	assert.NotContains(t, plain, sweep)
+}
+
 // reaSettledOff stores the off decision in a settled composition fixture
 // through the real non-interactive `--no-rea` update, so a later interactive
 // update asks no REA question and prints no REA line: its output stays the
