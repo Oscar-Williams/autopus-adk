@@ -13,10 +13,25 @@ branch `feat/tuiux-001`, 기준 8ec13935(`feat/revmodel-001` 위, SPEC-REA-001·
 - 비test 코드에 `huh.NewInput`·`NewText`·`NewMultiSelect`가 없다. `WithAccessible(` 호출도 없지만 위의 `TERM=dumb` 경로는 production이다(review F-006로 고쳤다).
 
 ### 기존 test 분류
-T1이 파일·줄 단위로 채운다. 작성 시점에 확인한 것: 다섯 파일 모두 `package cli`이고 `internal/cli/tui` import가 없다(import 한 줄씩 필요). `composeRunForm` 값 넣기 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)과 기본 runner 직접 호출 1곳(`quality_compose_form_test.go:94`, accessible form, 입력 `2\n`, 단언 `value == "b"`·`2. b`), 폼 helper를 쓰는 test 파일 17개, init form path test 3파일(입력에 빈 줄이 남는 경우가 있어 분류 2(b) 예상), 기존 입력의 `b`·`back`·`뒤로` 줄 0건, init test의 폼 횟수 단언 0건(grep), 제목 단언(`wizard_rea_step_test.go:44,104,106,130`, `wizard_test.go:20,35`)은 제목 불변이라 그대로다.
+T1이 파일·줄 단위로 채운다.
+
+T1 결과(2026-10-16, b08ea644 기준. 이 구현의 branch 기준은 8ec13935에 SPEC-REVMODEL-001 구현을 합친 b08ea644이고 base golden도 여기서 TUIUX 소스 변경 전에 만들었다):
+- 분류 1(시그니처, 다섯 줄과 import): `quality_compose_form_helpers_test.go:44`(`useComposeFormRunner`의 stub), `quality_compose_form_failure_test.go:29`(`terminal gone` stub), `quality_compose_line_golden_test.go:25`(`countComposeFormRuns`), `quality_compose_review_gate_test.go:28`(`countReviewForms`), `quality_compose_form_test.go:94`(기본 runner 직접 호출). 다섯 파일 모두 `internal/cli/tui` import가 없어 import 한 줄이 더해진다. 이 밖에 `composeRunForm`에 값을 넣거나 부르는 test는 없다(grep `composeRunForm` 2026-10-16).
+- 분류 2(init 확인 화면): wizard seam과 forms probe true로 init을 끝까지 도는 test는 `init_compose_form_test.go`(2개), `init_compose_review_test.go`(`TestInitComposeReview_S10TabEditSurvivesInit` 3개 subtest), `init_compose_omp_test.go`(`runComposeInitOMP`를 쓰는 5개), `quality_compose_form_effort_test.go:217`(`TestComposeEffortForms_InitSavesAndGeneratesTheEfforts`)다. `init_rea_test.go`와 `init_compose_test.go`는 `strings.Reader` 입력이라 기본 forms probe가 줄 driver를 고르고 확인 화면이 없다(분류 밖, 변경 없음). 파일별 (a)/(b)/(c)는 T9이 돌린 결과로 아래에 적는다.
+- `runInitComposeStepCancellable`을 부르는 test는 없다(호출은 `init.go:136` 하나). T9은 이 함수를 `runInitComposeStage`로 바꿔도 test를 고치지 않는다.
+- 폼 helper(`useAccessibleComposeForms`·`abortComposeFormAt`·`useComposeFormRunner`)를 쓰는 기존 test 파일은 18개다(새 `tuiux_noninteractive_golden_test.go` 제외).
+- base golden은 `evidence/base-goldens/`의 `<흐름>.stdout`·`<흐름>.npd` 일곱 쌍이다: `init-yes`(S15 a), `update-yes`(b), `update-ci`(c), `quality-line-b`(d), `quality-no-tty`(e), `init-pipe`(g), `init-in`(S6 IN, NPD만 비교). `internal/cli/tuiux_noninteractive_golden_test.go`가 읽고, `TUIUX_WRITE_GOLDENS=1`이면 흐름마다 두 번 돌려 같을 때만 다시 쓴다.
+
+작성 시점(SPEC)에 확인한 것: 다섯 파일 모두 `package cli`이고 `internal/cli/tui` import가 없다(import 한 줄씩 필요). `composeRunForm` 값 넣기 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)과 기본 runner 직접 호출 1곳(`quality_compose_form_test.go:94`, accessible form, 입력 `2\n`, 단언 `value == "b"`·`2. b`), 폼 helper를 쓰는 test 파일 17개, init form path test 3파일(입력에 빈 줄이 남는 경우가 있어 분류 2(b) 예상), 기존 입력의 `b`·`back`·`뒤로` 줄 0건, init test의 폼 횟수 단언 0건(grep), 제목 단언(`wizard_rea_step_test.go:44,104,106,130`, `wizard_test.go:20,35`)은 제목 불변이라 그대로다.
 
 ### NPD 정규화
 `generated_at`(manifest)과 `.autopus/backup/<timestamp>/`. T1이 기준을 두 번 돌려 더 찾은 field를 여기에 더한다.
+
+T1(2026-10-16, b08ea644)이 init `--yes` 흐름을 1.1초 띄워 두 번 돌려 더 찾은 것은 adapter transaction이다(`pkg/adapter/transaction.go:111-124`). 정규화는 `internal/cli/tuiux_env_test.go`의 `tuiuxNPD`가 한다.
+- 경로: `.autopus/txns/<id>-<platform>/`의 id(`20060102T150405.000000000`, UTC)는 `<TX>`, backup 디렉터리는 소수 부분이 붙은 transaction id(`.autopus/backup/<id>/transaction/<platform>/…`)도 `<TS>`다.
+- `journal.json`은 decode 값 비교로 옮겼다(`tuiuxJournal`): `id`는 `<TX>`, `created_at`은 `<T>`, 각 entry의 `backup_path` 안 timestamp는 `<TS>`, `-manifest.json` entry의 `after_checksum`은 `<T>`(manifest bytes에 `generated_at`이 들어 있다). 나머지 field는 decode한 값 그대로 다시 encode해 비교한다.
+- 파일 내용에 project 절대 경로가 들어간 파일은 없었다(같은 run에서 grep). 그래서 다른 temp 부모를 쓰는 대조 run도 NPD가 같다.
+- digest에는 디렉터리 줄(`<path>/`)과 symlink 줄(`<path> -> <target>`)도 들어간다. 빈 디렉터리 생성도 드러난다(S8).
 
 ## Probe 결과 (`evidence/probe-nav-a1.md`)
 - P1: 기본 KeyMap에서 Esc 뒤 StateNormal, Ctrl+C 뒤 StateAborted. wizard 주석 "ctrl+c or esc"(`wizard_steps.go:65`)는 v1.0.0에서 맞지 않는다.
