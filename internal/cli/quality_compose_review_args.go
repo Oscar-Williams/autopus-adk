@@ -142,6 +142,23 @@ func (e reviewArgsEdit) apply(args []string) []string {
 	return append(out, e.add...)
 }
 
+// written marks the elements of apply(args) the edit writes: the values it
+// sets and the elements it appends. Every other element is one args had.
+func (e reviewArgsEdit) written(args []string) []bool {
+	out := make([]bool, 0, len(args)+len(e.add))
+	for i := range args {
+		if slices.Contains(e.remove, i) {
+			continue
+		}
+		_, set := e.set[i]
+		out = append(out, set)
+	}
+	for range e.add {
+		out = append(out, true)
+	}
+	return out
+}
+
 // planReviewArgsEdit plans setting args to want under row: a named flag whose
 // value differs gets the new value in place, a missing one is appended as a
 // pair, and claude's empty effort (haiku) removes its effort flag. Flags that

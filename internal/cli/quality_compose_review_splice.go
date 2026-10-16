@@ -129,6 +129,7 @@ func spliceReviewArgsTarget(key, value *yaml.Node, lines []string, newline strin
 	case value.Kind == yaml.SequenceNode:
 		raw := reviewArgsValues(value)
 		edit := planReviewArgsEdit(raw, target.args.row, target.args.want)
+		target.written = edit.written(raw)
 		if target.list = edit.apply(raw); edit.empty() {
 			return nil, true
 		}

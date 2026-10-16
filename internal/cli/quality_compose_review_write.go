@@ -44,6 +44,9 @@ type reviewTarget struct {
 	// args is the args edit; its list is the planned raw list once the
 	// splice has read the raw node.
 	args *reviewArgsTarget
+	// written marks the list elements the splice writes; nil means all of
+	// them. An args element it leaves keeps its raw scalar and its tag.
+	written []bool
 }
 
 // reviewArgsTarget sets a CLI provider's model and effort by row, starting

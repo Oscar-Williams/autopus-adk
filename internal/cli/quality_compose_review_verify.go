@@ -81,7 +81,10 @@ func verifyReviewLineEdit(original, edited []byte, targets []reviewTarget) error
 	return nil
 }
 
-// heldBy reports a node that holds the planned value as plain strings.
+// heldBy reports a node that holds the planned value: every value the splice
+// writes is a plain string, and every args element it leaves is still a
+// scalar with its raw value, whatever its tag, so a number or a bool next to
+// the target values never refuses the edit (REQ-RVM-25).
 func (t reviewTarget) heldBy(node *yaml.Node) bool {
 	if node == nil {
 		return false
@@ -93,7 +96,8 @@ func (t reviewTarget) heldBy(node *yaml.Node) bool {
 		return false
 	}
 	for i, item := range node.Content {
-		if item.Kind != yaml.ScalarNode || item.ShortTag() != "!!str" || item.Value != t.list[i] {
+		written := t.written == nil || t.written[i]
+		if item.Kind != yaml.ScalarNode || item.Value != t.list[i] || written && item.ShortTag() != "!!str" {
 			return false
 		}
 	}
