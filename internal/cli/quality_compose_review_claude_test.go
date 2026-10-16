@@ -6,6 +6,7 @@ package cli
 // changed flag values from the raw document.
 
 import (
+	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -201,4 +202,40 @@ func TestReviewAfterTable_NoRawViewShowsNoValue(t *testing.T) {
 	cli := reviewR3Config()
 	reviewRLConfig(cli)
 	assert.Equal(t, []string{"claude", "codex", "agy"}, cells(cli))
+}
+
+// An entry that takes a value from elsewhere — an alias, a merge key, or an
+// aliased args, model, or args element — has no view, since nothing in it
+// reads as written; an anchored entry's own values still do.
+func TestReadReviewRaw_NoViewForAnEntryFromElsewhere(t *testing.T) {
+	dir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "autopus.yaml"), []byte(`orchestra:
+    providers:
+        codex: &cx
+            backend: omp
+            model: &m openai-codex/gpt-6-astra:max
+            args: &a [exec, -m, &e gpt-6-astra]
+        alias: *cx
+        merged:
+            <<: *cx
+            binary: codex
+        model_alias:
+            backend: omp
+            model: *m
+        args_alias:
+            binary: codex
+            args: *a
+        item_alias:
+            binary: codex
+            args: [exec, -m, *e]
+        plain:
+            binary: claude
+            args: [--print, --model, claude-fable-5-1]
+`), 0o644))
+
+	raw := readReviewRaw(dir)
+
+	assert.Equal(t, []string{"codex", "plain"}, slices.Sorted(maps.Keys(raw)))
+	assert.Equal(t, "openai-codex/gpt-6-astra:max", raw["codex"].Model)
+	assert.Equal(t, []string{"--print", "--model", "claude-fable-5-1"}, raw["plain"].Args)
 }

@@ -120,16 +120,37 @@ func readReviewRaw(dir string) map[string]reviewRawProvider {
 		return raw
 	}
 	for i := 0; i+1 < len(providers.Content); i += 2 {
-		entry, view := providers.Content[i+1], reviewRawProvider{}
-		if _, args := yamlMappingPair(entry, "args"); args != nil && args.Kind == yaml.SequenceNode {
-			view.Args = reviewArgsValues(args)
+		if view, ok := reviewRawViewOf(providers.Content[i+1]); ok {
+			raw[providers.Content[i].Value] = view
 		}
-		view.Model = reviewRawScalar(entry, "model")
-		view.Policy = reviewRawScalar(entry, "model_policy")
-		view.Backend = reviewRawScalar(entry, "backend")
-		raw[providers.Content[i].Value] = view
 	}
 	return raw
+}
+
+// reviewRawViewOf is the view of one provider entry, or false when the entry
+// takes a value from elsewhere: it is an alias or holds a merge key, or its
+// args, model, model_policy, backend, or an args element is an alias.
+// Nothing such an entry holds reads as written, and the line writer refuses
+// it anyway.
+func reviewRawViewOf(entry *yaml.Node) (reviewRawProvider, bool) {
+	if entry.Kind != yaml.MappingNode || yamlMappingHasMerge(entry) {
+		return reviewRawProvider{}, false
+	}
+	for _, key := range []string{"args", "model", "model_policy", "backend"} {
+		if _, value := yamlMappingPair(entry, key); value != nil && value.Kind == yaml.AliasNode {
+			return reviewRawProvider{}, false
+		}
+	}
+	view := reviewRawProvider{
+		Model: reviewRawScalar(entry, "model"), Policy: reviewRawScalar(entry, "model_policy"), Backend: reviewRawScalar(entry, "backend"),
+	}
+	if _, args := yamlMappingPair(entry, "args"); args != nil && args.Kind == yaml.SequenceNode {
+		if slices.ContainsFunc(args.Content, func(item *yaml.Node) bool { return item.Kind == yaml.AliasNode }) {
+			return reviewRawProvider{}, false
+		}
+		view.Args = reviewArgsValues(args)
+	}
+	return view, true
 }
 
 func reviewRawScalar(mapping *yaml.Node, key string) string {
