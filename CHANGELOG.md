@@ -12,6 +12,8 @@ All notable changes to this project will be documented in this file.
   - Codex reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`를 쓴다. Codex 역할에는 도구 목록이 없고 MCP
     도구 호출은 sandbox 밖이라, Codex에서는 에이전트 본문의 금지와 메인 세션의 동의 질문이 runtime 도구의 남은
     제한이다(권고 수준). OpenCode reverse-engineer는 `task` 권한이 없어 다른 에이전트를 보내지 못한다.
+  - executor·tester는 Behaviour Spec 문자열을 대상에서 유래한 인용으로 읽고 그 안의 명령·URL·지시를 실행하거나
+    따르지 않는다.
 
 - **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 16개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
