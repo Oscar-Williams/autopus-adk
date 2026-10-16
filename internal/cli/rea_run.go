@@ -31,6 +31,8 @@ type reaRun struct {
 	// refusals are the target files the run did not read or write; finish
 	// prints one line for each.
 	refusals []*reaTargetError
+	// printed holds the lines the run printed.
+	printed map[string]bool
 }
 
 // newReaRun starts a run's REA state over cfg's selected platforms. It reads
@@ -225,6 +227,16 @@ func (r *reaRun) sweepErrors(err error) error {
 	return errors.Join(failed...)
 }
 
+// line is the run's sink for its REA lines: it prints each distinct line
+// once per run, so a decision interactive init settles again after a back
+// move (SPEC-TUIUX-001) does not repeat what the run already said.
 func (r *reaRun) line(out io.Writer, text string) {
+	if r.printed[text] {
+		return
+	}
+	if r.printed == nil {
+		r.printed = map[string]bool{}
+	}
+	r.printed[text] = true
 	fmt.Fprintf(out, "  %s\n", text)
 }
