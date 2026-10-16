@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 // AgentSourceMeta holds the richer frontmatter from content/agents/*.md source files.
@@ -107,6 +109,12 @@ func TransformAgentForCodex(src AgentSource) string {
 	fmt.Fprintf(&sb, "{{with .CodexAgentModel %q %q %q}}model = \"{{.}}\"{{end}}\n", src.Meta.Name, src.Meta.Model, effort)
 	sb.WriteString(formatCodexAgentEffortLine(src.Meta.Name, src.Meta.Model, effort))
 	sb.WriteString("\n")
+	if src.Meta.Name == config.ReverseEngineerAgent {
+		// Codex agent roles take no tool list, so the analysis agent gets the
+		// read-only sandbox its role file accepts (SPEC-REA-001 M1). MCP tool
+		// calls stay outside the sandbox; its body forbids the runtime ones.
+		sb.WriteString("sandbox_mode = \"read-only\"\n")
+	}
 
 	// Preserve the source structure so Codex keeps the phase contracts and I/O shape.
 	instructions := buildCodexInstructions(src.Meta, body)

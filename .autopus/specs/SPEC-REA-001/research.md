@@ -146,7 +146,7 @@ These are optional improvements and do not block sync completion.
 
 ## Open Risks
 - R1 opt-out과 gate에 막힌 opt-in 프로젝트는 v0.50.113–v0.50.125가 읽지 못한다(REQ-REA-17 줄). v0.50.125는 17개 preset을 customized로 본다(J-28, REQ-REA-19 문서). R2 login shell PATH와 Codex 프로세스 PATH가 다를 수 있다. doctor가 버전을 보이고 gate는 지우지 않는다. R3 runtime capture는 사용자 권한으로 대상을 실행한다. 메인 세션 동의 뒤에만 부른다(REQ-REA-21).
-- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
+- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. 보안 감사 M1(2026-10-16)로 reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`(Codex 0.162.0 역할 파일 field 표에서 확인)를 더해 shell 쓰기는 막지만, MCP 호출은 sandbox 밖이라 runtime REA 도구 금지는 여전히 instruction과 메인 세션 동의 질문의 권고 수준이다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
 - R7 명세 문자열은 대상 유래 비신뢰 데이터다(Trust Model, 확인 gate). R8 OpenCode reverse-engineer는 기존 규칙으로 task permission을 받지만 REA 도구가 없어 증거를 만들지 못한다. R9 runtime capture 도구의 정확한 이름은 미확인이라 에이전트가 도구 설명(실행·붙기·계측)으로 판단한다(S19).
 
 ## Self-Verify Summary

@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M2 반영, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1·M2 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -252,9 +252,9 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | source frontmatter | `name: reverse-engineer`, `model: opus`, `effort: high`, `tools: Read, Grep, Glob, ` 뒤에 `reamcp.StaticAnalysisTools()`의 135개를 `mcp__rea__<tool>`로 하나씩(서버 전체 `mcp__rea` 없음), `permissionMode: default`, `maxTurns: 120`, skills 없음 |
 | Claude `.claude/agents/autopus/reverse-engineer.md` | source와 같은 `tools` 줄, `permissionMode: default`. balanced 표준 배치면 `model: claude-opus-5-5`, `effort: high`, ultra면 `model: opus`, `effort: max` |
 | Antigravity `.gemini/agents/autopus/reverse-engineer.md` | tools `read_file`, `grep_search`, `glob`, 그 뒤 정적 도구마다 `mcp_rea_<tool>`(source 순서). `mcp_rea_*` wildcard 없음 |
-| Codex `.codex/agents/reverse-engineer.toml` | balanced `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`. Autopus Codex 에이전트 형식에는 도구 칸이 없어(`pkg/content/agent_transformer.go:113`) 세션 도구를 상속한다. clean-room은 developer_instructions, 메인 세션 gate, handoff 입력 제한이 맡는다(한계, `research.md` Open Risks R4) |
+| Codex `.codex/agents/reverse-engineer.toml` | balanced `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`, `sandbox_mode = "read-only"`(이 역할만, Codex 0.162.0 역할 파일이 받는 key). Autopus Codex 에이전트 형식에는 도구 칸이 없어(`pkg/content/agent_transformer.go:113`) 세션 도구를 상속하고 MCP 호출은 sandbox 밖이다. runtime 도구 금지는 developer_instructions와 메인 세션 동의 질문이 맡는다(권고 수준 잔여 위험, `research.md` Open Risks R4) |
 | OMP `.omp/agents/reverse-engineer.md` | `tools` = `glob`, `grep`, `read`(정렬), `mcp_`로 시작하는 값 없음. override가 없으면 `thinkingLevel: high` |
-| OpenCode `.opencode/agents/reverse-engineer.md` | `"*": deny` 아래 allow는 `glob`, `grep`, `question`, `read`, `skill`, `task`뿐이고 `mcp__` key가 없다 |
+| OpenCode `.opencode/agents/reverse-engineer.md` | `"*": deny` 아래 allow는 `glob`, `grep`, `question`, `read`, `skill`뿐이고 `task`(다른 에이전트 dispatch)와 `mcp__` key가 없다 |
 | 본문 | (1) 입력은 대상 경로, 기능 이름, 있으면 `Runtime capture wanted: yes`와 메인 세션이 부른 runtime 도구의 결과 줄 `Runtime capture evidence: <tool> on <target>: <evidence_id>`다. `Runtime capture wanted: yes`가 있고 결과 줄이 없으면 첫 결과는 Runtime Capture Request다. (2) 대상을 실행·부착·계측·캡처하는 REA runtime 도구는 이 에이전트의 도구가 아니고 보여도 부르지 않는다. 정적 증거로 닫히지 않으면 `## Runtime Capture Request`(target, tool, arguments, will run, why)를 돌려주고 멈춘다. (3) 결과는 `## Behaviour`(`B-1`…), `## Inputs and Outputs`, `## Evidence`(evidence_id 목록), `## Unknowns`, `## Acceptance Items`(`A-1`…) 다섯 절의 행동 명세뿐이다. (4) 디컴파일된 의사코드, assembly, 대상 소스 발췌를 넣지 않는다. (5) REA 도구가 없으면 Form Text의 플랫폼별 미등록 문장으로 끝낸다. (6) 사용자에게 직접 묻지 않는다 |
 
 - Bash를 빼는 이유: REA는 CLI(`npx rea-agents …`)로도 같은 분석과 runtime capture를 돌릴 수 있어 Bash가 있으면 MCP 경로와 동의 요청을 우회하고 파일을 쓸 수 있다. 대가로 `file`·`strings` 같은 빠른 확인은 REA 도구가 대신한다.

@@ -74,8 +74,9 @@ func TestReverseEngineerOMP_DropsTheREAServer(t *testing.T) {
 	assert.NotContains(t, fields, "model")
 }
 
-// S9: OpenCode denies everything but the read tools and its standing
-// question, skill, and task permissions; no mcp__ key is allowed.
+// S9 and M1: OpenCode denies everything but the read tools and the standing
+// question and skill permissions: no mcp__ key, and no task, so the analysis
+// agent cannot dispatch another agent.
 func TestReverseEngineerOpenCode_AllowsNoMCPKey(t *testing.T) {
 	t.Parallel()
 	rendered := content.TransformAgentForOpenCode(ompAgentSource(t, "reverse-engineer"))
@@ -95,7 +96,7 @@ func TestReverseEngineerOpenCode_AllowsNoMCPKey(t *testing.T) {
 		allowed = append(allowed, key)
 	}
 	sort.Strings(allowed)
-	assert.Equal(t, []string{"glob", "grep", "question", "read", "skill", "task"}, allowed)
+	assert.Equal(t, []string{"glob", "grep", "question", "read", "skill"}, allowed)
 	assert.NotContains(t, parts[1], "mcp__")
 }
 
@@ -143,4 +144,12 @@ func TestReverseEngineerBody_EveryPlatformCarriesTheAnalysisContract(t *testing.
 		}
 		assert.NotContains(t, body, "AskUserQuestion", platform)
 	}
+}
+
+// M1: Codex agent roles take no tool list, so only reverse-engineer's role file
+// carries the read-only sandbox the role schema accepts.
+func TestReverseEngineerCodex_RoleRunsInTheReadOnlySandbox(t *testing.T) {
+	t.Parallel()
+	assert.Contains(t, content.TransformAgentForCodex(ompAgentSource(t, "reverse-engineer")), "\nsandbox_mode = \"read-only\"\n")
+	assert.NotContains(t, content.TransformAgentForCodex(ompAgentSource(t, "executor")), "sandbox_mode")
 }

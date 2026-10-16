@@ -9,6 +9,9 @@ All notable changes to this project will be documented in this file.
     정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 67개와 호출자가 고른 경로에
     쓰는 도구 4개는 메인 세션만 부르고, runtime 도구는 운영자의 `허용` 답 뒤에만 부른다(`--auto`도 묻는다).
     분류와 근거는 `.autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md`다.
+  - Codex reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`를 쓴다. Codex 역할에는 도구 목록이 없고 MCP
+    도구 호출은 sandbox 밖이라, Codex에서는 에이전트 본문의 금지와 메인 세션의 동의 질문이 runtime 도구의 남은
+    제한이다(권고 수준). OpenCode reverse-engineer는 `task` 권한이 없어 다른 에이전트를 보내지 못한다.
 
 - **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 16개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
