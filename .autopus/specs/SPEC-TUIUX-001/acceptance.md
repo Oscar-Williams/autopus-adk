@@ -152,7 +152,7 @@ Priority: Must
 Given b08ea644의 test 파일과 research `### 기존 test 분류`
 When `go test ./internal/cli/... ./pkg/...`를 필터 없이 돌리고 `git diff b08ea644 -- '*_test.go'`를 본다
 Then 모든 test가 통과한다
-And 기존 test 파일의 변경 줄은 셋뿐이다: (i) 분류 1의 다섯 줄(stub 4곳의 시그니처, `quality_compose_form_test.go:94`의 호출 인자), (ii) 그 다섯 파일마다 `github.com/insajin/autopus-adk/internal/cli/tui` import 한 줄과 gofmt가 그 import block에 낸 정렬 변경, (iii) 분류표에 적힌 입력 줄, (iv) T5가 소유한 `internal/cli/tui/export_test.go`의 test alias 두 줄(`TestWizardStreams`·`TestWizardStepKinds`, 기존 줄 변경 없음). 새 helper와 새 test는 새 파일에만 있다
+And 기존 test 파일의 변경 줄은 넷뿐이다: (i) 분류 1의 다섯 줄(stub 4곳의 시그니처, `quality_compose_form_test.go:94`의 호출 인자), (ii) 그 다섯 파일마다 `github.com/insajin/autopus-adk/internal/cli/tui` import 한 줄과 gofmt가 그 import block에 낸 정렬 변경, (iii) 분류표에 적힌 입력 줄, (iv) T5가 소유한 `internal/cli/tui/export_test.go`의 test alias 두 줄(`TestWizardStreams`·`TestWizardStepKinds`, 기존 줄 변경 없음). 새 helper와 새 test는 새 파일에만 있다
 And 단언의 기대 값은 그대로다. `quality_compose_form_test.go:94`는 `require.NoError(t, composeRunForm(cmd, form, tui.NavFrame{Accessible: true}))`로 호출 인자만 하나 늘어난 줄로 허용되고, 그 test의 `value == "b"`와 `2. b` 단언 줄은 바뀌지 않은 채 통과한다. (i)–(iv) 밖에서 `assert.`·`require.` 줄이 바뀐 곳은 0이다
 
 ### S18: 실제 터미널 smoke
