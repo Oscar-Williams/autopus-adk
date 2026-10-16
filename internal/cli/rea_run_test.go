@@ -24,6 +24,7 @@ func testReaRun(t *testing.T, dir string, cfg *config.HarnessConfig, stdout stri
 	run := newReaRun(dir, cfg, cfg.Features.Rea.Enabled != nil)
 	run.text = reaTextFor("ko")
 	run.probe = &reaNodeProbe{exec: recorder.exec, goos: "linux"}
+	run.snapshot(cfg.Platforms) // what init and update do before their writes
 	return run, recorder
 }
 
@@ -200,9 +201,10 @@ func TestReaRunFinish_OffStoresFalseAndSweeps(t *testing.T) {
 	assert.Empty(t, out.String())
 }
 
-// A refused off sweep is reported, the off decision is still stored, and the
-// file outside the project keeps its bytes (acceptance S16 (d)).
-func TestReaRunFinish_RefusedSweepStillStoresOff(t *testing.T) {
+// An unselected target whose directory is a symlink out of the project is
+// never followed: the off sweep prints one skip line, writes nothing, does
+// not fail the run, and still stores the off decision (acceptance S16 (d)).
+func TestReaRunFinish_SweepSkipsASymlinkedTarget(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("symlink fixture")
 	}
@@ -216,10 +218,9 @@ func TestReaRunFinish_RefusedSweepStillStoresOff(t *testing.T) {
 	var out bytes.Buffer
 	run.decide(context.Background(), &out, cfg, reaOff)
 
-	err := run.finish(&out, dir, cfg)
+	require.NoError(t, run.finish(&out, dir, cfg))
 
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), ".codex/config.toml")
+	assert.Equal(t, 1, strings.Count(out.String(), "  REA MCP 대상 파일을 건너뜁니다: .codex/config.toml (symlink를 따라가지 않습니다)\n"), out.String())
 	reloaded, loadErr := config.Load(dir)
 	require.NoError(t, loadErr)
 	assert.Equal(t, reaBool(false), reloaded.Features.Rea.Enabled)

@@ -2,9 +2,6 @@ package cli
 
 import (
 	"errors"
-	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
@@ -87,15 +84,6 @@ func reaGuidancePlatforms(platforms []string) []string {
 		}
 	}
 	return guided
-}
-
-// readReaTarget reads p's target file under dir. A missing file is nil data.
-func readReaTarget(dir string, p reamcp.Platform) ([]byte, error) {
-	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(reamcp.TargetRelPath(p))))
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
-	return data, err
 }
 
 // reaFileClass classifies the rea entry of p's target file. A file that
@@ -220,31 +208,4 @@ func sweepReaUnselected(dir string, platforms []string) error {
 		}
 	}
 	return errors.Join(errs...)
-}
-
-// removeReaEntry removes a managed rea entry from p's target file and leaves
-// any other file as it is. The write is refused when its path crosses a
-// symlink or leaves dir, so a file outside the project is never changed.
-func removeReaEntry(dir string, p reamcp.Platform) error {
-	data, err := readReaTarget(dir, p)
-	if err != nil || data == nil {
-		return nil
-	}
-	out, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove)
-	if err != nil || !changed {
-		return nil
-	}
-	rel := reamcp.TargetRelPath(p)
-	path, err := adapter.SafeWorkspacePath(dir, filepath.FromSlash(rel))
-	if err != nil {
-		return fmt.Errorf("REA MCP 쓰기 거부 %s: %w", rel, err)
-	}
-	info, err := os.Stat(path)
-	if err != nil {
-		return fmt.Errorf("REA MCP 제거 실패 %s: %w", rel, err)
-	}
-	if err := adapter.WriteFileIfChanged(path, out, info.Mode().Perm()); err != nil {
-		return fmt.Errorf("REA MCP 제거 실패 %s: %w", rel, err)
-	}
-	return nil
 }
