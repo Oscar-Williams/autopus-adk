@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -33,13 +35,17 @@ func (f *singleTriageFlag) Set(value string) error {
 func newWorkflowTriageCmd() *cobra.Command {
 	facts := &singleTriageFlag{}
 	format := &singleTriageFlag{value: "json"}
-	cmd := &cobra.Command{Use: "triage", Short: "Inspect an advisory workflow route from caller-declared facts", Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
+	var topology bool
+	cmd := &cobra.Command{Use: "triage", Short: "Inspect an advisory workflow route from caller-declared facts", Long: workflowTriageLong, Args: cobra.NoArgs, SilenceUsage: true, SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if facts.value == "" {
 				return fmt.Errorf("--facts-json is required")
 			}
 			if format.value != "json" && format.value != "human" {
 				return fmt.Errorf("--format must be json or human")
+			}
+			if topology {
+				return runWorkflowTriageTopology(cmd.OutOrStdout(), facts.value, format.value)
 			}
 			input, err := readWorkflowTriageFacts(facts.value)
 			if err != nil {
@@ -79,27 +85,52 @@ func newWorkflowTriageCmd() *cobra.Command {
 		}}
 	cmd.Flags().Var(facts, "facts-json", "Path to a caller-declared workflow facts JSON file")
 	cmd.Flags().Var(format, "format", "Output format: json or human (default json)")
+	cmd.Flags().BoolVar(&topology, "topology", false, "Decide whether a Claude Code /auto go Phase 2 runs as a native Agent Team (topology facts)")
 	return cmd
 }
 
+// errWorkflowTriageUnreadable marks a read that failed after every guard
+// passed. The legacy mode reports it as invalid JSON, as it did when the
+// decoder read the file itself.
+var errWorkflowTriageUnreadable = errors.New("facts file unavailable")
+
 func readWorkflowTriageFacts(path string) (taskroute.Facts, error) {
 	var empty taskroute.Facts
-	before, err := os.Lstat(path)
-	if err != nil || !before.Mode().IsRegular() || before.Size() > workflowTriageMaxBytes {
-		return empty, fmt.Errorf("facts file must be a readable regular file at most 1 MiB")
+	data, err := readWorkflowTriageFile(path)
+	if errors.Is(err, errWorkflowTriageUnreadable) {
+		return empty, fmt.Errorf("invalid workflow triage facts JSON")
 	}
-	file, err := os.Open(path)
 	if err != nil {
-		return empty, fmt.Errorf("facts file unavailable")
+		return empty, err
 	}
-	defer file.Close()
-	opened, err := file.Stat()
-	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(before, opened) || opened.Size() > workflowTriageMaxBytes {
-		return empty, fmt.Errorf("facts file changed or exceeds limit")
-	}
-	facts, err := taskroute.Decode(io.LimitReader(file, workflowTriageMaxBytes+1))
+	facts, err := taskroute.Decode(bytes.NewReader(data))
 	if err != nil {
 		return empty, fmt.Errorf("invalid workflow triage facts JSON")
 	}
 	return facts, nil
+}
+
+// readWorkflowTriageFile reads a facts file that is a regular file, is not
+// swapped between the check and the open, and is at most 1 MiB. It returns up
+// to one byte past the limit so a file that grew after the check still fails
+// its decoder's size bound.
+func readWorkflowTriageFile(path string) ([]byte, error) {
+	before, err := os.Lstat(path)
+	if err != nil || !before.Mode().IsRegular() || before.Size() > workflowTriageMaxBytes {
+		return nil, fmt.Errorf("facts file must be a readable regular file at most 1 MiB")
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("facts file unavailable")
+	}
+	defer file.Close()
+	opened, err := file.Stat()
+	if err != nil || !opened.Mode().IsRegular() || !os.SameFile(before, opened) || opened.Size() > workflowTriageMaxBytes {
+		return nil, fmt.Errorf("facts file changed or exceeds limit")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, workflowTriageMaxBytes+1))
+	if err != nil {
+		return nil, errWorkflowTriageUnreadable
+	}
+	return data, nil
 }

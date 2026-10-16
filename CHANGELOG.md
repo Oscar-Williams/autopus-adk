@@ -175,6 +175,29 @@ All notable changes to this project will be documented in this file.
     `role_model_policy.agent_source_invalid`다. 바이너리를 내리는 것은 되돌리기가 아니다. v0.50.125는 새 agent
     surface 필드가 든 project ownership ledger(`.autopus/omp-model-project-ownership-v1.json`)를 거부한다.
   - 알려진 동작: 폼 시작 때의 OSC 11 배경색 query(SPEC-MODELUX-002 항목)는 그대로다.
+- **v0.50.126: `/auto go`가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행** (2026-10-15,
+  SPEC-TEAMAUTO-001): 지금까지 native Agent Team은 `--team`을 줘야만 썼다. 이제 Claude Code에서 topology flag
+  없이 돌린 `/auto go`가 Phase 2에 들어갈 때 한 번 판단해, 대화형 최상위 세션에
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`이 있고 실행 중인 Claude Code가 2.1.246 이상이며 plan에 owned paths가
+  겹치지 않는 준비된 worker unit이 2개 이상이면 그 wave를 named teammate(`builder-1` …)로 돌린다. 기본으로 켜져 있다.
+  - 이유 한 줄: 전환할 때도 안 할 때도 `Agent Team: 전환 — …`이나 `Agent Team: 유지 — …` 한 줄이 나온다
+    (`language.ai_responses`가 `ko`가 아니면 영어). 판단 도구가 실패하면 고정 줄
+    `Agent Team: off — auto workflow triage --topology failed; running subagents`다. 팀 wave 뒤 남은 unit은
+    shutdown·ack 다음에 Route A로 구현하고 Gate 2로 간다.
+  - 비용: teammate마다 별도 Claude 세션이라 토큰 사용이 늘어난다. 실험 기능이다.
+  - 끄기: `autopus.yaml`의 `workflow.auto_team: false`(계속), 한 run만이면 `--solo`. 값은 YAML bool만 받고 `yes`,
+    `"false"`, `null` 같은 값은 `workflow.auto_team: must be true or false (line <n>)`로 로드에 실패한다. auto는 이
+    key를 스스로 쓰지 않는다.
+  - 호환: `workflow.auto_team`이 든 `autopus.yaml`은 값과 상관없이(`true`도) auto 0.50.113–0.50.125가 읽지 못한다
+    (`field auto_team not found in type config.WorkflowConf`). 그 줄을 지우면 다시 읽힌다. auto 0.50.112 이하는 key를
+    무시하고, 그 버전의 `auto update`는 그 줄을 지운다. key를 쓰지 않은 프로젝트는 그대로다.
+  - 버전 확인: 버전은 `CLAUDE_CODE_EXECPATH`가 가리키는 실행 중인 바이너리의 `--version`으로만 읽고 PATH의
+    `claude`는 보지 않는다. 그 실행 파일 이름이 `claude`나 `claude.exe`가 아닌 설치는 `claude_version_unknown` 줄과
+    함께 subagent로 남는다.
+  - CLI: `auto workflow triage --topology --facts-json <file> [--format json|human]`이 판단을 보고하고 agent를
+    띄우거나 파일을 쓰지 않는다. facts가 계약을 어기면 오류 대신 `invalid_facts` 결정(종료 0)을 내고 이유 줄이 원인
+    code를 보인다(예: `Agent Team: off — the topology facts are invalid (owned_paths); running subagents`).
+    `--team`·`--workflow`·`--solo`의 의미와 진단, 비 Claude 플랫폼의 생성 결과는 그대로다.
 - **구성 단계 v2: 화살표·Enter 폼, 도구별 실제 모델 탭, OMP 지정, update 감지 플랫폼 열** (2026-10-12,
   SPEC-MODELUX-002): 실제 터미널에서 구성 단계가 줄 입력이라 화살표가 `^[[C`로 찍혔고, 선택지가 등급 이름뿐이라
   Claude 전용으로 읽혔으며, Codex·OMP를 따로 정할 수 없었고, update가 감지해 더한 플랫폼이 표에 없었다.

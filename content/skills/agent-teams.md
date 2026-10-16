@@ -112,6 +112,38 @@ On success, abort, or circuit break:
 Do not call removed lifecycle tools, edit runtime team configuration, or delete
 runtime task directories manually.
 
+## Automatic Entry from Route A
+
+A Claude Code `/auto go` run without `--team`, `--workflow`, or `--solo` can
+enter this lifecycle on its own; the selection is on by default. When Route A
+reaches Phase 2, the decision the `auto-go` skill runs selects a team only for
+an interactive top-level session that already has
+`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, runs Claude Code 2.1.246 or newer,
+and has at least two ready worker units whose owned paths do not overlap.
+Otherwise the run stays on subagents and says why in one line.
+
+- Same lifecycle: named teammates, the shared task list, the five receipt
+  fields, and the shutdown and acknowledgement teardown above apply unchanged.
+- Scope: one ready wave of Phase 2. Each ready unit becomes one Builder
+  teammate, `builder-1` … `builder-n` in decision order. No `tester` or
+  `guardian` teammate is launched, and every other phase stays on Route A.
+- Schema failure: when the `SendMessage` or shared task-list schemas cannot be
+  loaded, print the decision's fallback line and continue on Route A. This is
+  a fallback, not a stop.
+- Handoff: after every teammate acknowledged its shutdown, the lead implements
+  the remaining Phase 2 units under Route A, never re-runs a finished unit, and
+  only then enters Gate 2.
+- Cost: every teammate is a separate Claude session, so a team run uses more
+  tokens than subagents, and the feature is experimental. Turn it off with
+  `workflow.auto_team: false` in `autopus.yaml`, or pass `--solo` for one run.
+  auto 0.50.113 through 0.50.125 refuse an `autopus.yaml` that contains the
+  key with any value; auto 0.50.112 and older ignore it, and their
+  `auto update` deletes it.
+- Version source: the version is read from the running binary named by
+  `CLAUDE_CODE_EXECPATH`, never from a `claude` on `PATH`. An install whose
+  executable is not named `claude` or `claude.exe` stays on subagents with the
+  `claude_version_unknown` line.
+
 ## Failure Policy
 
 | Failure | Required action |
