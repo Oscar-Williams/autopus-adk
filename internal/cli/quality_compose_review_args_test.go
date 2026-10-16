@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestFindReviewArg_PairsInlineAndSeparator(t *testing.T) {
@@ -65,10 +66,12 @@ func TestPlanReviewArgsEdit_Claude(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.out, planReviewArgsEdit(tc.args, reviewClaudeRow, tc.want).apply(tc.args))
+			edit, ok := planReviewArgsEdit(tc.args, reviewClaudeRow, tc.want)
+			require.True(t, ok)
+			assert.Equal(t, tc.out, edit.apply(tc.args))
 		})
 	}
-	unchanged := planReviewArgsEdit(b1, reviewClaudeRow, reviewCLIValue{"claude-fable-5-1", "max"})
+	unchanged, _ := planReviewArgsEdit(b1, reviewClaudeRow, reviewCLIValue{"claude-fable-5-1", "max"})
 	assert.True(t, unchanged.empty(), "values already held write nothing")
 	assert.Equal(t, reviewCLIValue{"claude-fable-5-1", "max"}, reviewCLIValueOf(reviewClaudeRow, b1))
 }

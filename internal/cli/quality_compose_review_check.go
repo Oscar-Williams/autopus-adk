@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/insajin/autopus-adk/pkg/config"
+	"github.com/insajin/autopus-adk/pkg/orchestra"
 )
 
 // composeReviewCheckTimeout is the budget of each live check request; the
@@ -42,8 +43,12 @@ func (f *composeFormRun) reviewLiveCheck(tab *reviewTabState) error {
 		}
 	}
 	failed := false
-	for _, result := range runProviderTransportSmoke(commandContext(f.cmd), candidate, composeReviewCheckTimeout) {
-		f.reviewLine(reviewCheckLine(candidate, result, text))
+	shown := reviewCheckModels(tab.baseline, tab.working)
+	missing := func(provider orchestra.ProviderConfig, _ string) {
+		f.reviewLine(reviewCheckMissingLine(tab.baseline, provider, text))
+	}
+	for _, result := range runProviderTransportSmokeWith(commandContext(f.cmd), candidate, composeReviewCheckTimeout, missing) {
+		f.reviewLine(reviewCheckLine(candidate, shown, result, text))
 		failed = failed || result.Status != "pass"
 	}
 	if failed {
@@ -64,21 +69,60 @@ func reviewCandidate(cfg *config.HarnessConfig, b reviewBaseline, working review
 	candidate.Orchestra.Providers = maps.Clone(candidate.Orchestra.Providers)
 	candidate.Spec.ReviewGate.Providers = slices.Clone(working.Providers)
 	candidate.Spec.ReviewGate.Judge = working.Judge
-	applyReviewEntries(candidate.Orchestra.Providers, b, working)
+	// Validation has passed every value, and a value the planner would
+	// still refuse leaves its entry as it was: the check never runs it.
+	_ = applyReviewEntries(candidate.Orchestra.Providers, b, working)
 	return candidate
 }
 
+// reviewCheckMissingLine is the live check's line for a provider whose binary
+// is not installed: the provider and its binary as written, or the provider
+// alone when the binary is written as a placeholder or cannot be read as
+// written; an OMP provider needs omp, which is no one's value. The runtime
+// warning, which spells the expanded binary, never runs from the tab.
+func reviewCheckMissingLine(b reviewBaseline, provider orchestra.ProviderConfig, text composeReviewText) string {
+	shown := config.ProviderBackendOMP
+	if provider.Backend != config.ProviderBackendOMP {
+		shown = b.binaryText(provider.Name)
+	}
+	if shown == "" || strings.Contains(shown, "${") {
+		return fmt.Sprintf(text.CheckMissingName, provider.Name)
+	}
+	return fmt.Sprintf(text.CheckMissing, provider.Name, shown)
+}
+
+// reviewCheckModels is the model a result line names for each OMP provider:
+// a model the tab chose, as chosen, and an unchanged one as the raw document
+// writes it. The check runs the candidate's expanded model, but an
+// environment value never reaches the line (REQ-RVM-26): a provider with no
+// raw model, or one written as a placeholder, names none.
+func reviewCheckModels(b reviewBaseline, working reviewComposition) map[string]string {
+	shown := map[string]string{}
+	for _, name := range b.Visible {
+		switch raw := b.Raw[name].Model; {
+		case !working.OMP[name]:
+		case !b.OMP[name] || working.Models[name] != b.Models[name]:
+			shown[name] = working.Models[name]
+		case raw != "" && !strings.Contains(raw, "${"):
+			shown[name] = raw
+		}
+	}
+	return shown
+}
+
 // reviewCheckLine is one result line (Live Check Contract): the provider,
-// its candidate selector or CLI backend, and the verdict. The review_gate
-// result of a failed assembly names no model.
-func reviewCheckLine(candidate *config.HarnessConfig, result providerSmokeResult, text composeReviewText) string {
+// its shown model or CLI backend, and the verdict. The review_gate result of
+// a failed assembly and an OMP provider without a shown model name no model.
+func reviewCheckLine(candidate *config.HarnessConfig, shown map[string]string, result providerSmokeResult, text composeReviewText) string {
 	subject := result.Provider
 	if entry, ok := candidate.Orchestra.Providers[result.Provider]; ok || result.Provider != "review_gate" {
 		model := text.CLIBackend
 		if entry.Backend == config.ProviderBackendOMP {
-			model = entry.Model
+			model = shown[result.Provider]
 		}
-		subject += " (" + model + ")"
+		if model != "" {
+			subject += " (" + model + ")"
+		}
 	}
 	verdict := text.CheckPass
 	switch result.Status {

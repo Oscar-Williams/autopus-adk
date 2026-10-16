@@ -36,11 +36,14 @@ All notable changes to this project will be documented in this file.
   - CLI backend: 현재 값은 orchestra migration 뒤 설정(런타임이 쓰는 args)에서 정한다. `claude`는 Claude 탭 model과
     `low`–`max`(haiku는 effort 쌍을 지움)를 `--model`·`--effort` 값으로, `codex`는 이번 실행 Codex catalog에서
     `low`–`max`를 하나라도 보고하는 model과 그 단계를 `model_policy: pinned`와 `-m`·`model_reasoning_effort` 값으로,
-    `agy`는 `agy models`(15초, 64 KiB, 엄격 해석)의 같은 family id를 `--model` 값으로 쓴다. 다른 args 항목·순서·
+    `agy`는 `agy models`(PATH에서 이름으로 찾은 agy만, 15초, 64 KiB, 엄격 해석)의 같은 family id를 `--model` 값으로
+    쓴다. 다른 args 항목·순서·
     중복과 placeholder는 bytes 그대로다. `omp` catalog가 그 family의 model을 증명하면 모든 CLI provider를
     `OMP backend로 전환`(`backend: omp`와 `model`)할 수 있고, model 목록도 omp도 없으면 이유 줄을 쓴다. 미리보기는
     바뀐 flag 값만 autopus.yaml 글자로 보이고 다른 args는 보이지 않으며, `${NAME}`에서 오는 대상 값은 사전 거부 줄과
-    함께 바꾸지 않는다.
+    함께 바꾸지 않는다. binary·judge도 같고, 탭과 메뉴 요약이 보이는 값은 모두 autopus.yaml 원문이다. merge·alias로
+    값을 가져오는 provider 항목은 model을 바꾸지 않고, provider 이름을 원문으로 읽을 수 없으면 탭은 아무것도 바꾸지
+    않는다. Codex catalog slug는 model 이름 꼴만 보이고, `-`로 시작하는 값은 args에 쓰지 않는다.
   - 쓰기: `spec.review_gate.providers`, `orchestra.providers.<p>.model`(`<provider>/<model>:<thinking>`), `.args`,
     `.model_policy`, `.backend`, `spec.review_gate.judge`만 쓰고 모두 v0.50.125가 읽는다. update·quality는 그 값 span만 바꿔 주석·빈 줄·
     들여쓰기가 그대로이고, `${NAME}`, anchor·alias·merge key, block scalar처럼 안전하지 않은 값은

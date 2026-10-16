@@ -21,15 +21,17 @@ type reviewTabState struct {
 
 // reviewTab runs the tab from its baseline until the operator leaves,
 // cancels, or applies. The baseline reads the run's config and, for update
-// and quality, the raw document. The catalog is read on the run's OMP
-// catalog runner at most once per entry, and only when a provider needs it.
+// and quality, the raw document; names it cannot read as written end the
+// tab before any select. The catalog is read on the run's OMP catalog runner
+// at most once per entry, and only when a provider needs it.
 func (f *composeFormRun) reviewTab() error {
-	var raw map[string]reviewRawProvider
-	if f.shared.writer == composeSessionFile {
-		raw = readReviewRaw(f.shared.dir, f.shared.cfg)
-	}
 	tab := &reviewTabState{
-		baseline: newReviewBaseline(f.shared.cfg, raw), catalog: &reviewCatalog{}, agy: reviewAgyCatalog{}, attested: newReviewAttestation(),
+		baseline: newReviewBaseline(f.shared.cfg, f.reviewRawDocument()), catalog: &reviewCatalog{}, agy: reviewAgyCatalog{},
+		attested: newReviewAttestation(),
+	}
+	if !tab.baseline.NamesOK {
+		f.reviewLine(f.reviewText().NamesRefused)
+		return nil
 	}
 	tab.working = tab.baseline.reviewComposition.clone()
 	if f.options.OMP != nil && f.options.OMP.deps.newRunner != nil {
@@ -41,6 +43,15 @@ func (f *composeFormRun) reviewTab() error {
 			return err
 		}
 	}
+}
+
+// reviewRawDocument is the run's autopus.yaml as written for update and
+// quality, or nil for init, whose config no file holds.
+func (f *composeFormRun) reviewRawDocument() *reviewRawDocument {
+	if f.shared.writer == composeSessionFile {
+		return readReviewRaw(f.shared.dir)
+	}
+	return nil
 }
 
 // reviewPass asks one pass in contract order: participation, the count
@@ -108,14 +119,14 @@ func (f *composeFormRun) reviewParticipation(tab *reviewTabState) error {
 
 // reviewModels asks the model of every participating provider: an OMP one
 // by REQ-RVM-06, a CLI one by its CLI Model Contract row (REQ-RVM-08). A
-// provider whose target value is an environment placeholder gets the refusal
-// line instead (REQ-RVM-26); an unreadable OMP catalog prints its note once
-// per pass.
+// provider the raw document holds no view of, or whose target value is an
+// environment placeholder, gets its refusal line instead (REQ-RVM-26); an
+// unreadable OMP catalog prints its note once per pass.
 func (f *composeFormRun) reviewModels(tab *reviewTabState) error {
 	text := f.reviewText()
 	noted := false
 	for _, name := range tab.baseline.Visible {
-		if !tab.working.takesPart(name) || f.reviewPlaceholderRefused(tab, name) {
+		if !tab.working.takesPart(name) || f.reviewRawRefused(tab, name) || f.reviewPlaceholderRefused(tab, name) {
 			continue
 		}
 		if !tab.working.OMP[name] {
@@ -145,7 +156,8 @@ func (f *composeFormRun) reviewModels(tab *reviewTabState) error {
 func (f *composeFormRun) reviewModel(tab *reviewTabState, name string, choices []ompCustomModelChoice) error {
 	text := f.reviewText()
 	working := tab.working.Models[name]
-	selector, err := composeSelect(f.cmd, fmt.Sprintf(text.Model, name), "", reviewModelOptions(f.form.Keep, working, choices, text), "")
+	options := reviewModelOptions(f.form.Keep, working, tab.baseline.modelText(name, working), choices, text)
+	selector, err := composeSelect(f.cmd, fmt.Sprintf(text.Model, name), "", options, "")
 	if err != nil || selector == "" {
 		return err
 	}
@@ -163,18 +175,23 @@ func (f *composeFormRun) reviewModel(tab *reviewTabState, name string, choices [
 // reviewJudge asks the judge (REQ-RVM-04): 그대로 first when the working
 // judge takes part or is empty, otherwise the judge-off note and only the
 // participating providers, the first as default. No option turns a judge
-// into judge 없음.
+// into judge 없음. A judge written as a placeholder gets the value refusal
+// line instead and stays (REQ-RVM-26).
 func (f *composeFormRun) reviewJudge(tab *reviewTabState) error {
 	text := f.reviewText()
+	if raw := tab.baseline.RawJudge; strings.Contains(raw, "${") {
+		f.reviewLine(fmt.Sprintf(text.CLIValueRefused, "spec.review_gate", "judge", raw))
+		return nil
+	}
 	current := tab.working.Judge
 	var options []composeOption[string]
 	switch {
 	case current == "":
 		options = append(options, composeOption[string]{f.form.Keep + " — " + text.NoJudge, ""})
 	case tab.working.takesPart(current):
-		options = append(options, composeOption[string]{f.form.Keep + " — " + current, current})
+		options = append(options, composeOption[string]{f.form.Keep + " — " + tab.baseline.judgeText(current), current})
 	default:
-		f.reviewLine(fmt.Sprintf(text.JudgeOff, current))
+		f.reviewLine(fmt.Sprintf(text.JudgeOff, tab.baseline.judgeText(current)))
 	}
 	keep := len(options) > 0
 	for _, name := range tab.baseline.Visible {

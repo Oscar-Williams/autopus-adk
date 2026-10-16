@@ -65,12 +65,23 @@ func runReviewCLIForms(t *testing.T, dir string, binaries []string, lines ...str
 // Codex catalog snapshot.
 func runReviewCLIFormsWith(t *testing.T, dir, codexCatalog string, binaries []string, lines ...string) reviewRun {
 	t.Helper()
+	return runReviewCLIFormsLate(t, dir, codexCatalog, binaries, nil, lines...)
+}
+
+// runReviewCLIFormsLate is runReviewCLIFormsWith with late, when set, run
+// after the session has loaded dir and before its forms: a file that
+// changes under the run.
+func runReviewCLIFormsLate(t *testing.T, dir, codexCatalog string, binaries []string, late func(), lines ...string) reviewRun {
+	t.Helper()
 	stubComposeCatalogProbe(t, codexCatalog, nil)
 	useReviewPath(t, binaries...)
 	smoke := useReviewSmokeBackend(t)
 	runner := &ompCLIFakeRunner{catalog: []byte(reviewCatalogCATG)}
 	deps := ompPlatformDependencies{newRunner: func() omp.OMPModelCatalogRunner { return runner }}
 	session := newComposeFormSession(t, dir)
+	if late != nil {
+		late()
+	}
 	_, out, err := runComposeForms(t, session, composeFormOptions{OMP: &composeOMPTab{deps: deps}}, lines...)
 	return reviewRun{out: out, runner: runner, smoke: smoke, cfg: session.Config, err: err}
 }

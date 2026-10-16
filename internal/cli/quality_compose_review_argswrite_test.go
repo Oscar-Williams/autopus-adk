@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -90,7 +91,7 @@ func TestSaveReviewComposition_ArgsRefusals(t *testing.T) {
 			require.NoError(t, err)
 			replaceReviewFile(t, dir, reviewRLClaudeArgs, args)
 			before := readReviewFile(t, dir)
-			baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
+			baseline := newReviewBaseline(cfg, readReviewRaw(dir))
 			working := baseline.reviewComposition.clone()
 			working.CLI["claude"] = reviewCLIValue{"claude-opus-5-5", "max"}
 
@@ -118,4 +119,62 @@ func TestSaveReviewComposition_OtherPlaceholdersStay(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, strings.Replace(before, "claude-fable-5-1, --effort", "claude-opus-5-5, --effort", 1), readReviewFile(t, dir))
+}
+
+// An args element the edit leaves keeps any scalar tag: a number or a bool
+// next to the target values blocks nothing and stays as it is, in a flow or
+// a block list, around a set, a removal, or an append (REQ-RVM-25).
+func TestSaveReviewComposition_UntouchedNonStringElementsStay(t *testing.T) {
+	block := func(items ...string) string {
+		text := "            args:\n"
+		for _, item := range items {
+			text += "                - " + item + "\n"
+		}
+		return text
+	}
+	opusXHigh := reviewCLIValue{"claude-opus-5-5", "xhigh"}
+	cases := []struct {
+		name, args, want string
+		value            reviewCLIValue
+	}{
+		{"flow list", "            args: [--print, --max-turns, 30, --model, claude-fable-5-1, --effort, max, --fork, true]\n",
+			"            args: [--print, --max-turns, 30, --model, claude-opus-5-5, --effort, xhigh, --fork, true]\n", opusXHigh},
+		{"block list", block("--print", "--max-turns", "30", "--model", "claude-fable-5-1", "--effort", "max", "--fork", "true"),
+			block("--print", "--max-turns", "30", "--model", "claude-opus-5-5", "--effort", "xhigh", "--fork", "true"), opusXHigh},
+		{"flow list drops the effort pair before a number", "            args: [--print, --effort, max, --max-turns, 30, --model, claude-fable-5-1]\n",
+			"            args: [--print, --max-turns, 30, --model, claude-haiku-4-5]\n", reviewCLIValue{Model: "claude-haiku-4-5"}},
+		{"block list appends after a number", block("--print", "--max-turns", "30"),
+			block("--print", "--max-turns", "30", "--model", "claude-opus-5-5", "--effort", "xhigh"), opusXHigh},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := writeReviewRL(t)
+			replaceReviewFile(t, dir, reviewRLClaudeArgs+"\n", tc.args)
+			before := readReviewFile(t, dir)
+
+			cfg, err := saveReviewEdit(t, dir, reviewClaudeTo(tc.value))
+
+			require.NoError(t, err)
+			assert.Equal(t, strings.Replace(before, tc.args, tc.want, 1), readReviewFile(t, dir))
+			assert.Equal(t, tc.value, reviewCLIValueOf(reviewClaudeRow, cfg.Orchestra.Providers["claude"].Args))
+		})
+	}
+}
+
+// heldBy holds an element the splice writes to a plain string and lets an
+// element it leaves keep its tag, never its value.
+func TestReviewTargetHeldBy_OnlyWrittenElementsMustBeStrings(t *testing.T) {
+	var document yaml.Node
+	require.NoError(t, yaml.Unmarshal([]byte("[--max-turns, 30, --model, 31]"), &document))
+	node := document.Content[0]
+	target := reviewTarget{list: []string{"--max-turns", "30", "--model", "31"}, args: &reviewArgsTarget{}}
+
+	target.written = []bool{false, false, false, false}
+	assert.True(t, target.heldBy(node))
+	target.written = []bool{false, false, false, true}
+	assert.False(t, target.heldBy(node), "a written 31 is a number")
+	target.written = nil
+	assert.False(t, target.heldBy(node), "a whole written list holds strings only")
+	target.written, target.list[1] = []bool{false, false, false, false}, "40"
+	assert.False(t, target.heldBy(node), "a left element keeps its raw value")
 }

@@ -27,10 +27,10 @@ func reviewModelChoices(name string, attested []ompCustomModelChoice) []ompCusto
 }
 
 // reviewModelOptions is the model select of one provider: 그대로 with the
-// working selector, marked when the attested list lacks its model, then every
-// attested model. The answer "" keeps the working model.
-func reviewModelOptions(keep, working string, choices []ompCustomModelChoice, text composeReviewText) []composeOption[string] {
-	label := keep + " — " + working
+// working selector as shown, marked when the attested list lacks its model,
+// then every attested model. The answer "" keeps the working model.
+func reviewModelOptions(keep, working, shown string, choices []ompCustomModelChoice, text composeReviewText) []composeOption[string] {
+	label := keep + " — " + shown
 	if model, _, _ := orchestra.SplitModelSelector(working); !slices.ContainsFunc(choices, func(choice ompCustomModelChoice) bool {
 		return choice.selector() == model
 	}) {

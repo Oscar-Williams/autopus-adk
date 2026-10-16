@@ -6,6 +6,8 @@ package cli
 // either a provider gets the reason line.
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -145,4 +147,24 @@ func TestReviewTab_S26CLIChangeLines(t *testing.T) {
 	_, err := planReviewComposition(baseline, working, attested, composeReviewTextKO)
 	require.Error(t, err)
 	assert.Equal(t, "gemini model gemini-9-foo-high는 이 provider의 선택지에 없습니다", err.Error())
+}
+
+// L2: an agy binary given as a path is never run on tab entry, whatever it
+// is; the provider gets the reason line, and the OMP switch stays.
+func TestReviewTab_AgyPathIsNeverRun(t *testing.T) {
+	runs := useAgyModels(t, reviewAgySample, nil)
+	tools := t.TempDir()
+	agy := filepath.Join(tools, "agy")
+	require.NoError(t, os.WriteFile(agy, []byte("#!/bin/sh\nexit 0\n"), 0o755))
+	dir := writeReviewRL(t)
+	replaceReviewFile(t, dir, "            binary: agy\n", "            binary: "+agy+"\n")
+
+	// participation ×3, claude Enter, codex Enter, gemini Enter, judge Enter, check Enter, the menu's default.
+	run := runReviewCLIForms(t, dir, []string{"omp"}, reviewLines(reviewOpen,
+		[]string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"})...)
+
+	require.NoError(t, run.err, run.out)
+	assert.Zero(t, *runs)
+	assert.Contains(t, run.out, "gemini의 binary "+agy+"는 PATH에서 찾는 이름이 아니라 model 목록을 읽으려고 실행하지 않습니다\n"+
+		"gemini model \n1. 그대로 — CLI backend\n2. OMP backend로 전환\nEnter")
 }

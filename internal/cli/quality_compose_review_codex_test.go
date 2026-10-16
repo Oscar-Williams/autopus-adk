@@ -8,6 +8,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"slices"
 	"strings"
 	"testing"
 
@@ -173,4 +174,66 @@ func TestReportCodexRuntimeFallback_ValuesAreTerminalSafe(t *testing.T) {
 
 	assert.NotContains(t, out.String(), "\x1b")
 	assert.Contains(t, out.String(), `requested=gpt\x1b[2J/hi\x1b[0mgh`)
+}
+
+// L1: a Codex catalog slug is offered only when it reads as a model name; a
+// flag-like or control-character slug never reaches the select or argv.
+func TestReviewCodexModels_OnlySlugsThatReadAsNames(t *testing.T) {
+	catalog := strings.Replace(mustReadComposeCatalog(t, "CAT-E"), `{"models":[`, `{"models":[`+
+		`{"slug":"--dangerously-bypass-approvals-and-sandbox","supported_reasoning_levels":[{"effort":"low"}]},`+
+		`{"slug":"\u0000omp","supported_reasoning_levels":[{"effort":"low"}]},`+
+		`{"slug":"gpt 6","supported_reasoning_levels":[{"effort":"low"}]},`+
+		`{"slug":"openai/gpt-6.2:preview","supported_reasoning_levels":[{"effort":"low"}]},`, 1)
+
+	models, ok := reviewCodexModels(driftGenerationSnapshot{codexCatalog: []byte(catalog), codexCatalogFixed: true})
+
+	require.True(t, ok)
+	assert.Equal(t, []string{"gpt-6-astra", "gpt-6-luna", "gpt-6.1-sol", "openai/gpt-6.2:preview"}, reviewSelectorsOfCLI(models))
+
+	dir := writeReviewRL(t)
+	run := runReviewCLIFormsWith(t, dir, catalog, nil, reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"})...)
+	require.NoError(t, run.err, run.out)
+	assert.Contains(t, run.out, "codex model \n1. 그대로 — gpt-6-astra · max\n2. gpt-6-astra\n3. gpt-6-luna\n4. gpt-6.1-sol\n5. openai/gpt-6.2:preview\nEnter")
+	assert.NotContains(t, run.out, "dangerously")
+}
+
+// L1: a wanted value that starts with `-` would read as a flag of its own,
+// so the planner refuses it and both writers write nothing.
+func TestPlanReviewArgsEdit_RefusesAFlagLikeValue(t *testing.T) {
+	args := []string{"exec", "-m", "gpt-6-astra", "-c", `model_reasoning_effort="max"`}
+	for _, want := range []reviewCLIValue{{Model: "--dangerously-bypass-approvals-and-sandbox"}, {Model: "gpt-6-luna", Effort: "-x"}} {
+		_, ok := planReviewArgsEdit(args, reviewCodexRow, want)
+		assert.False(t, ok, "%v", want)
+	}
+	edit, ok := planReviewArgsEdit(args, reviewCodexRow, reviewCLIValue{"gpt-6-luna", "high"})
+	require.True(t, ok)
+	assert.Equal(t, []string{"exec", "-m", "gpt-6-luna", "-c", `model_reasoning_effort="high"`}, edit.apply(args))
+
+	dir := writeReviewRL(t)
+	sum := reviewFileSum(t, dir)
+	_, err := saveReviewEdit(t, dir, func(w *reviewComposition) {
+		w.CLI["codex"] = reviewCLIValue{Model: "--dangerously-bypass-approvals-and-sandbox"}
+	})
+	var refusal reviewWriteRefusal
+	require.ErrorAs(t, err, &refusal)
+	assert.Equal(t, "orchestra.providers.codex.args", refusal.key)
+	assert.Equal(t, sum, reviewFileSum(t, dir))
+
+	cfg := reviewR3Config()
+	reviewRLConfig(cfg)
+	baseline := newReviewBaseline(cfg, nil)
+	working := baseline.reviewComposition.clone()
+	working.CLI["codex"] = reviewCLIValue{Model: "--dangerously-bypass-approvals-and-sandbox"}
+	before := slices.Clone(cfg.Orchestra.Providers["codex"].Args)
+	require.ErrorAs(t, applyReviewCompositionMemory(cfg, baseline, working), &refusal)
+	assert.Equal(t, before, cfg.Orchestra.Providers["codex"].Args)
+}
+
+// L1: the switch answer never indexes an empty choice list.
+func TestReviewSwitch_NoChoicesSwitchesNothing(t *testing.T) {
+	var f composeFormRun
+	tab := &reviewTabState{working: reviewComposition{OMP: map[string]bool{}, Models: map[string]string{}}}
+
+	assert.NotPanics(t, func() { assert.NoError(t, f.reviewSwitch(tab, "codex", nil)) })
+	assert.False(t, tab.working.OMP["codex"])
 }

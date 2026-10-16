@@ -43,19 +43,27 @@ type reviewBaseline struct {
 	// order: only they get a participation select and count.
 	Visible  []string
 	Binaries map[string]string
-	// Raw is the raw document's view of each provider. CLI values in a
-	// preview and placeholder checks read only it (REQ-RVM-26).
+	// Raw is the raw document's view of each provider. Every value the tab
+	// shows and every placeholder check reads only it (REQ-RVM-26).
 	Raw map[string]reviewRawProvider
+	// NamesOK reports that the provider names and the judge read as written;
+	// RawJudge is how the judge is written.
+	NamesOK  bool
+	RawJudge string
 	// Migrated is each CLI provider's args after config.MigrateOrchestraConfig,
 	// which decide its current model and effort (REQ-RVM-25).
 	Migrated map[string][]string
 }
 
-// newReviewBaseline takes the baseline from cfg and raw, the raw document's
-// view; nil raw reads cfg itself, as for init's config.
-func newReviewBaseline(cfg *config.HarnessConfig, raw map[string]reviewRawProvider) reviewBaseline {
+// newReviewBaseline takes the baseline from cfg and raw, the document as
+// written; nil raw reads cfg itself, as for init's config.
+func newReviewBaseline(cfg *config.HarnessConfig, raw *reviewRawDocument) reviewBaseline {
 	if raw == nil {
-		raw = reviewRawOf(cfg)
+		raw = reviewRawDocumentOf(cfg)
+	}
+	judge := cfg.Spec.ReviewGate.Judge
+	if raw.HasJudge {
+		judge = raw.Judge
 	}
 	baseline := reviewBaseline{
 		reviewComposition: reviewComposition{
@@ -64,7 +72,7 @@ func newReviewBaseline(cfg *config.HarnessConfig, raw map[string]reviewRawProvid
 			Judge: cfg.Spec.ReviewGate.Judge,
 		},
 		Visible:  sortedProviderKeys(cfg.Orchestra.Providers),
-		Binaries: map[string]string{}, Raw: raw, Migrated: map[string][]string{},
+		Binaries: map[string]string{}, Raw: raw.Providers, NamesOK: raw.Names, RawJudge: judge, Migrated: map[string][]string{},
 	}
 	migrated := reviewMigratedConfig(cfg)
 	for name, entry := range cfg.Orchestra.Providers {
@@ -79,6 +87,38 @@ func newReviewBaseline(cfg *config.HarnessConfig, raw map[string]reviewRawProvid
 		baseline.CLI[name] = reviewCLIValueOf(reviewArgsRowFor(entry.Binary), args)
 	}
 	return baseline
+}
+
+// judgeText is how the tab shows judge: the baseline judge as written, any
+// other as the provider name it is.
+func (b reviewBaseline) judgeText(judge string) string {
+	if judge == b.Judge {
+		return b.RawJudge
+	}
+	return judge
+}
+
+// modelText is how the tab shows an OMP selector of name: the baseline one
+// as written, any other as chosen from an attested list.
+func (b reviewBaseline) modelText(name, selector string) string {
+	if raw := b.Raw[name].Model; selector == b.Models[name] && raw != "" {
+		return raw
+	}
+	return selector
+}
+
+// binaryText is how the tab shows name's binary: as written, or the
+// config's own one when the entry writes none. A provider without a raw view
+// shows none.
+func (b reviewBaseline) binaryText(name string) string {
+	raw, ok := b.Raw[name]
+	switch {
+	case !ok:
+		return ""
+	case raw.Binary != "":
+		return raw.Binary
+	}
+	return b.Binaries[name]
 }
 
 // participation is the spec.review_gate.providers list for the visible
@@ -152,7 +192,7 @@ func planReviewComposition(b reviewBaseline, working reviewComposition, attested
 		return reviewPlan{}, reviewPlanError(fmt.Sprintf(text.ErrCount, n))
 	}
 	if working.Judge != "" && !working.takesPart(working.Judge) {
-		return reviewPlan{}, reviewPlanError(fmt.Sprintf(text.ErrJudge, working.Judge))
+		return reviewPlan{}, reviewPlanError(fmt.Sprintf(text.ErrJudge, b.judgeText(working.Judge)))
 	}
 	for _, name := range b.Visible {
 		var err error

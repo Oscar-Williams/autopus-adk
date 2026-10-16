@@ -9,18 +9,34 @@ import (
 	"github.com/insajin/autopus-adk/pkg/detect"
 )
 
+// reviewRawRefused prints the raw view line and reports true when the raw
+// document holds no view of the provider: its file could not be read, or it
+// has no entry for it. Without one the tab can neither tell a placeholder
+// from a value nor show an old value as written, so the provider keeps its
+// model and its backend (REQ-RVM-26).
+func (f *composeFormRun) reviewRawRefused(tab *reviewTabState, name string) bool {
+	if _, ok := tab.baseline.Raw[name]; ok {
+		return false
+	}
+	f.reviewLine(fmt.Sprintf(f.reviewText().RawMissing, name))
+	return true
+}
+
 // reviewPlaceholderRefused prints the CLI value refusal line and reports true
-// when a value the provider's model select could change is an environment
-// placeholder in the raw document: the OMP model scalar, or a model or effort
-// flag value. The provider then keeps every value (REQ-RVM-26); a placeholder
-// in any other args element blocks nothing.
+// when a value the provider's model select reads or could change is an
+// environment placeholder in the raw document: the OMP model scalar, or a
+// CLI provider's binary, which decides its row, or its model or effort flag
+// value. The provider then keeps every value (REQ-RVM-26); a placeholder in
+// any other args element blocks nothing.
 func (f *composeFormRun) reviewPlaceholderRefused(tab *reviewTabState, name string) bool {
 	raw := tab.baseline.Raw[name]
 	flag, value := "model", raw.Model
 	if !tab.working.OMP[name] {
 		flag, value = "", ""
 		row := reviewArgsRowFor(tab.baseline.Binaries[name])
-		for _, found := range []reviewArgValue{findReviewArg(raw.Args, row.model), reviewEffortArg(row, raw.Args)} {
+		for _, found := range []reviewArgValue{
+			{found: true, spelling: "binary", value: raw.Binary}, findReviewArg(raw.Args, row.model), reviewEffortArg(row, raw.Args),
+		} {
 			if found.found && strings.Contains(found.value, "${") {
 				flag, value = found.spelling, found.value
 				break
@@ -64,14 +80,14 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	switchTo := f.reviewSwitchChoices(tab, name)
 	if len(models) == 0 && len(switchTo) == 0 {
 		if row.kind != reviewRowClaude && row.kind != reviewRowCodex {
-			f.reviewLine(fmt.Sprintf(text.NoModelList, name, binary))
+			f.reviewLine(fmt.Sprintf(text.NoModelList, name, tab.baseline.binaryText(name)))
 		}
 		return nil
 	}
 	working := tab.working.CLI[name]
 	keep := text.CLIBackend
 	if listed {
-		keep = reviewCLIKeepText(binary, working)
+		keep = reviewCLIKeepText(tab.baseline.binaryText(name), working)
 	}
 	options := []composeOption[string]{{f.form.Keep + " — " + keep, ""}}
 	for _, model := range models {
@@ -90,7 +106,7 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 	switch {
 	case err != nil || choice == "":
 		return err
-	case choice == reviewSwitchValue:
+	case choice == reviewSwitchValue && len(switchTo) > 0:
 		return f.reviewSwitch(tab, name, switchTo)
 	case row.kind == reviewRowAgy:
 		id, err := f.reviewAgyEffort(name, models, choice, working)
@@ -110,8 +126,10 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 
 // reviewCLIModels is the model list of a CLI row and whether the row has a
 // source for one: claude's tier models, the run's Codex catalog snapshot
-// (the one the table read), or `agy models` of an installed agy, read once
-// per tab entry. An unreadable source prints its note (REQ-RVM-22, 24).
+// (the one the table read), or `agy models` of an agy installed on PATH
+// under its bare name, read once per tab entry. An agy given as a path is
+// never run and prints its reason line; an unreadable source prints its
+// note (REQ-RVM-22, 24).
 func (f *composeFormRun) reviewCLIModels(tab *reviewTabState, name string, row reviewArgsRow, binary string) ([]reviewCLIModel, bool) {
 	switch row.kind {
 	case reviewRowClaude:
@@ -123,6 +141,10 @@ func (f *composeFormRun) reviewCLIModels(tab *reviewTabState, name string, row r
 		}
 		return models, true
 	case reviewRowAgy:
+		if !agyBareName(binary) {
+			f.reviewLine(fmt.Sprintf(f.reviewText().AgyPath, name, tab.baseline.binaryText(name)))
+			return nil, false
+		}
 		if !detect.IsInstalled(binary) {
 			return nil, false
 		}
@@ -153,6 +175,9 @@ func (f *composeFormRun) reviewSwitchChoices(tab *reviewTabState, name string) [
 // the attested models of its family, then its thinking; the write adds
 // backend: omp and model and keeps binary, args, and the rest.
 func (f *composeFormRun) reviewSwitch(tab *reviewTabState, name string, choices []ompCustomModelChoice) error {
+	if len(choices) == 0 {
+		return nil
+	}
 	text := f.reviewText()
 	options := make([]composeOption[string], 0, len(choices))
 	for _, choice := range choices {

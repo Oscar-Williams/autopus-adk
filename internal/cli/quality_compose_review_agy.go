@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"regexp"
 	"slices"
@@ -23,12 +24,24 @@ const (
 var agyModelsRunner = runAgyModels
 
 // runAgyModels runs `<binary> models` within agyModelsTimeout, keeping at
-// most agyModelsMaxOutput of stdout; stderr is bounded and dropped. A
-// timeout, a non-zero exit, and an overrun are errors.
+// most agyModelsMaxOutput of stdout; stderr is bounded and dropped. Only a
+// bare name is run, found on PATH, so opening the tab never runs a path the
+// project's autopus.yaml names. A path, a timeout, a non-zero exit, and an
+// overrun are errors.
 func runAgyModels(ctx context.Context, binary string) ([]byte, error) {
+	if !agyBareName(binary) {
+		return nil, errors.New("agy models runs only a binary found on PATH by name")
+	}
 	ctx, cancel := context.WithTimeout(ctx, agyModelsTimeout)
 	defer cancel()
 	return processprobe.OutputLimited(exec.CommandContext(ctx, binary, "models"), agyModelsMaxOutput)
+}
+
+// agyBareName reports a binary given as a name for PATH to resolve: not
+// empty, without a leading `.`, and without either separator or a `:`,
+// which Windows reads as a drive-relative path such as C:agy.
+func agyBareName(binary string) bool {
+	return binary != "" && !strings.HasPrefix(binary, ".") && !strings.ContainsAny(binary, `:/\`)
 }
 
 // agyModelLine is one listed model: an id, a tab, and a display name without
