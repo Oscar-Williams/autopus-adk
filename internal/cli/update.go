@@ -191,7 +191,7 @@ func newUpdateCmd() *cobra.Command {
 			if !yesFlag {
 				promptLanguageSettings(cmd, dir, cfg)
 			}
-			rea.ask(cmd, cfg, composeGate{Yes: yesFlag, Check: checkOnly})
+			rea.prepare(cmd, cfg, composeGate{Yes: yesFlag, Check: checkOnly, Detected: addedPlatforms})
 			statusLineSummary, statusLineErr := applyStatusLineMode(cmd, dir, cfg, statusLine, isStdinTTY() && !yesFlag)
 			if statusLineErr != nil {
 				return statusLineErr

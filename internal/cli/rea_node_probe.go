@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"os/exec"
@@ -9,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/insajin/autopus-adk/pkg/processprobe"
 	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
 
@@ -19,6 +19,10 @@ const reaNodeTimeout = 5 * time.Second
 // pipes, so a child process that keeps stdout open cannot hold the run past
 // the deadline.
 const reaNodeWaitDelay = 200 * time.Millisecond
+
+// reaNodeOutputLimit bounds what one probe captures: a login shell that
+// prints more is stopped and judged unknown.
+const reaNodeOutputLimit = 64 << 10
 
 // reaNodeExecFunc runs name with args and reports stdout, the exit status,
 // and an error when the command could not start.
@@ -74,22 +78,23 @@ func probeReaNode(ctx context.Context, goos string, timeout time.Duration, run r
 	})
 }
 
-// execReaNode is the real exec boundary. The probe reads no stdin and drops
-// stderr; the exit status is -1 when the process was killed.
+// execReaNode is the real exec boundary. The probe reads no stdin, runs in its
+// own process group, and captures at most reaNodeOutputLimit bytes of stdout
+// (stderr is bounded and dropped). A deadline, an output overrun, or any
+// failed run kills the whole group, so a grandchild that holds the stdout
+// pipe dies with it. The exit status is -1 when the process was killed or
+// stopped at the cap.
 func execReaNode(ctx context.Context, name string, args ...string) (string, int, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
-	var stdout bytes.Buffer
-	cmd.Stdout = &stdout
 	cmd.WaitDelay = reaNodeWaitDelay
-	if err := cmd.Start(); err != nil {
+	stdout, err := processprobe.OutputLimited(cmd, reaNodeOutputLimit)
+	if cmd.Process == nil {
 		return "", 0, err
 	}
-	// The exit status carries the verdict, so Wait's own error adds nothing;
-	// a WaitDelay overrun keeps the stdout captured before the pipes closed.
-	_ = cmd.Wait()
+	// The exit status carries the verdict; only an overrun overrides it.
 	exit := -1
-	if cmd.ProcessState != nil {
+	if cmd.ProcessState != nil && !errors.Is(err, processprobe.ErrOutputLimit) {
 		exit = cmd.ProcessState.ExitCode()
 	}
-	return stdout.String(), exit, nil
+	return string(stdout), exit, nil
 }

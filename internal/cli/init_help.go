@@ -30,4 +30,5 @@ const initCmdLong = "코딩 CLI에 Autopus 하네스를 설치합니다. autopus
 	"thinking(orchestra.providers.<p>.model), judge(spec.review_gate.judge)를 init 설정에 넣어 init이 함께 씁니다.\n" +
 	"CLI backend provider의 model은 args와 quality 정책이 정하므로 그대로입니다. 끈 provider도 orchestra\n" +
 	"명령(brainstorm·plan·review·secure)과 auto spec review --multi에서는 계속 돕니다. 확인 호출을 고르면 provider\n" +
-	"n개에 요청 1회씩(재시도 포함 최대 3n회 model 호출) 보내고 결과 줄만 씁니다."
+	"n개에 요청 1회씩(재시도 포함 최대 3n회 model 호출) 보내고 결과 줄만 씁니다." +
+	"\n\n" + reaInitHelp

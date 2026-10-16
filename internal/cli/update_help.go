@@ -47,4 +47,5 @@ const updateCmdLong = "설치된 하네스 파일을 업데이트합니다.\n\n"
 	"미리보기 뒤 이 세 key의 값만 바꿔 써서 주석과 서식이 그대로입니다. CLI backend provider의 model은 args와\n" +
 	"quality 정책이 정하므로 그대로 둡니다. 끈 provider도 orchestra 명령(brainstorm·plan·review·secure)과\n" +
 	"auto spec review --multi에서는 계속 돕니다. 확인 호출을 고르면 provider n개에 요청 1회씩(재시도 포함 최대\n" +
-	"3n회 model 호출) 보내고 결과 줄만 쓰며 아무것도 저장하지 않습니다."
+	"3n회 model 호출) 보내고 결과 줄만 쓰며 아무것도 저장하지 않습니다." +
+	"\n\n" + reaUpdateHelp

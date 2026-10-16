@@ -50,6 +50,7 @@ func buildUpdatePreview(ctx context.Context, dir string, cfg *config.HarnessConf
 		backupNeeded = backupNeeded || needsBackup
 	}
 
+	result.Items = append(result.Items, reaSweepPreviewItems(dir, cfg)...)
 	result.Items = append(result.Items, buildDesignPreviewItems(dir, cfg)...)
 	result.Items = append(result.Items, buildStatusLinePreviewItems(dir, cfg)...)
 
