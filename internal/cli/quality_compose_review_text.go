@@ -21,6 +21,7 @@ type composeReviewText struct {
 	ErrCLIModel                      string // %[1]s: the provider, %[2]s: the model
 	ErrCLIEffort                     string // %[1]s: the provider, %[2]s: the effort, %[3]s: the model
 	CLIValueRefused                  string // %[1]s: the provider, %[2]s: the flag, %[3]s: the raw value
+	RawMissing                       string // %s: the provider
 	None                             string
 	Judge, NoJudge, JudgeOff         string // JudgeOff: %s, the judge
 	ErrCount                         string // %d: the participating providers
@@ -58,6 +59,7 @@ var composeReviewTextKO = composeReviewText{
 	ErrCLIModel:     "%[1]s model %[2]s는 이 provider의 선택지에 없습니다",
 	ErrCLIEffort:    "%[1]s effort %[2]s는 %[3]s이 받지 않는 단계입니다",
 	CLIValueRefused: "%[1]s의 %[2]s 값이 환경 변수라 이 탭에서 바꾸지 않습니다: %[3]s",
+	RawMissing:      "autopus.yaml 원문에서 %s 항목을 읽지 못해 이 탭에서 model을 바꾸지 않습니다",
 	None:            "없음",
 	Judge:           "judge", NoJudge: "judge 없음", JudgeOff: "judge %s가 꺼져 judge를 다시 고릅니다",
 	ErrCount:    "리뷰에는 provider가 두 개 이상 필요합니다 (지금 %d개)",
@@ -93,6 +95,7 @@ var composeReviewTextEN = composeReviewText{
 	ErrCLIModel:     "%[2]s is not a choice for %[1]s",
 	ErrCLIEffort:    "%[3]s does not take effort %[2]s for %[1]s",
 	CLIValueRefused: "%[2]s of %[1]s comes from an environment variable; this tab leaves it: %[3]s",
+	RawMissing:      "The %s entry could not be read from autopus.yaml as written; this tab keeps its model",
 	None:            "none",
 	Judge:           "judge", NoJudge: "no judge", JudgeOff: "judge %s was turned off; choose a new judge",
 	ErrCount:    "The review needs at least two providers (now %d)",

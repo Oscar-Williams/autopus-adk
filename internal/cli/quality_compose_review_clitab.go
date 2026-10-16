@@ -9,6 +9,19 @@ import (
 	"github.com/insajin/autopus-adk/pkg/detect"
 )
 
+// reviewRawRefused prints the raw view line and reports true when the raw
+// document holds no view of the provider: its file could not be read, or it
+// has no entry for it. Without one the tab can neither tell a placeholder
+// from a value nor show an old value as written, so the provider keeps its
+// model and its backend (REQ-RVM-26).
+func (f *composeFormRun) reviewRawRefused(tab *reviewTabState, name string) bool {
+	if _, ok := tab.baseline.Raw[name]; ok {
+		return false
+	}
+	f.reviewLine(fmt.Sprintf(f.reviewText().RawMissing, name))
+	return true
+}
+
 // reviewPlaceholderRefused prints the CLI value refusal line and reports true
 // when a value the provider's model select could change is an environment
 // placeholder in the raw document: the OMP model scalar, or a model or effort

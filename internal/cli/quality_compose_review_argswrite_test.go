@@ -91,7 +91,7 @@ func TestSaveReviewComposition_ArgsRefusals(t *testing.T) {
 			require.NoError(t, err)
 			replaceReviewFile(t, dir, reviewRLClaudeArgs, args)
 			before := readReviewFile(t, dir)
-			baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
+			baseline := newReviewBaseline(cfg, readReviewRaw(dir))
 			working := baseline.reviewComposition.clone()
 			working.CLI["claude"] = reviewCLIValue{"claude-opus-5-5", "max"}
 

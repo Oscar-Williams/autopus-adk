@@ -48,7 +48,7 @@ func saveReviewEdit(t *testing.T, dir string, edit func(*reviewComposition)) (*c
 	t.Helper()
 	cfg, err := config.Load(dir)
 	require.NoError(t, err)
-	baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
+	baseline := newReviewBaseline(cfg, readReviewRaw(dir))
 	working := baseline.reviewComposition.clone()
 	edit(&working)
 	return cfg, saveReviewComposition(dir, cfg, baseline, working)

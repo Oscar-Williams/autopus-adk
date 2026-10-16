@@ -26,7 +26,7 @@ type reviewTabState struct {
 func (f *composeFormRun) reviewTab() error {
 	var raw map[string]reviewRawProvider
 	if f.shared.writer == composeSessionFile {
-		raw = readReviewRaw(f.shared.dir, f.shared.cfg)
+		raw = readReviewRaw(f.shared.dir)
 	}
 	tab := &reviewTabState{
 		baseline: newReviewBaseline(f.shared.cfg, raw), catalog: &reviewCatalog{}, agy: reviewAgyCatalog{}, attested: newReviewAttestation(),
@@ -108,14 +108,14 @@ func (f *composeFormRun) reviewParticipation(tab *reviewTabState) error {
 
 // reviewModels asks the model of every participating provider: an OMP one
 // by REQ-RVM-06, a CLI one by its CLI Model Contract row (REQ-RVM-08). A
-// provider whose target value is an environment placeholder gets the refusal
-// line instead (REQ-RVM-26); an unreadable OMP catalog prints its note once
-// per pass.
+// provider the raw document holds no view of, or whose target value is an
+// environment placeholder, gets its refusal line instead (REQ-RVM-26); an
+// unreadable OMP catalog prints its note once per pass.
 func (f *composeFormRun) reviewModels(tab *reviewTabState) error {
 	text := f.reviewText()
 	noted := false
 	for _, name := range tab.baseline.Visible {
-		if !tab.working.takesPart(name) || f.reviewPlaceholderRefused(tab, name) {
+		if !tab.working.takesPart(name) || f.reviewRawRefused(tab, name) || f.reviewPlaceholderRefused(tab, name) {
 			continue
 		}
 		if !tab.working.OMP[name] {

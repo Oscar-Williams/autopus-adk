@@ -100,22 +100,25 @@ func reviewRawOf(cfg *config.HarnessConfig) map[string]reviewRawProvider {
 	return raw
 }
 
-// readReviewRaw reads the view of every provider from dir's autopus.yaml,
-// or the view of cfg when the file cannot serve as one.
-func readReviewRaw(dir string, cfg *config.HarnessConfig) map[string]reviewRawProvider {
+// readReviewRaw reads the view of every provider from dir's autopus.yaml.
+// A file that cannot be read or parsed, or that holds no providers mapping,
+// gives no provider a view, never the expanded config's: the tab then keeps
+// every model rather than show or decide on a value it cannot read as
+// written (REQ-RVM-26).
+func readReviewRaw(dir string) map[string]reviewRawProvider {
+	raw := map[string]reviewRawProvider{}
 	data, err := os.ReadFile(filepath.Join(dir, "autopus.yaml"))
 	if err != nil {
-		return reviewRawOf(cfg)
+		return raw
 	}
 	document, _, err := parseAutopusConfigDocument(data)
 	if err != nil {
-		return reviewRawOf(cfg)
+		return raw
 	}
 	providers := yamlPathValue(document, []string{"orchestra", "providers"})
 	if providers == nil || providers.Kind != yaml.MappingNode {
-		return reviewRawOf(cfg)
+		return raw
 	}
-	raw := map[string]reviewRawProvider{}
 	for i := 0; i+1 < len(providers.Content); i += 2 {
 		entry, view := providers.Content[i+1], reviewRawProvider{}
 		if _, args := yamlMappingPair(entry, "args"); args != nil && args.Kind == yaml.SequenceNode {

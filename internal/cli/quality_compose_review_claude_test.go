@@ -6,12 +6,16 @@ package cli
 // changed flag values from the raw document.
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 const reviewRLClaudeArgs = "            args: [--print, --model, claude-fable-5-1, --effort, max]"
@@ -137,4 +141,64 @@ func TestReviewCLI_S26ClaudeValidationAndLines(t *testing.T) {
 		"orchestra.providers.claude.args --model claude-fable-5-1 → claude-haiku-4-5",
 		"orchestra.providers.claude.args --effort max → 없음",
 	}, plan.Changes)
+}
+
+// A file session whose autopus.yaml can no longer be read has no raw view:
+// each participating provider gets the reason line instead of its model
+// select, so an expanded placeholder never reaches the screen, and nothing
+// is written (REQ-RVM-26).
+func TestReviewTab_NoRawViewKeepsEveryModel(t *testing.T) {
+	t.Setenv("REVIEW_MODEL", "rvm-sentinel-7f3a9c")
+	dir := writeReviewRL(t)
+	replaceReviewFile(t, dir, "--model, claude-fable-5-1,", `--model, "${REVIEW_MODEL}",`)
+	path := filepath.Join(dir, "autopus.yaml")
+
+	// participation ×3, judge Enter, check Enter, the menu's default.
+	run := runReviewCLIFormsLate(t, dir, mustReadComposeCatalog(t, "CAT-E"), nil,
+		func() { require.NoError(t, os.Remove(path)) }, reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n"})...)
+
+	require.NoError(t, run.err, run.out)
+	for _, name := range []string{"claude", "codex", "gemini"} {
+		assert.Equal(t, 1, strings.Count(run.out, "autopus.yaml 원문에서 "+name+" 항목을 읽지 못해 이 탭에서 model을 바꾸지 않습니다\n"), name)
+		assert.NotContains(t, run.out, name+" model \n")
+	}
+	assert.Contains(t, run.out, "변경 없음\n")
+	assert.NotContains(t, run.out, "rvm-sentinel-7f3a9c")
+	_, err := os.Stat(path)
+	assert.True(t, os.IsNotExist(err), "nothing is written")
+}
+
+// readReviewRaw gives no provider a view when its file cannot serve as one,
+// never the expanded config's, and keeps a placeholder as written.
+func TestReadReviewRaw_NoViewWithoutAReadableFile(t *testing.T) {
+	write := func(text string) string {
+		dir := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "autopus.yaml"), []byte(text), 0o644))
+		return dir
+	}
+	assert.Empty(t, readReviewRaw(t.TempDir()), "no file")
+	assert.Empty(t, readReviewRaw(write("orchestra: [\n")), "no YAML")
+	assert.Empty(t, readReviewRaw(write("mode: full\n")), "no providers mapping")
+
+	t.Setenv("REVIEW_MODEL", "rvm-sentinel-7f3a9c")
+	dir := writeReviewRL(t)
+	replaceReviewFile(t, dir, "--model, claude-fable-5-1,", `--model, "${REVIEW_MODEL}",`)
+	assert.Equal(t, []string{"--print", "--model", "${REVIEW_MODEL}", "--effort", "max"}, readReviewRaw(dir)["claude"].Args)
+}
+
+// Without a raw view, an unchanged after table cell names only the binary
+// or the backend, never a value of the expanded config.
+func TestReviewAfterTable_NoRawViewShowsNoValue(t *testing.T) {
+	cells := func(cfg *config.HarnessConfig) []string {
+		baseline := newReviewBaseline(cfg, map[string]reviewRawProvider{})
+		var cells []string
+		for _, row := range reviewAfterTable(baseline, baseline.reviewComposition.clone(), composeReviewTextKO).rows {
+			cells = append(cells, row[2])
+		}
+		return cells
+	}
+	assert.Equal(t, []string{"omp", "omp", "omp"}, cells(reviewR3Config()))
+	cli := reviewR3Config()
+	reviewRLConfig(cli)
+	assert.Equal(t, []string{"claude", "codex", "agy"}, cells(cli))
 }
