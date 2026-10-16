@@ -64,7 +64,7 @@ func TestGeneratedReverseEngineerTemplates_KeepREAReferences(t *testing.T) {
 	} {
 		data, err := fs.ReadFile(templates.FS, path)
 		require.NoError(t, err, path)
-		assert.Contains(t, string(data), "Claude Code `mcp__rea__*`", path)
+		assert.Contains(t, string(data), "Claude Code `mcp__rea__<도구>`", path)
 		assert.NotContains(t, string(data), "Context7 MCP with WebSearch fallback", path)
 	}
 }

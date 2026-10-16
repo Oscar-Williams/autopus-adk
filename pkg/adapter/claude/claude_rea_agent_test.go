@@ -6,11 +6,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
 
-// S9 (Reverse Engineer Agent Contract): the Claude file grants the REA server
-// and the read tools only, keeps the default permission mode, and projects
-// the analysis rung under balanced and the opus tier under ultra.
+// S9 (Reverse Engineer Agent Contract) and security audit M2: the Claude file
+// grants the read tools and REA's static analysis tools one by one, never the
+// whole server, keeps the default permission mode, and projects the analysis
+// rung under balanced and the opus tier under ultra.
 func TestClaudeReverseEngineerAgent_FrontmatterPerQualityMode(t *testing.T) {
 	t.Parallel()
 	for mode, want := range map[string][2]string{
@@ -18,7 +21,11 @@ func TestClaudeReverseEngineerAgent_FrontmatterPerQualityMode(t *testing.T) {
 		"ultra":    {"model: opus", "effort: max"},
 	} {
 		lines := agentFrontmatterLines(t, generateClaudeAgentsForMode(t, mode), "reverse-engineer.md")
-		assert.Contains(t, lines, "tools: Read, Grep, Glob, mcp__rea", mode)
+		staticTools := []string{"Read", "Grep", "Glob"}
+		for _, tool := range reamcp.StaticAnalysisTools() {
+			staticTools = append(staticTools, "mcp__rea__"+tool)
+		}
+		assert.Contains(t, lines, "tools: "+strings.Join(staticTools, ", "), mode)
 		assert.Contains(t, lines, "permissionMode: default", mode)
 		assert.Contains(t, lines, want[0], mode)
 		assert.Contains(t, lines, want[1], mode)
@@ -29,8 +36,9 @@ func TestClaudeReverseEngineerAgent_FrontmatterPerQualityMode(t *testing.T) {
 			}
 		}
 		require.NotEmpty(t, tools, mode)
-		for _, denied := range []string{"Write", "Edit", "Bash"} {
-			assert.NotContains(t, tools, denied, mode)
+		granted := strings.Split(strings.TrimPrefix(tools, "tools: "), ", ")
+		for _, denied := range []string{"Write", "Edit", "Bash", "mcp__rea", "mcp__rea__capture_process_scenario"} {
+			assert.NotContains(t, granted, denied, mode)
 		}
 	}
 }

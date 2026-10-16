@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 // AgentSourceMeta holds the richer frontmatter from content/agents/*.md source files.
@@ -107,6 +109,12 @@ func TransformAgentForCodex(src AgentSource) string {
 	fmt.Fprintf(&sb, "{{with .CodexAgentModel %q %q %q}}model = \"{{.}}\"{{end}}\n", src.Meta.Name, src.Meta.Model, effort)
 	sb.WriteString(formatCodexAgentEffortLine(src.Meta.Name, src.Meta.Model, effort))
 	sb.WriteString("\n")
+	if src.Meta.Name == config.ReverseEngineerAgent {
+		// Codex agent roles take no tool list, so the analysis agent gets the
+		// read-only sandbox its role file accepts (SPEC-REA-001 M1). MCP tool
+		// calls stay outside the sandbox; its body forbids the runtime ones.
+		sb.WriteString("sandbox_mode = \"read-only\"\n")
+	}
 
 	// Preserve the source structure so Codex keeps the phase contracts and I/O shape.
 	instructions := buildCodexInstructions(src.Meta, body)
@@ -155,11 +163,12 @@ func TransformAgentForGemini(src AgentSource) string {
 	return sb.String()
 }
 
-// reaMCPTool is the source tool entry granting the project-scoped REA MCP
-// server (SPEC-REA-001). Autopus registers that server for Claude Code, Codex,
-// and Antigravity only, so the OMP and OpenCode projections drop every REA
+// reaMCPToolPrefix starts every REA tool a source grants one by one
+// (SPEC-REA-001 M2: reverse-engineer holds only REA's static analysis tools,
+// never the whole server). Autopus registers REA for Claude Code, Codex, and
+// Antigravity only, so the OMP and OpenCode projections drop every REA
 // reference (isReaMCPReference).
-const reaMCPTool = "mcp__rea"
+const reaMCPToolPrefix = "mcp__rea__"
 
 // @AX:NOTE [AUTO]: This provider vocabulary allowlist intentionally omits unknown and advisory-only source tools.
 func geminiNativeTools(source string) []string {
@@ -170,14 +179,17 @@ func geminiNativeTools(source string) []string {
 		"Grep":  "grep_search",
 		"Glob":  "glob",
 		"Bash":  "run_shell_command",
-		// Antigravity names MCP tools mcp_<server>_<tool>; the wildcard grants
-		// every tool of the REA server.
-		reaMCPTool: "mcp_rea_*",
 	}
 	seen := make(map[string]bool, len(native))
 	tools := make([]string, 0, len(native))
 	for _, candidate := range strings.Split(source, ",") {
-		mapped, ok := native[strings.TrimSpace(candidate)]
+		candidate = strings.TrimSpace(candidate)
+		mapped, ok := native[candidate]
+		// Antigravity names MCP tools mcp_<server>_<tool>, so each granted REA
+		// tool keeps its own name; no wildcard grants the whole server.
+		if tool, rea := strings.CutPrefix(candidate, reaMCPToolPrefix); rea && tool != "" {
+			mapped, ok = "mcp_rea_"+tool, true
+		}
 		if !ok || seen[mapped] {
 			continue
 		}

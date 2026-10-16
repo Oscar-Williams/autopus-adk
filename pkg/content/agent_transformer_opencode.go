@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 var openCodeToolMap = map[string]string{
@@ -64,6 +66,11 @@ func buildOpenCodePermissions(src AgentSource) []string {
 		"question": true,
 		"skill":    true,
 		"task":     true,
+	}
+	// The analysis agent dispatches no other agent (SPEC-REA-001 M1): without
+	// task, the "*": deny rule refuses it.
+	if src.Meta.Name == config.ReverseEngineerAgent {
+		delete(seen, "task")
 	}
 	for _, item := range strings.Split(src.Meta.Tools, ",") {
 		tool := strings.TrimSpace(item)

@@ -7,15 +7,16 @@
 
 ### 1. 분석
 
-- 메인 세션이 `reverse-engineer`를 보냅니다. 입력은 대상 경로, 기능 이름, 있으면 `Runtime capture wanted: yes`와 메인 세션이 기록한 동의 줄뿐입니다. 실행 모드는 정하지 않습니다.
+- 메인 세션이 `reverse-engineer`를 보냅니다. 입력은 대상 경로, 기능 이름, 있으면 `Runtime capture wanted: yes`와 메인 세션이 부른 runtime 도구의 결과 줄뿐입니다. 실행 모드는 정하지 않습니다.
+- `reverse-engineer`는 REA의 정적 분석 도구만 가집니다. 대상을 실행하거나 붙거나 계측·캡처하는 REA runtime 도구는 메인 세션만 부릅니다.
 - 결과가 그 에이전트의 REA 미등록 문장으로 끝나면 여기서 멈춥니다. 아무 파일도 쓰지 않고 다른 에이전트를 보내지 않습니다.
 
 ### 2. runtime capture 동의
 
-- 결과가 `## Runtime Capture Request`(target, tool, will run, why)이면 메인 세션이 운영자에게 한 번 묻습니다: `REA가 <target>을 실행하거나 붙는 <tool>을 쓰려 합니다: <will run>. 허용할까요? (허용 / 거절)`. 영어 세션은 `REA wants to use <tool>, which runs or attaches to <target>: <will run>. Allow? (allow / decline)`로 묻습니다.
-- 허용이면 동의 줄 `Runtime capture consent: <tool> on <target>`을 붙여 1을 다시 보냅니다.
-- 거절이나 무응답이면 동의 줄 없이 정적 분석만 이어 가고 빈 곳을 명세의 `## Unknowns`에 남깁니다. 허용 전에는 runtime capture 호출이 없습니다.
-- --auto도 이 동의 질문을 건너뛰지 않습니다.
+- 결과가 `## Runtime Capture Request`(target, tool, arguments, will run, why)이면 메인 세션이 운영자에게 한 번 묻습니다: `REA가 <target>을 실행하거나 붙는 <tool>을 쓰려 합니다: <will run>. 허용할까요? (허용 / 거절)`. 영어 세션은 `REA wants to use <tool>, which runs or attaches to <target>: <will run>. Allow? (allow / decline)`로 묻습니다.
+- 허용이면 메인 세션이 그 REA 도구를 요청의 arguments로 직접 부르고, 돌아온 evidence_id만 `Runtime capture evidence: <tool> on <target>: <evidence_id>` 줄로 붙여 1을 다시 보냅니다. 도구 결과 본문은 dispatch prompt에 넣지 않습니다.
+- 거절이나 무응답이면 결과 줄 없이 정적 분석만 이어 가고 빈 곳을 명세의 `## Unknowns`에 남깁니다. 운영자의 허용 답 전에는 어떤 runtime capture 도구도 부르지 않습니다.
+- --auto도 이 동의 질문을 건너뛰지 않습니다. 답이 없으면 부르지 않습니다.
 
 ### 3. 확인 gate
 

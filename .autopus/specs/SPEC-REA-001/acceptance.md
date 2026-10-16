@@ -94,7 +94,7 @@ Then 예상 값은 아래 표와 같다
 | (15) | 0 | `.mcp.json`과 새 `.codex/config.toml`에 managed 1개씩 | 없음 | 0 | 0 |
 
 And TTY가 아닌 실행의 stdin Read는 0이다. (9)는 `--rea와 --no-rea는 함께 쓸 수 없습니다`, (10)은 `--rea·--no-rea는 --workspace와 함께 쓸 수 없습니다`를 담은 오류로 끝난다
-And 쓰기가 있는 모든 실행 뒤 `.claude/agents/autopus/reverse-engineer.md`의 tools 줄은 `tools: Read, Grep, Glob, mcp__rea`이고 `.claude/skills/auto-reverse/SKILL.md`는 `확인 / 수정 / 중단`을 담는다
+And 쓰기가 있는 모든 실행 뒤 `.claude/agents/autopus/reverse-engineer.md`의 tools 줄은 `tools: Read, Grep, Glob, ` 뒤에 `reamcp.StaticAnalysisTools()`의 `mcp__rea__<tool>` 135개이고 `.claude/skills/auto-reverse/SKILL.md`는 `확인 / 수정 / 중단`을 담는다
 
 ### S8: doctor
 Priority: Must
@@ -109,8 +109,8 @@ Priority: Must
 Given N24로 `auto init --yes --platforms claude-code,codex,antigravity-cli,omp,opencode`한 P5가 있다
 When 플랫폼마다 생성 에이전트 파일의 이름 집합과 reverse-engineer 파일을 읽는다
 Then `.claude/agents/autopus/*.md`, `.codex/agents/*.toml`, `.gemini/agents/autopus/*.md`, `.omp/agents/*.md`, `.opencode/agents/*.md`의 이름 집합(확장자 제외)은 각각 `CanonicalAgentNames()`와 같은 17개이고 `CanonicalAgentNames()[10]`은 `reverse-engineer`다
-And Claude 파일은 `tools: Read, Grep, Glob, mcp__rea`, `permissionMode: default`, `model: claude-opus-5-5`, `effort: high` 줄을 담고 tools 줄에 `Write`, `Edit`, `Bash`가 없다. Antigravity tools는 `read_file`, `grep_search`, `glob`, `mcp_rea_*` 순서의 4개, OMP tools는 `glob`, `grep`, `read`이고 `mcp_`로 시작하는 값이 없으며, OpenCode permission은 `"*": deny`와 allow `glob`, `grep`, `question`, `read`, `skill`, `task`뿐이다. Codex 파일은 `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`다
-And 다섯 파일의 본문은 다섯 절 이름(`## Behaviour`, `## Inputs and Outputs`, `## Evidence`, `## Unknowns`, `## Acceptance Items`), ID 형식 `B-1`·`A-1`, `## Runtime Capture Request`(target, tool, will run, why), Form Text의 두 미등록 문장을 담고 `AskUserQuestion`을 담지 않는다
+And Claude 파일은 `tools: Read, Grep, Glob, ` 뒤에 정적 도구 135개를 `mcp__rea__<tool>`로 하나씩 담은 tools 줄, `permissionMode: default`, `model: claude-opus-5-5`, `effort: high` 줄을 담고 tools 줄에 `Write`, `Edit`, `Bash`, 서버 전체 `mcp__rea`, `reamcp.RuntimeCaptureTools()`·`CallerPathWriteTools()`의 도구가 없다. Antigravity tools는 `read_file`, `grep_search`, `glob`, 그 뒤 정적 도구마다 `mcp_rea_<tool>`(138개)이고 `mcp_rea_*`가 없으며, OMP tools는 `glob`, `grep`, `read`이고 `mcp_`로 시작하는 값이 없고, OpenCode permission은 `"*": deny`와 allow `glob`, `grep`, `question`, `read`, `skill`뿐이다(`task` 없음). Codex 파일은 `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`, `sandbox_mode = "read-only"`다
+And 다섯 파일의 본문은 다섯 절 이름(`## Behaviour`, `## Inputs and Outputs`, `## Evidence`, `## Unknowns`, `## Acceptance Items`), ID 형식 `B-1`·`A-1`, `## Runtime Capture Request`(target, tool, arguments, will run, why), `Runtime capture evidence: <tool> on <target>: <evidence_id>`, Form Text의 두 미등록 문장을 담고 `AskUserQuestion`을 담지 않는다
 
 ### S10: 프리셋 표와 분류
 Priority: Must
@@ -139,7 +139,7 @@ Priority: Must
 Given `DefaultFullConfig`로 다섯 플랫폼을 `Generate`한 project가 있다
 When router, `.gemini/commands/auto/reverse.toml`, 다섯 `auto-reverse` detail, `.claude/agents/autopus/executor.md`, `tester.md`를 읽는다
 Then Claude root router(`.claude/skills/auto/SKILL.md`)는 `.claude/skills/auto-reverse/SKILL.md`를 정확히 1번 담고 8192 bytes 이하다. Antigravity router와 `.gemini/commands/auto/reverse.toml`은 `.gemini/skills/autopus/auto-reverse/SKILL.md`를 담는다. Codex router 설명의 예상 값은 `Autopus 명령 라우터 — setup/status/goal/update/plan/go/fix/review/sync/idea/map/why/verify/secure/test/qa/dev/canary/doctor/reverse 서브커맨드를 해석합니다`다
-And 다섯 detail은 각각 `--runtime`, `Runtime capture wanted: yes`, `## Runtime Capture Request`, `Runtime capture consent:`, `허용 / 거절`, `확인 / 수정 / 중단`, `--auto도 이 확인 gate를 건너뛰지 않습니다`, slug 예 `로그인 화면` → `feature`, `.autopus/reverse/<slug>/behaviour-spec.md`, `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, `Phase: Test Scaffold`, `Phase: Testing`, `dispatch prompt에 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다`를 담는다
+And 다섯 detail은 각각 `--runtime`, `Runtime capture wanted: yes`, `## Runtime Capture Request`, `Runtime capture evidence:`, `메인 세션이 그 REA 도구를 요청의 arguments로 직접 부르고`, `허용 / 거절`, `확인 / 수정 / 중단`, `--auto도 이 확인 gate를 건너뛰지 않습니다`, slug 예 `로그인 화면` → `feature`, `.autopus/reverse/<slug>/behaviour-spec.md`, `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, `Phase: Test Scaffold`, `Phase: Testing`, `dispatch prompt에 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다`를 담는다
 And executor.md·tester.md는 `SPEC: N/A`이고 `Behaviour Spec:` 경로가 있으면 그 파일이 요구사항 원천이라는 문장을 담고, frozen 목록에 `reverse`를 더한 Claude·Antigravity router·command test와 Update·Generate parity test가 통과한다
 
 ### S14: 사전 승인 없음
@@ -177,8 +177,8 @@ Priority: Must
 Given S18 project, 사용자의 모델 호출 동의, 외부 디컴파일러가 필요 없는 작은 로컬 정적 대상(JS 또는 Electron 앱 하나), 실행하면 계산한 한 줄을 출력하는 로컬 fixture `fixture/hello.js`, `--no-rea`로 REA를 끈 사본이 있다
 When Claude Code에서 (a) `/auto reverse <대상> <기능>` → 확인, (b) 수정 한 번 뒤 중단, (c) `/auto reverse fixture/hello.js "실행 출력" --runtime` → 동의 질문에서 거절, (e) 같은 명령 → 허용 → 확인, (d) 끈 사본에서 `/auto reverse`를 실행하고, Antigravity와 Codex에서 각각 `/auto reverse`를 gate까지 실행한 뒤 중단한다
 Then (a)에서 reverse-engineer subagent가 `mcp__rea__` 도구를 1번 이상 부르고(A1 Claude PASS), 결과가 다섯 절·`B-`·`A-` ID·evidence_id 1개 이상을 담고 의사코드·assembly가 없다. 새 project 파일은 `.autopus/reverse/<slug>/behaviour-spec.md`와 gate에서 확인한 경로 아래 파일뿐이고 `git status --porcelain`은 `.autopus/reverse/`를 보이지 않으며, 세 dispatch prompt는 `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, ID, 경로, Phase를 담고 REA 결과 텍스트가 없으며, tester Testing은 `A-`마다 판정을 남긴다
-And (b)의 수정은 분석을 한 번 다시 보내고 중단 뒤에는 파일이 생기지 않고 dispatch가 더 없다. (c)와 (e)의 첫 결과는 `## Runtime Capture Request`이고 그때까지 runtime capture 도구 호출은 0번이다. (c)는 거절 뒤에도 호출이 0번이고 `## Unknowns`에 빈 곳이 적힌다. (e)는 허용 뒤 다시 보낸 dispatch prompt가 `Runtime capture consent: <tool> on fixture/hello.js`를 담고 그 뒤 runtime capture 도구 호출이 1번 이상이다(REQ-REA-21 허용 경로). (d)는 dispatch가 정확히 1번(reverse-engineer)이고 그 결과가 미등록 문장으로 끝나며 executor·tester dispatch와 새 파일이 0이다
-And Antigravity의 reverse-engineer는 `mcp_rea_*`로 해석된 REA 도구를 1번 이상 부르고(A1 Antigravity PASS), Codex의 reverse-engineer는 REA 도구 호출 1번 이상을 60초 안에 끝낸다(A2 도구 절반 PASS). 결과를 `evidence/manual-smoke-rea.txt`에 남기고, 동의가 없거나 하나라도 FAIL이면 PASS로 닫지 않고 CD-2를 남긴다
+And (b)의 수정은 분석을 한 번 다시 보내고 중단 뒤에는 파일이 생기지 않고 dispatch가 더 없다. (c)와 (e)의 첫 결과는 `## Runtime Capture Request`이고 그때까지 runtime capture 도구 호출은 0번이다. (c)는 거절 뒤에도 호출이 0번이고 `## Unknowns`에 빈 곳이 적힌다. (e)는 허용 뒤 메인 세션이 요청의 runtime capture 도구를 1번 이상 부르고(subagent transcript의 runtime 도구 호출은 0번), 다시 보낸 dispatch prompt가 `Runtime capture evidence: <tool> on fixture/hello.js: <evidence_id>`를 담는다(REQ-REA-21 허용 경로). (d)는 dispatch가 정확히 1번(reverse-engineer)이고 그 결과가 미등록 문장으로 끝나며 executor·tester dispatch와 새 파일이 0이다
+And Antigravity의 reverse-engineer는 `mcp_rea_<tool>`로 해석된 정적 REA 도구를 1번 이상 부르고(A1 Antigravity PASS), Codex의 reverse-engineer는 REA 도구 호출 1번 이상을 60초 안에 끝낸다(A2 도구 절반 PASS). 결과를 `evidence/manual-smoke-rea.txt`에 남기고, 동의가 없거나 하나라도 FAIL이면 PASS로 닫지 않고 CD-2를 남긴다
 
 ### S20: locale
 Priority: Should

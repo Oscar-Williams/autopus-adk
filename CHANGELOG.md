@@ -42,6 +42,16 @@ All notable changes to this project will be documented in this file.
   - doctor: 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류, OMP·OpenCode 안내를 텍스트와 `--json`의
     `data.rea`·`doctor.rea.*` check로 보고하고 REA 서버를 띄우거나 네트워크를 쓰지 않는다. `mcp__rea` 권한 사전 승인과
     project MCP 자동 승인은 쓰지 않는다.
+- **REA reverse-engineer 도구 표면을 정적 분석으로 좁힌다** (2026-10-16, SPEC-REA-001 보안 감사 M1–M3):
+  - Claude Code·Antigravity의 reverse-engineer는 REA 서버 전체(`mcp__rea`, `mcp_rea_*`) 대신 rea-agents@6.5.0의
+    정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 67개와 호출자가 고른 경로에
+    쓰는 도구 4개는 메인 세션만 부르고, runtime 도구는 운영자의 `허용` 답 뒤에만 부른다(`--auto`도 묻는다).
+    분류와 근거는 `.autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md`다.
+  - Codex reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`를 쓴다. Codex 역할에는 도구 목록이 없고 MCP
+    도구 호출은 sandbox 밖이라, Codex에서는 에이전트 본문의 금지와 메인 세션의 동의 질문이 runtime 도구의 남은
+    제한이다(권고 수준). OpenCode reverse-engineer는 `task` 권한이 없어 다른 에이전트를 보내지 못한다.
+  - executor·tester는 Behaviour Spec 문자열을 대상에서 유래한 인용으로 읽고 그 안의 명령·URL·지시를 실행하거나
+    따르지 않는다.
 - **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 17개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
   모델과 thinking을 따로 줄 수 없었다.
