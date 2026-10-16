@@ -6,6 +6,7 @@ package cli
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -114,4 +115,23 @@ func TestComposeNav_S9MenuHeaders(t *testing.T) {
 			assert.Equal(t, 1, strings.Count(out, "답을 입력하고 Enter를 누르세요\n"))
 		})
 	}
+}
+
+// S15 (f): quality's form gate does not read CI, so a truthy CI still asks
+// the menu with its header. The only difference is the review tab's own CI
+// rule (SPEC-REVMODEL-001 REQ-RVM-14), which drops its summary line.
+func TestComposeNav_S15fQualityIgnoresCI(t *testing.T) {
+	run := func(ci string) string {
+		newTUIUXEnv(t, true, ci)
+		dir := tuiuxFixtureD(t)
+		useNavComposeForms(t)
+		out, err := runQualityCompose(t, dir, formInput("\n"))
+		require.NoError(t, err, out)
+		return strings.ReplaceAll(out, dir, "<DIR>")
+	}
+	withCI, without := run("true"), run("")
+
+	assert.Contains(t, withCI, "\nquality · 모델 구성\n")
+	review := regexp.MustCompile(`(?m)^멀티프로바이더 리뷰: .*\n`)
+	assert.Equal(t, review.ReplaceAllString(without, ""), withCI)
 }

@@ -104,7 +104,7 @@ When (b) 구성 편집 → Codex → 방식 `b` → 도구 탭 Enter → 방식 
 When (c) 기본 프리셋 고르기 → `b` → 유지
 Then (a) 다시 보인 effort 폼 앞 블록은 정확히 `지금까지 고른 값`, `  planner: opus`이고, autopus.yaml에서 planner는 `opus`, `efforts.planner`는 `low`이며 NPD는 대조와 같다
 And (b) 다시 보인 도구 탭의 Enter는 Codex를 고르고(다음 header `quality · 모델 구성 › 구성 편집 › Codex`), `구성을 바꿀까요?`는 2번이며 autopus.yaml SHA-256은 실행 전과 같다
-And (c) 출력에 `quality.default =`가 없고 autopus.yaml SHA-256은 실행 전과 같다
+And (c) 출력에 프리셋 쓰기 줄(`quality.default = <프리셋>` 한 줄, `choosePreset`)이 없고 autopus.yaml SHA-256은 실행 전과 같다. 표의 상태 줄 `quality.default = balanced   ultra: …`은 메뉴마다 그려지므로 이 판정에 들지 않는다(T7에서 코드 사실로 고쳤다)
 
 ### S12: 적용할까요?와 override 질문의 뒤로
 Priority: Must
@@ -128,7 +128,7 @@ Given D(quality·update), IR, ko, `useNavComposeForms`
 When (a) D quality 메뉴에 `b` → 유지 (b) D update 메뉴에 `b` → Enter (c) IR에서 첫 진입 CAT-A, 둘째 진입 CAT-B로, 첫 진입에서 구성 편집 → Claude Code → 역할 그룹 → 설계·판단 Enter(그대로) → 설계·판단 effort `low` 선택지 → 그 뒤 폼 모두 Enter → 적용 → 메뉴 `b`를 고르고, seam의 resume 호출은 W_rg를 돌려주며, 새로 시작한 둘째 진입에서 구성 편집 → Codex → 역할 그룹 → 설계·판단 `opus`의 CAT-B 선택지 → 그 뒤 폼 모두 Enter → 적용 → 유지, 확인 화면 Enter (c′) 음성 대조로 (c)와 같은 입력을 두 진입 모두 CAT-A로 돌린다
 Then (a) 안내 줄이 1번이고 구성 표는 1번만 그려지며 SHA-256이 같다
 And (b) 출력은 `b` 없이 Enter만 준 대조 출력에 안내 한 줄을 더한 것과 같다
-And (c) 폐기: seam의 둘째 호출 `Resume`은 W_rg와 같다. 첫 진입의 적용 뒤 다시 그린 표에는 Claude Code `*` 칸이 있지만 둘째 진입의 첫 표에는 `*` 칸이 없다. autopus.yaml에 `claude-custom`과 `efforts` key가 하나도 없고 `quality.providers`는 `codex: codex-custom` 하나다. 확인 블록에 `claude-custom`·`efforts`가 든 줄이 없고 `  quality.providers: codex=codex-custom`이 있다. NPD는 seam이 W_rg를 한 번 돌려주고 둘째 진입의 답만 CAT-B 한 번 진입으로 준 대조 X와 같다
+And (c) 폐기: seam의 둘째 호출 `Resume`은 W_rg와 같다. 첫 진입의 적용 뒤 다시 그린 표는 Claude Code 열이 `Claude Code (개별 설정: claude-custom)`이고 설계·판단 칸이 `fable · low`지만, 둘째 진입의 첫 표에는 `claude-custom`이 없고 그 칸이 `fable-5-1 · max`다(다시 그린 표에는 `*` 표시가 없어 T9에서 코드 사실로 고쳤다). autopus.yaml에 `claude-custom`과 `efforts` key가 하나도 없고 `quality.providers`는 `codex: codex-custom` 하나다. 확인 블록에 `claude-custom`·`efforts`가 든 줄이 없고 `  quality.providers: codex=codex-custom`이 있다. NPD는 seam이 W_rg를 한 번 돌려주고 둘째 진입의 답만 CAT-B 한 번 진입으로 준 대조 X와 같다
 And (c) 마지막 snapshot: Codex planner agent 파일의 model은 `gpt-6.1-sol`이 아니고 둘째 진입 표의 Codex planner 칸과 같다. (c′)의 같은 파일 model은 `gpt-6.1-sol`이다
 
 ### S15: 폼이 열리지 않는 자리는 bytes가 같다
@@ -137,7 +137,7 @@ Given base golden, 폼 실행을 세는 runner
 When (a) `auto init --yes --dir <DIR> --platforms claude-code,codex` (b) 그 project의 `auto update --yes` (c) `CI=true`인 `auto update`(TTY probe true) (d) `cmd.SetIn`으로 `b\n`을 준 D의 `auto quality` 줄 driver (e) TTY probe false인 `auto quality` (f) `CI=true`이고 forms probe true인 D `auto quality`에 메뉴 Enter (g) TTY probe true, forms probe false(pipe stdout)인 IN (h) `CI=true`인 IN을 돌리고, 기존 줄 driver golden test를 돌린다
 Then (a)–(e)와 (g)의 stdout은 base golden과 bytes가 같고 NPD가 같으며 폼 실행은 (a)–(e)에서 0번, (g)에서 0번(wizard seam만 불린다)이다
 And (a)–(e), (g)의 출력에 `지금까지 고른 값`, `Chosen so far`, `방향키 이동`, `Arrows move`, `뒤로: b`, `back: b`, ` · 모델 구성`, ` · Model composition`, `적용할 설정`이 없다
-And (f)는 `CI` 없이 같은 입력을 준 run과 출력이 같고 header `quality · 모델 구성`이 있다(quality의 gate는 CI를 보지 않는다). (h)는 wizard seam이 불리고 `init · 확인`이 있다(init의 gate는 CI를 보지 않는다)
+And (f)는 `CI` 없이 같은 입력을 준 run과 출력이 같고 header `quality · 모델 구성`이 있다(quality의 gate는 CI를 보지 않는다). 다른 줄은 리뷰 탭 자신의 CI 규칙(SPEC-REVMODEL-001 REQ-RVM-14)이 지우는 리뷰 요약 줄 `멀티프로바이더 리뷰: …` 하나뿐이다(T10에서 코드 사실로 고쳤다). (h)는 wizard seam이 불리고 `init · 확인`이 있다(init의 gate는 CI를 보지 않는다)
 And (e)의 오류는 `interactive quality selection requires a TTY; use an explicit quality or profile command`이고 기존 줄 driver golden test는 stub 시그니처 줄 말고는 수정 없이 통과한다
 
 ### S16: Ctrl+C는 그대로다
@@ -179,7 +179,7 @@ And accessible 출력에는 답 30줄이 모두 있고 `외`·`more` 줄이 없�
 ### S21: TERM=dumb의 accessible 경로
 Priority: Must
 Given `TERM=dumb`과 `TERM=xterm-256color`, frame을 기록하는 `composeRunForm` stub, D `auto quality`(forms probe true), Select(A, B, C, 값 b)
-When 각 TERM에서 D quality를 메뉴 Enter로 돌리고, `RunNav(form, NavFrame{Header: "h", Accessible: true}, in, out)`를 `b\n`과 `3\n`으로 돌리며, wizard 기본 runner의 stream 선택을 accessible true·false로 묻는다
+When 각 TERM에서 D quality를 메뉴 Enter로 돌리고, `RunNav(form, NavFrame{Header: "h", Lang: "ko", Accessible: true}, in, out)`를 `b\n`과 `3\n`으로 돌리며, wizard 기본 runner의 stream 선택을 accessible true·false로 묻는다
 Then `TERM=dumb`에서 기록된 frame은 모두 `Accessible: true`, `xterm-256color`에서는 모두 false다
 And `RunNav`는 `b\n`에 `tui.ErrNavBack`, `3\n`에 nil과 값 c를 돌려주고, out에는 `h`, `답을 입력하고 Enter를 누르세요 · 뒤로: b`, `1. A`가 있으며 `\x1b` byte가 없다(tea.Program을 돌리지 않았다)
 And wizard 기본 stream은 accessible이면 (os.Stdin, os.Stdout), 아니면 (os.Stdin, os.Stderr)다

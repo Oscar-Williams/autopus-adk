@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/insajin/autopus-adk/internal/cli/tui"
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 // S6: the review block, its frame and select, nothing written while it
@@ -173,4 +174,24 @@ func TestInitReview_FormErrorEndsInitWithoutWrites(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrClosed)
 	assert.Contains(t, err.Error(), "init review")
 	assert.Empty(t, tuiuxPathState(t, dir), out)
+}
+
+// The REA line reads the run's decision and the action decide set.
+func TestInitReview_ReaDecisionAndAction(t *testing.T) {
+	text := initReviewTextFor("ko")
+	cfg := tuiuxConfigWith(config.ReaMCPRemove)
+	run := &initInteractive{cfg: cfg, rea: &initRea{reaRun: &reaRun{state: reaOff}}}
+	assert.Equal(t, "끔", run.reaDecision(text))
+	assert.Equal(t, "제거", run.reaAction(text))
+	run.cfg.Runtime.ReaMCP = config.ReaMCPKeep
+	run.rea.state = reaOn
+	assert.Equal(t, "켬", run.reaDecision(text))
+	assert.Equal(t, "그대로", run.reaAction(text))
+	assert.Equal(t, "keep", run.reaAction(initReviewTextFor("en")))
+}
+
+func tuiuxConfigWith(action config.ReaMCPAction) *config.HarnessConfig {
+	cfg := config.DefaultFullConfig("p")
+	cfg.Runtime.ReaMCP = action
+	return cfg
 }
