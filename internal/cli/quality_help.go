@@ -89,12 +89,18 @@ The tool tab ends with Multi-provider review while spec.review_gate is
 enabled, autopus.yaml holds at least two orchestra.providers entries, and CI
 is not set (SPEC-REVMODEL-001); a summary line under the table names the
 review providers and the judge. The tab sets the providers auto spec review
-uses (spec.review_gate.providers), the model and thinking of each provider
-with backend: omp (only installed models Autopus attests for its family;
-orchestra.providers.<p>.model), and the judge (spec.review_gate.judge). It
-previews the change and writes only those three keys, value by value, so
-comments and layout stay. A provider on a CLI backend keeps its model: its
-args and quality policy decide it. Orchestra commands (brainstorm, plan,
-review, secure) and auto spec review --multi keep every provider. An
-optional live check sends one request to each of n review providers (at
-most 3n model calls with retries) and writes nothing.`
+uses (spec.review_gate.providers), each provider's model and effort, and the
+judge (spec.review_gate.judge). A provider with backend: omp picks an
+installed model Autopus attests for its family and a thinking level
+(orchestra.providers.<p>.model). On a CLI backend, claude picks a Claude tab
+model and effort (--model, --effort), codex a model of the Codex catalog and
+one of its efforts (-m and model_reasoning_effort, with model_policy:
+pinned), and agy an id agy models lists (--model); only those args values
+change. When omp attests a model of its family, any CLI provider can switch
+to the OMP backend (backend: omp and model). The preview shows changed CLI
+values as written in autopus.yaml and never other args; a value taken from
+${NAME} is left alone. Only those values are rewritten, so comments and
+layout stay. Orchestra commands (brainstorm, plan, review, secure) and
+auto spec review --multi keep every provider. An optional live check sends
+one request to each of n review providers (at most 3n model calls with
+retries) and writes nothing.`

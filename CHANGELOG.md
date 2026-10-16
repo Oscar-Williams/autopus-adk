@@ -12,10 +12,17 @@ All notable changes to this project will be documented in this file.
     아래에 `멀티프로바이더 리뷰: claude · codex · gemini(꺼짐) · judge claude` 같은 요약 줄이 나온다. provider마다
     참여(둘 미만이면 오류 뒤 `다시 고르기`·`나가기`), `backend: omp` provider의 model(그 family에서 증명된 설치
     model만)과 보고된 thinking, judge(참여 provider, 빈 judge는 `그대로 — judge 없음`)를 묻고 지금 값과 비교한 after
-    표와 바뀌는 설정을 미리 보인다. CLI backend provider의 model은 args와 quality 정책이 정하므로 바꾸지 않고 이유
-    줄을 쓴다.
-  - 쓰기: `spec.review_gate.providers`, `orchestra.providers.<p>.model`(`<provider>/<model>:<thinking>`),
-    `spec.review_gate.judge` 셋만 쓰고 셋 다 v0.50.125가 읽는다. update·quality는 그 값 span만 바꿔 주석·빈 줄·
+    표와 바뀌는 설정을 미리 보인다.
+  - CLI backend: 현재 값은 orchestra migration 뒤 설정(런타임이 쓰는 args)에서 정한다. `claude`는 Claude 탭 model과
+    `low`–`max`(haiku는 effort 쌍을 지움)를 `--model`·`--effort` 값으로, `codex`는 이번 실행 Codex catalog에서
+    `low`–`max`를 하나라도 보고하는 model과 그 단계를 `model_policy: pinned`와 `-m`·`model_reasoning_effort` 값으로,
+    `agy`는 `agy models`(15초, 64 KiB, 엄격 해석)의 같은 family id를 `--model` 값으로 쓴다. 다른 args 항목·순서·
+    중복과 placeholder는 bytes 그대로다. `omp` catalog가 그 family의 model을 증명하면 모든 CLI provider를
+    `OMP backend로 전환`(`backend: omp`와 `model`)할 수 있고, model 목록도 omp도 없으면 이유 줄을 쓴다. 미리보기는
+    바뀐 flag 값만 autopus.yaml 글자로 보이고 다른 args는 보이지 않으며, `${NAME}`에서 오는 대상 값은 사전 거부 줄과
+    함께 바꾸지 않는다.
+  - 쓰기: `spec.review_gate.providers`, `orchestra.providers.<p>.model`(`<provider>/<model>:<thinking>`), `.args`,
+    `.model_policy`, `.backend`, `spec.review_gate.judge`만 쓰고 모두 v0.50.125가 읽는다. update·quality는 그 값 span만 바꿔 주석·빈 줄·
     들여쓰기가 그대로이고, `${NAME}`, anchor·alias·merge key, block scalar처럼 안전하지 않은 값은
     `autopus.yaml의 리뷰 설정을 안전하게 고칠 수 없어 아무것도 쓰지 않았습니다: <key>`로 거부한다. init은 Review
     Gate 답과 감지 provider를 구성 단계 전에 넣고 탭 편집을 저장할 설정에 넣는다. provider를 꺼도 orchestra
@@ -24,7 +31,8 @@ All notable changes to this project will be documented in this file.
     1회(60초) 보낸다. 라벨이 `provider <n>개에 요청 1회씩 (재시도 포함 최대 <3n>회 model 호출)`을 적고, 결과는
     provider마다 `확인 호출 <p> (<model>): 통과`·`응답에 확인 문자열이 없습니다`·`실패 — <detail>` 한 줄이며
     저장하지 않는다. 이름에 터미널 제어 문자가 있는 provider가 있으면 요청 전에 막고, OMP review backend의 stderr
-    진단 두 줄은 provider·model·tools·사유를 `terminalSafe`로 감싼다. `--yes`, 터미널이 아닌 입력, CI에는 탭이 없다.
+    진단 두 줄, Codex fallback 진단 줄의 model·effort, 없는 binary 경고의 이름은 `terminalSafe`를 거친다. `--yes`,
+    터미널이 아닌 입력, CI에는 탭이 없다.
 - **v0.50.126: REA 역공학 MCP, 17번째 에이전트 reverse-engineer, `/auto reverse`** (2026-10-15, SPEC-REA-001):
   기존 앱·바이너리의 기능을 증거와 함께 분석해 다시 구현하려 해도 하네스에는 역공학 도구 등록, 분석 격리,
   디컴파일 결과와 구현 사이의 clean-room 경계가 없었다.

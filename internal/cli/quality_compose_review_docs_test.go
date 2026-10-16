@@ -2,8 +2,8 @@ package cli
 
 // SPEC-REVMODEL-001 T10 (REQ-RVM-18; acceptance S14): the three helps, both
 // READMEs, and the v0.50.126 CHANGELOG entry document the review tab, the
-// three keys it writes, the live check's most model calls, the CLI-backend
-// limit, and that orchestra commands and --multi keep every provider.
+// three keys it writes, the live check's most model calls, the CLI backend
+// models, and that orchestra commands and --multi keep every provider.
 
 import (
 	"strings"
@@ -11,8 +11,8 @@ import (
 )
 
 // reviewDocWants are the statements every document carries: the written
-// keys, the call bound, the CLI-backend limit, and the commands that keep
-// every provider.
+// keys, the call bound, the CLI backend, and the commands that keep every
+// provider.
 var reviewDocWants = []string{
 	"spec.review_gate.providers", "orchestra.providers.<p>.model", "spec.review_gate.judge",
 	"3n", "CLI backend", "auto spec review --multi", "brainstorm",
