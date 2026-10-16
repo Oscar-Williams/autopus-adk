@@ -17,6 +17,7 @@ type composeReviewText struct {
 	Switch                           string
 	CodexNote                        string
 	AgyNote                          string // %s: the provider
+	AgyPath                          string // %[1]s: the provider, %[2]s: the binary
 	NoModelList                      string // %[1]s: the provider, %[2]s: the binary
 	ErrCLIModel                      string // %[1]s: the provider, %[2]s: the model
 	ErrCLIEffort                     string // %[1]s: the provider, %[2]s: the effort, %[3]s: the model
@@ -55,6 +56,7 @@ var composeReviewTextKO = composeReviewText{
 	Effort:      "%s effort", Switch: "OMP backend로 전환",
 	CodexNote: "Codex catalog를 읽지 못해 codex model은 그대로입니다",
 	AgyNote:   "%s(agy) model 목록을 읽지 못해 agy model은 그대로입니다",
+	AgyPath:   "%[1]s의 binary %[2]s는 PATH에서 찾는 이름이 아니라 model 목록을 읽으려고 실행하지 않습니다",
 	NoModelList: "%[1]s(%[2]s)는 Autopus가 증명할 model 목록이 없어 model을 바꾸지 않습니다. " +
 		"OMP를 설치하면 OMP backend로 전환할 수 있습니다",
 	ErrCLIModel:     "%[1]s model %[2]s는 이 provider의 선택지에 없습니다",
@@ -92,6 +94,7 @@ var composeReviewTextEN = composeReviewText{
 	Effort:      "%s effort", Switch: "switch to the OMP backend",
 	CodexNote: "The Codex catalog is unreadable; the codex model stays",
 	AgyNote:   "Could not read the agy model list for %s; its agy model stays",
+	AgyPath:   "The binary %[2]s of %[1]s is not a name looked up on PATH, so it is not run to read its model list",
 	NoModelList: "%[1]s (%[2]s) has no model list Autopus can attest, so its model stays; " +
 		"install OMP to switch it to the OMP backend",
 	ErrCLIModel:     "%[2]s is not a choice for %[1]s",

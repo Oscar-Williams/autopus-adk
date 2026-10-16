@@ -126,8 +126,10 @@ func (f *composeFormRun) reviewCLI(tab *reviewTabState, name string) error {
 
 // reviewCLIModels is the model list of a CLI row and whether the row has a
 // source for one: claude's tier models, the run's Codex catalog snapshot
-// (the one the table read), or `agy models` of an installed agy, read once
-// per tab entry. An unreadable source prints its note (REQ-RVM-22, 24).
+// (the one the table read), or `agy models` of an agy installed on PATH
+// under its bare name, read once per tab entry. An agy given as a path is
+// never run and prints its reason line; an unreadable source prints its
+// note (REQ-RVM-22, 24).
 func (f *composeFormRun) reviewCLIModels(tab *reviewTabState, name string, row reviewArgsRow, binary string) ([]reviewCLIModel, bool) {
 	switch row.kind {
 	case reviewRowClaude:
@@ -139,6 +141,10 @@ func (f *composeFormRun) reviewCLIModels(tab *reviewTabState, name string, row r
 		}
 		return models, true
 	case reviewRowAgy:
+		if !agyBareName(binary) {
+			f.reviewLine(fmt.Sprintf(f.reviewText().AgyPath, name, tab.baseline.binaryText(name)))
+			return nil, false
+		}
 		if !detect.IsInstalled(binary) {
 			return nil, false
 		}

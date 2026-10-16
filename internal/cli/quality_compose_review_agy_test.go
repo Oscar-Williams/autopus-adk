@@ -99,19 +99,23 @@ func reviewSelectorsOfCLI(models []reviewCLIModel) []string {
 	return ids
 }
 
-// The production runner keeps stdout, fails on a non-zero exit, stops an
-// output past 64 KiB, and stops a run past its deadline. Its stand-in is a
-// shell script, never a real agy.
+// The production runner runs only a name found on PATH, keeps stdout, fails
+// on a non-zero exit, stops an output past 64 KiB, and stops a run past its
+// deadline. Its stand-in is a shell script, never a real agy.
 func TestRunAgyModels_BoundsTheProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("the stand-in is a POSIX shell script")
 	}
 	bin := t.TempDir()
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	script := func(name, body string) string {
-		path := filepath.Join(bin, name)
-		require.NoError(t, os.WriteFile(path, []byte("#!/bin/sh\n"+body+"\n"), 0o755))
-		return path
+		require.NoError(t, os.WriteFile(filepath.Join(bin, name), []byte("#!/bin/sh\n"+body+"\n"), 0o755))
+		return name
 	}
+	marker := filepath.Join(t.TempDir(), "ran")
+	_, err := runAgyModels(context.Background(), filepath.Join(bin, script("path", ": > "+marker)))
+	assert.Error(t, err, "a path is never run")
+	assert.NoFileExists(t, marker)
 	out, err := runAgyModels(context.Background(), script("ok", `[ "$1" = models ] && printf 'Fetching available models...\ngemini-x-high\tX\n' && echo noise >&2`))
 	require.NoError(t, err)
 	assert.Equal(t, "Fetching available models...\ngemini-x-high\tX\n", string(out))
