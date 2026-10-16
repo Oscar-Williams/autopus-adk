@@ -44,6 +44,19 @@ var reviewCompatCases = []reviewCompatCase{
 		edit: func(w *reviewComposition) { w.Judge = "codex" }, added: []string{"spec.review_gate.judge"}},
 }
 
+// reviewCompatCLICases are S22's files: S19(1), S19(2), S20, and S21 from B1.
+var reviewCompatCLICases = []reviewCompatCase{
+	{name: "S19(1)", start: func(t *testing.T) string { return writeReviewRL(t) },
+		edit: func(w *reviewComposition) { w.CLI["claude"] = reviewCLIValue{"claude-opus-5-5", "xhigh"} }},
+	{name: "S19(2)", start: func(t *testing.T) string { return writeReviewRL(t) },
+		edit: func(w *reviewComposition) { w.CLI["claude"] = reviewCLIValue{Model: "claude-haiku-4-5"} }},
+	{name: "S20", start: func(t *testing.T) string { return writeReviewRL(t) },
+		edit: func(w *reviewComposition) { w.CLI["codex"] = reviewCLIValue{"gpt-6.1-sol", "high"} }},
+	{name: "S21", start: func(t *testing.T) string { return writeReviewRL(t) }, edit: func(w *reviewComposition) {
+		w.OMP["gemini"], w.Models["gemini"] = true, "google-antigravity/gemini-3.8-flash:high"
+	}, added: []string{"orchestra.providers.gemini.backend", "orchestra.providers.gemini.model"}},
+}
+
 // writeReviewCompatFile applies the case's edit to its start file through
 // saveReviewComposition and returns the project and the start text.
 func writeReviewCompatFile(t *testing.T, tc reviewCompatCase) (string, string) {
@@ -90,7 +103,7 @@ func reviewKeyPaths(t *testing.T, text string) []string {
 }
 
 func TestReviewCompat_S7KeyPathsStayTheStartFiles(t *testing.T) {
-	for _, tc := range reviewCompatCases {
+	for _, tc := range append(slices.Clone(reviewCompatCases), reviewCompatCLICases...) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir, start := writeReviewCompatFile(t, tc)
 			want := slices.Sorted(slices.Values(append(reviewKeyPaths(t, start), tc.added...)))
@@ -125,11 +138,30 @@ func TestReviewCompat_S7V050125LoadsTheWrittenFiles(t *testing.T) {
 		})
 	}
 	require.NotEmpty(t, s1)
-	control := writeBlockFixture(t, strings.Replace(s1, "        providers: [claude, codex]\n",
-		"        providers: [claude, codex]\n        reviewers: [claude]\n", 1))
-	out, err := load(t, control)
-	var exit *exec.ExitError
-	require.ErrorAs(t, err, &exit, out)
-	assert.Equal(t, 1, exit.ExitCode())
-	assert.Contains(t, out, "field reviewers not found in type config.ReviewGateConf")
+	refused := func(t *testing.T, text, want string) {
+		t.Helper()
+		out, err := load(t, writeBlockFixture(t, text))
+		var exit *exec.ExitError
+		require.ErrorAs(t, err, &exit, out)
+		assert.Equal(t, 1, exit.ExitCode())
+		assert.Contains(t, out, want)
+	}
+	refused(t, strings.Replace(s1, "        providers: [claude, codex]\n", "        providers: [claude, codex]\n        reviewers: [claude]\n", 1),
+		"field reviewers not found in type config.ReviewGateConf")
+
+	// S22: the CLI and switch files load; a codex models key does not.
+	var s20 string
+	for _, tc := range reviewCompatCLICases {
+		t.Run(tc.name, func(t *testing.T) {
+			dir, _ := writeReviewCompatFile(t, tc)
+			out, err := load(t, dir)
+			require.NoError(t, err, out)
+			assert.Equal(t, "developer\n", out)
+			if tc.name == "S20" {
+				s20 = readReviewFile(t, dir)
+			}
+		})
+	}
+	require.NotEmpty(t, s20)
+	refused(t, strings.Replace(s20, "            binary: codex\n", "            binary: codex\n            models: [x]\n", 1), "field models not found")
 }
