@@ -52,11 +52,11 @@ func reviewPlanOf(t *testing.T, baseline reviewBaseline, working reviewCompositi
 	prefixes := map[string]string{
 		"claude": "anthropic/", "codex": "openai-codex/", "gemini": "google-antigravity/", "gem\x1b[2Jini": "google-antigravity/",
 	}
-	attested := reviewAttestation{}
+	attested := newReviewAttestation()
 	for _, name := range baseline.Visible {
 		for _, choice := range choices {
 			if strings.HasPrefix(choice.selector(), prefixes[name]) {
-				attested[name] = append(attested[name], choice)
+				attested.OMP[name] = append(attested.OMP[name], choice)
 			}
 		}
 	}
@@ -76,16 +76,16 @@ func reviewOn(baseline reviewBaseline, names ...string) []string {
 // orchestra.providers entry is neither shown nor changed.
 func TestReviewBaseline_ParticipationKeepsTheBaselineOrder(t *testing.T) {
 	cfg := reviewR3Config()
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, nil)
 	assert.Equal(t, []string{"claude", "codex", "gemini"}, baseline.Visible)
 	assert.Equal(t, []string{"claude", "codex"}, reviewOn(baseline, "claude", "codex"))
 
 	cfg.Spec.ReviewGate.Providers = []string{"codex", "opencode", "claude"}
-	baseline = newReviewBaseline(cfg)
+	baseline = newReviewBaseline(cfg, nil)
 	assert.Equal(t, []string{"opencode", "claude", "gemini"}, reviewOn(baseline, "claude", "gemini"))
 
 	cfg.Spec.ReviewGate.Providers = []string{"claude"}
-	baseline = newReviewBaseline(cfg)
+	baseline = newReviewBaseline(cfg, nil)
 	assert.Equal(t, []string{"claude", "codex"}, reviewOn(baseline, "claude", "codex"), "S18(2)")
 	assert.Equal(t, 1, baseline.participants(baseline.reviewComposition))
 }
@@ -93,7 +93,7 @@ func TestReviewBaseline_ParticipationKeepsTheBaselineOrder(t *testing.T) {
 // S1: turning gemini off changes only the list, and the commands note
 // follows the change line; the after table marks the changed cell.
 func TestPlanReviewComposition_S1TurnOffChangesTheListOnly(t *testing.T) {
-	baseline := newReviewBaseline(reviewR3Config())
+	baseline := newReviewBaseline(reviewR3Config(), nil)
 	working := baseline.reviewComposition.clone()
 	working.Providers = reviewOn(baseline, "claude", "codex")
 
@@ -113,7 +113,7 @@ func TestPlanReviewComposition_S1TurnOffChangesTheListOnly(t *testing.T) {
 
 // S2: model lines follow the provider order, and the model note follows.
 func TestPlanReviewComposition_S2ModelLinesInProviderOrder(t *testing.T) {
-	baseline := newReviewBaseline(reviewR3Config())
+	baseline := newReviewBaseline(reviewR3Config(), nil)
 	working := baseline.reviewComposition.clone()
 	working.Models["codex"] = "openai-codex/gpt-6-luna:high"
 	working.Models["claude"] = "anthropic/claude-opus-5-5:max"
@@ -131,7 +131,7 @@ func TestPlanReviewComposition_S2ModelLinesInProviderOrder(t *testing.T) {
 
 // S3(a), S3(c)·(d), S18: the count and judge errors.
 func TestPlanReviewComposition_S3CountAndJudgeErrors(t *testing.T) {
-	baseline := newReviewBaseline(reviewR3Config())
+	baseline := newReviewBaseline(reviewR3Config(), nil)
 	cases := []struct {
 		name    string
 		on      []string
@@ -157,7 +157,7 @@ func TestPlanReviewComposition_S3CountAndJudgeErrors(t *testing.T) {
 // S4(b): a changed model is held against the attested family list; a model
 // equal to the baseline is not, even when the catalog lacks it.
 func TestPlanReviewComposition_S4AttestsOnlyChangedModels(t *testing.T) {
-	baseline := newReviewBaseline(reviewR3Config())
+	baseline := newReviewBaseline(reviewR3Config(), nil)
 	cases := []struct {
 		name     string
 		catalog  string
@@ -194,7 +194,7 @@ func TestPlanReviewComposition_S4AttestsOnlyChangedModels(t *testing.T) {
 func TestPlanReviewComposition_JudgeLines(t *testing.T) {
 	cfg := reviewR3Config()
 	cfg.Spec.ReviewGate.Judge = ""
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, nil)
 	working := baseline.reviewComposition.clone()
 	working.Judge = "codex"
 
@@ -205,7 +205,7 @@ func TestPlanReviewComposition_JudgeLines(t *testing.T) {
 	assert.Empty(t, plan.Notes)
 	assert.Equal(t, "judge *", plan.Table.rows[1][3])
 
-	baseline = newReviewBaseline(reviewR3Config())
+	baseline = newReviewBaseline(reviewR3Config(), nil)
 	working = baseline.reviewComposition.clone()
 	working.Providers = reviewOn(baseline, "codex", "gemini")
 	working.Judge = "codex"
@@ -221,7 +221,7 @@ func TestPlanReviewComposition_JudgeLines(t *testing.T) {
 // S17(2): a working value equal to the baseline is no change, whatever the
 // passes in between were.
 func TestPlanReviewComposition_EqualToTheBaselineIsNoChange(t *testing.T) {
-	baseline := newReviewBaseline(reviewR3Config())
+	baseline := newReviewBaseline(reviewR3Config(), nil)
 	working := baseline.reviewComposition.clone()
 	working.Providers = reviewOn(baseline, "claude", "codex")
 	working.Providers = reviewOn(baseline, "claude", "codex", "gemini")
@@ -233,17 +233,17 @@ func TestPlanReviewComposition_EqualToTheBaselineIsNoChange(t *testing.T) {
 	assert.Empty(t, plan.Changes)
 }
 
-// REQ-RVM-08: a CLI-backend provider's model cell reads CLI backend and never
-// changes. Table cells are terminal-safe already; change lines keep the raw
-// names, as composeDriverPlan.Changes does, and the tab prints them through
-// terminalSafe.
+// REQ-RVM-08: a CLI provider's model cell reads `<binary> <model> · <effort>`
+// from the raw document. Table cells are terminal-safe already; change lines
+// keep the raw names, as composeDriverPlan.Changes does, and the tab prints
+// them through terminalSafe.
 func TestPlanReviewComposition_CLIBackendCellsAndTerminalSafety(t *testing.T) {
 	cfg := reviewR3Config()
 	cfg.Orchestra.Providers["claude"] = config.DefaultClaudeProviderEntry()
 	cfg.Orchestra.Providers["gem\x1b[2Jini"] = reviewOMPEntry("google-antigravity/gemini-3.8-flash:high")
 	delete(cfg.Orchestra.Providers, "gemini")
 	cfg.Spec.ReviewGate.Providers = []string{"claude", "codex"}
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, nil)
 	working := baseline.reviewComposition.clone()
 	working.Providers = reviewOn(baseline, "claude", "codex", "gem\x1b[2Jini")
 
@@ -251,7 +251,7 @@ func TestPlanReviewComposition_CLIBackendCellsAndTerminalSafety(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"claude", "codex", "gem\x1b[2Jini"}, baseline.Visible)
-	assert.Equal(t, "CLI backend", plan.Table.rows[0][2])
+	assert.Equal(t, "claude claude-fable-5-1 · max", plan.Table.rows[0][2])
 	assert.Equal(t, `gem\x1b[2Jini`, plan.Table.rows[2][0])
 	assert.Equal(t, "켜짐 *", plan.Table.rows[2][1])
 	require.Len(t, plan.Changes, 1)

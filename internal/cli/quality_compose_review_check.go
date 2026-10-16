@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"time"
@@ -25,11 +26,7 @@ const composeReviewCheckDetailRunes = 200
 // control characters stops the check before any request.
 func (f *composeFormRun) reviewLiveCheck(tab *reviewTabState) error {
 	text := f.reviewText()
-	candidate, err := reviewCandidate(f.shared.cfg, tab.working)
-	if err != nil {
-		f.warn(err)
-		return nil
-	}
+	candidate := reviewCandidate(f.shared.cfg, tab.baseline, tab.working)
 	names := resolveSpecReviewProviderNames(candidate, false)
 	run, err := composeSelect(f.cmd, text.Check, "", []composeOption[bool]{
 		{text.CheckSkip, false},
@@ -55,21 +52,20 @@ func (f *composeFormRun) reviewLiveCheck(tab *reviewTabState) error {
 	return nil
 }
 
-// reviewCandidate is the live check's config: a detached copy of cfg
-// carrying the working value. Nothing writes it.
-func reviewCandidate(cfg *config.HarnessConfig, working reviewComposition) (*config.HarnessConfig, error) {
-	candidate, err := cloneHarnessConfig(cfg)
-	if err != nil {
-		return nil, err
+// reviewCandidate is the live check's config: the run's config after
+// config.MigrateOrchestraConfig, as the runtime runs it, carrying the
+// working value the way the line writer writes it. Nothing writes it.
+func reviewCandidate(cfg *config.HarnessConfig, b reviewBaseline, working reviewComposition) *config.HarnessConfig {
+	candidate := reviewMigratedConfig(cfg)
+	if candidate == cfg {
+		clone := *cfg
+		candidate = &clone
 	}
+	candidate.Orchestra.Providers = maps.Clone(candidate.Orchestra.Providers)
 	candidate.Spec.ReviewGate.Providers = slices.Clone(working.Providers)
 	candidate.Spec.ReviewGate.Judge = working.Judge
-	for name, selector := range working.Models {
-		entry := candidate.Orchestra.Providers[name]
-		entry.Model = selector
-		candidate.Orchestra.Providers[name] = entry
-	}
-	return candidate, nil
+	applyReviewEntries(candidate.Orchestra.Providers, b, working)
+	return candidate
 }
 
 // reviewCheckLine is one result line (Live Check Contract): the provider,

@@ -58,19 +58,40 @@ func reviewLoaderValueKeepCwd(t *testing.T, dir string) *config.HarnessConfig {
 	return cfg
 }
 
-// S12 through the tab: the write-refused line names the first refused key;
-// the file and the run's orchestra and review gate stay as they were.
-func TestReviewTab_S12UnsafeTargetsRefuseThroughTheTab(t *testing.T) {
+// S12(a) through the tab: a placeholder model gets the pre-refusal line
+// instead of its model select, and its expanded value never reaches the
+// screen (REQ-RVM-26).
+func TestReviewTab_S12aPlaceholderModelIsRefusedBeforeItsSelect(t *testing.T) {
 	t.Setenv("CODEX_REVIEW_MODEL", "openai-codex/gpt-6-astra:max")
-	luna := []string{"\n", "\n", "\n", "\n", "3\n", "\n", "\n", "\n", "\n", "2\n", "\n"}
+	dir := writeReviewR3(t)
+	replaceReviewFile(t, dir, "model: openai-codex/gpt-6-astra:max", "model: ${CODEX_REVIEW_MODEL}")
+	sum := reviewFileSum(t, dir)
+	before, err := config.Load(dir)
+	require.NoError(t, err)
+
+	// participation Enter ×3, claude and gemini model Enter, judge Enter, check Enter, 유지.
+	run := runReviewForms(t, dir, nil, reviewLines(reviewOpen, []string{"\n", "\n", "\n", "\n", "\n", "\n", "\n", "\n"})...)
+
+	require.NoError(t, run.err, run.out)
+	assert.Contains(t, run.out, "codex의 model 값이 환경 변수라 이 탭에서 바꾸지 않습니다: ${CODEX_REVIEW_MODEL}\ngemini model \n")
+	assert.NotContains(t, run.out, "codex model \n")
+	assert.NotContains(t, run.out, "openai-codex/gpt-6-astra:max")
+	assert.Contains(t, run.out, "변경 없음\n")
+	assert.Equal(t, sum, reviewFileSum(t, dir))
+	assert.True(t, reflect.DeepEqual(before.Orchestra, run.cfg.Orchestra))
+	assert.True(t, reflect.DeepEqual(before.Spec.ReviewGate, run.cfg.Spec.ReviewGate))
+}
+
+// S12(b)·(c) through the tab: the write-refused line names the first
+// refused key; the file and the run's orchestra and review gate stay as they
+// were.
+func TestReviewTab_S12UnsafeTargetsRefuseThroughTheTab(t *testing.T) {
 	cases := []struct {
 		name  string
 		file  func(*testing.T, string) string
 		lines []string
 		key   string
 	}{
-		{"(a) placeholder model", reviewReplace("model: openai-codex/gpt-6-astra:max", "model: ${CODEX_REVIEW_MODEL}"), luna,
-			"orchestra.providers.codex.model"},
 		{"(b) aliased list", func(t *testing.T, text string) string {
 			text = reviewReplace("            providers: [claude, codex, gemini]\n        secure:", "            providers: &rp [claude, codex, gemini]\n        secure:")(t, text)
 			return reviewSpecLast(t, reviewReplace("        providers: [claude, codex, gemini]\n        judge", "        providers: *rp\n        judge")(t, text))

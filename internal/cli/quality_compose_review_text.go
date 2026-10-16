@@ -12,8 +12,16 @@ type composeReviewText struct {
 	Model                            string // %s: the provider
 	NotInCatalog                     string
 	Thinking                         string // %[1]s: the provider, %[2]s: the provider/model selector
-	CLINote                          string // %s: the provider
 	CatalogNote                      string
+	Effort                           string // %s: the provider
+	Switch                           string
+	CodexNote                        string
+	AgyNote                          string // %s: the provider
+	NoModelList                      string // %[1]s: the provider, %[2]s: the binary
+	ErrCLIModel                      string // %[1]s: the provider, %[2]s: the model
+	ErrCLIEffort                     string // %[1]s: the provider, %[2]s: the effort, %[3]s: the model
+	CLIValueRefused                  string // %[1]s: the provider, %[2]s: the flag, %[3]s: the raw value
+	None                             string
 	Judge, NoJudge, JudgeOff         string // JudgeOff: %s, the judge
 	ErrCount                         string // %d: the participating providers
 	ErrJudge                         string // %s: the judge
@@ -41,10 +49,17 @@ var composeReviewTextKO = composeReviewText{
 	Tab: "멀티프로바이더 리뷰", TakesPart: "%s 리뷰 참여",
 	On: "켜짐", Off: "꺼짐", TurnOff: "끄기", TurnOn: "켜기",
 	Model: "%s model", NotInCatalog: " (catalog에 없음)", Thinking: "%[1]s thinking (%[2]s)",
-	CLINote: "%s는 CLI backend라 model을 바꾸지 않습니다: 증명된 model 목록은 OMP backend에만 있고 " +
-		"CLI model은 args와 quality 정책이 정합니다",
 	CatalogNote: "OMP catalog를 읽지 못해 model은 그대로입니다",
-	Judge:       "judge", NoJudge: "judge 없음", JudgeOff: "judge %s가 꺼져 judge를 다시 고릅니다",
+	Effort:      "%s effort", Switch: "OMP backend로 전환",
+	CodexNote: "Codex catalog를 읽지 못해 codex model은 그대로입니다",
+	AgyNote:   "%s(agy) model 목록을 읽지 못해 agy model은 그대로입니다",
+	NoModelList: "%[1]s(%[2]s)는 Autopus가 증명할 model 목록이 없어 model을 바꾸지 않습니다. " +
+		"OMP를 설치하면 OMP backend로 전환할 수 있습니다",
+	ErrCLIModel:     "%[1]s model %[2]s는 이 provider의 선택지에 없습니다",
+	ErrCLIEffort:    "%[1]s effort %[2]s는 %[3]s이 받지 않는 단계입니다",
+	CLIValueRefused: "%[1]s의 %[2]s 값이 환경 변수라 이 탭에서 바꾸지 않습니다: %[3]s",
+	None:            "없음",
+	Judge:           "judge", NoJudge: "judge 없음", JudgeOff: "judge %s가 꺼져 judge를 다시 고릅니다",
 	ErrCount:    "리뷰에는 provider가 두 개 이상 필요합니다 (지금 %d개)",
 	ErrJudge:    "judge %s는 리뷰에 참여하지 않는 provider라 고를 수 없습니다",
 	ErrModel:    "%[1]s model %[2]s는 설치된 OMP catalog가 증명하지 않습니다",
@@ -69,10 +84,17 @@ var composeReviewTextEN = composeReviewText{
 	Tab: "Multi-provider review", TakesPart: "%s takes part in review",
 	On: "on", Off: "off", TurnOff: "turn off", TurnOn: "turn on",
 	Model: "%s model", NotInCatalog: " (not in catalog)", Thinking: "%[1]s thinking (%[2]s)",
-	CLINote: "%s runs on a CLI backend, so its model stays: attested model lists exist only for " +
-		"OMP backends, and a CLI model comes from its args and quality policy",
 	CatalogNote: "The OMP catalog is unreadable; models stay unchanged",
-	Judge:       "judge", NoJudge: "no judge", JudgeOff: "judge %s was turned off; choose a new judge",
+	Effort:      "%s effort", Switch: "switch to the OMP backend",
+	CodexNote: "The Codex catalog is unreadable; the codex model stays",
+	AgyNote:   "Could not read the agy model list for %s; its agy model stays",
+	NoModelList: "%[1]s (%[2]s) has no model list Autopus can attest, so its model stays; " +
+		"install OMP to switch it to the OMP backend",
+	ErrCLIModel:     "%[2]s is not a choice for %[1]s",
+	ErrCLIEffort:    "%[3]s does not take effort %[2]s for %[1]s",
+	CLIValueRefused: "%[2]s of %[1]s comes from an environment variable; this tab leaves it: %[3]s",
+	None:            "none",
+	Judge:           "judge", NoJudge: "no judge", JudgeOff: "judge %s was turned off; choose a new judge",
 	ErrCount:    "The review needs at least two providers (now %d)",
 	ErrJudge:    "judge %s does not take part in the review and cannot be chosen",
 	ErrModel:    "The installed OMP catalog does not attest %[1]s model %[2]s",

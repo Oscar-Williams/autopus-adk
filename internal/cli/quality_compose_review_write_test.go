@@ -48,10 +48,10 @@ func saveReviewEdit(t *testing.T, dir string, edit func(*reviewComposition)) (*c
 	t.Helper()
 	cfg, err := config.Load(dir)
 	require.NoError(t, err)
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, readReviewRaw(dir, cfg))
 	working := baseline.reviewComposition.clone()
 	edit(&working)
-	return cfg, saveReviewComposition(dir, cfg, baseline.reviewComposition, working)
+	return cfg, saveReviewComposition(dir, cfg, baseline, working)
 }
 
 // S1 and S11(2) at the writer: one list span, the reloaded config synced.
@@ -179,12 +179,12 @@ func TestSaveReviewComposition_PrunesRetiredKeysFirst(t *testing.T) {
 // init's memory path sets only the planned values and validates first.
 func TestApplyReviewCompositionMemory_SetsThePlannedValues(t *testing.T) {
 	cfg := reviewR3Config()
-	baseline := newReviewBaseline(cfg)
+	baseline := newReviewBaseline(cfg, nil)
 	working := baseline.reviewComposition.clone()
 	working.Providers = []string{"claude", "codex"}
 	working.Models["codex"] = "openai-codex/gpt-6-luna:high"
 
-	require.NoError(t, applyReviewCompositionMemory(cfg, baseline.reviewComposition, working))
+	require.NoError(t, applyReviewCompositionMemory(cfg, baseline, working))
 
 	assert.Equal(t, []string{"claude", "codex"}, cfg.Spec.ReviewGate.Providers)
 	assert.Equal(t, "openai-codex/gpt-6-luna:high", cfg.Orchestra.Providers["codex"].Model)
@@ -193,6 +193,6 @@ func TestApplyReviewCompositionMemory_SetsThePlannedValues(t *testing.T) {
 
 	broken := working.clone()
 	broken.Models["codex"] = "not a selector"
-	require.Error(t, applyReviewCompositionMemory(cfg, baseline.reviewComposition, broken))
+	require.Error(t, applyReviewCompositionMemory(cfg, baseline, broken))
 	assert.Equal(t, "openai-codex/gpt-6-luna:high", cfg.Orchestra.Providers["codex"].Model, "a refused edit sets nothing")
 }

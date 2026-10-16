@@ -34,33 +34,60 @@ func (e composeReviewReloadError) Error() string {
 func (e composeReviewReloadError) Unwrap() error { return composeReloadError(e) }
 
 // reviewTarget is one key an edit writes (Config Write Contract): the
-// providers list, or one scalar.
+// providers list, a scalar, or a CLI provider's args. A missing scalar or args
+// key is added at the end of its mapping.
 type reviewTarget struct {
 	path   []string
 	list   []string
 	value  string
 	isList bool
+	// args is the args edit; its list is the planned raw list once the
+	// splice has read the raw node.
+	args *reviewArgsTarget
+}
+
+// reviewArgsTarget sets a CLI provider's model and effort by row, starting
+// from the migrated args when the raw args are absent or empty (REQ-RVM-25).
+type reviewArgsTarget struct {
+	row      reviewArgsRow
+	want     reviewCLIValue
+	migrated []string
 }
 
 func (t reviewTarget) key() string { return strings.Join(t.path, ".") }
 
 // reviewTargets lists the keys whose working value differs from the
-// baseline, in change line order: spec.review_gate.providers, each changed
-// orchestra.providers.<p>.model by provider, then spec.review_gate.judge.
-// Nothing equal to the baseline is written.
-func reviewTargets(baseline, working reviewComposition) []reviewTarget {
+// baseline, in change line order: spec.review_gate.providers, then per
+// provider its backend, model, model_policy, and args, then
+// spec.review_gate.judge. Nothing equal to the baseline is written; a CLI
+// change writes the flags whose raw value differs from the wanted one.
+func reviewTargets(b reviewBaseline, working reviewComposition) []reviewTarget {
 	var targets []reviewTarget
-	if !slices.Equal(working.Providers, baseline.Providers) {
+	if !slices.Equal(working.Providers, b.Providers) {
 		targets = append(targets, reviewTarget{
 			path: []string{"spec", "review_gate", "providers"}, list: slices.Clone(working.Providers), isList: true,
 		})
 	}
-	for _, name := range slices.Sorted(maps.Keys(working.Models)) {
-		if working.Models[name] != baseline.Models[name] {
-			targets = append(targets, reviewTarget{path: []string{"orchestra", "providers", name, "model"}, value: working.Models[name]})
+	for _, name := range b.Visible {
+		at := func(key string) []string { return []string{"orchestra", "providers", name, key} }
+		switch {
+		case working.OMP[name] && !b.OMP[name]:
+			targets = append(targets, reviewTarget{path: at("backend"), value: config.ProviderBackendOMP},
+				reviewTarget{path: at("model"), value: working.Models[name]})
+		case working.OMP[name]:
+			if working.Models[name] != b.Models[name] {
+				targets = append(targets, reviewTarget{path: at("model"), value: working.Models[name]})
+			}
+		case working.CLI[name] != b.CLI[name]:
+			row := reviewArgsRowFor(b.Binaries[name])
+			if row.kind == reviewRowCodex && b.Raw[name].Policy != config.ProviderModelPolicyPinned {
+				targets = append(targets, reviewTarget{path: at("model_policy"), value: config.ProviderModelPolicyPinned})
+			}
+			targets = append(targets, reviewTarget{path: at("args"),
+				args: &reviewArgsTarget{row: row, want: working.CLI[name], migrated: b.Migrated[name]}})
 		}
 	}
-	if working.Judge != baseline.Judge {
+	if working.Judge != b.Judge {
 		targets = append(targets, reviewTarget{path: []string{"spec", "review_gate", "judge"}, value: working.Judge})
 	}
 	return targets
@@ -73,13 +100,13 @@ func reviewTargets(baseline, working reviewComposition) []reviewTarget {
 // leaves the file and cfg as they were; after the write cfg takes the
 // orchestra and review gate of the re-read file, so no later save of the
 // run writes the previous values back.
-func saveReviewComposition(dir string, cfg *config.HarnessConfig, baseline, working reviewComposition) error {
+func saveReviewComposition(dir string, cfg *config.HarnessConfig, baseline reviewBaseline, working reviewComposition) error {
 	targets := reviewTargets(baseline, working)
 	if len(targets) == 0 {
 		return nil
 	}
 	for _, target := range targets {
-		if target.path[0] == "orchestra" {
+		if target.path[0] == "orchestra" && target.path[3] == "model" {
 			if _, _, ok := orchestra.SplitModelSelector(target.value); !ok {
 				return reviewWriteRefusal{key: target.key()}
 			}
@@ -94,7 +121,7 @@ func saveReviewComposition(dir string, cfg *config.HarnessConfig, baseline, work
 	if err != nil {
 		return err
 	}
-	edited, err := spliceReviewTargets(source, targets)
+	edited, targets, err := spliceReviewTargets(source, targets)
 	if err != nil {
 		return err
 	}
@@ -116,23 +143,44 @@ func saveReviewComposition(dir string, cfg *config.HarnessConfig, baseline, work
 // applyReviewCompositionMemory applies working to init's in-memory config,
 // which init's save writes (REQ-RVM-13). The candidate is validated before
 // anything is set, so a refused edit changes nothing.
-func applyReviewCompositionMemory(cfg *config.HarnessConfig, baseline, working reviewComposition) error {
+func applyReviewCompositionMemory(cfg *config.HarnessConfig, baseline reviewBaseline, working reviewComposition) error {
 	candidate := *cfg
 	candidate.Orchestra.Providers = maps.Clone(cfg.Orchestra.Providers)
 	candidate.Spec.ReviewGate.Providers = slices.Clone(working.Providers)
 	candidate.Spec.ReviewGate.Judge = working.Judge
-	for name, selector := range working.Models {
-		if selector == baseline.Models[name] {
-			continue
-		}
-		entry := candidate.Orchestra.Providers[name]
-		entry.Model = selector
-		candidate.Orchestra.Providers[name] = entry
-	}
+	applyReviewEntries(candidate.Orchestra.Providers, baseline, working)
 	if err := candidate.Validate(); err != nil {
 		return fmt.Errorf("validate config: %w", err)
 	}
 	cfg.Orchestra.Providers = candidate.Orchestra.Providers
 	cfg.Spec.ReviewGate = candidate.Spec.ReviewGate
 	return nil
+}
+
+// applyReviewEntries sets every provider entry value working changes, as the
+// line writer writes it: a switch's backend and model, an OMP model, and a
+// CLI change's model_policy and args, edited from the entry's args or, when
+// they are empty, the migrated ones. Init's config and the live check
+// candidate share it.
+func applyReviewEntries(providers map[string]config.ProviderEntry, b reviewBaseline, working reviewComposition) {
+	for _, name := range b.Visible {
+		entry := providers[name]
+		switch {
+		case working.OMP[name] && (!b.OMP[name] || working.Models[name] != b.Models[name]):
+			entry.Backend, entry.Model = config.ProviderBackendOMP, working.Models[name]
+		case !working.OMP[name] && working.CLI[name] != b.CLI[name]:
+			row := reviewArgsRowFor(b.Binaries[name])
+			if row.kind == reviewRowCodex {
+				entry.ModelPolicy = config.ProviderModelPolicyPinned
+			}
+			args := entry.Args
+			if len(args) == 0 {
+				args = b.Migrated[name]
+			}
+			entry.Args = planReviewArgsEdit(args, row, working.CLI[name]).apply(args)
+		default:
+			continue
+		}
+		providers[name] = entry
+	}
 }
