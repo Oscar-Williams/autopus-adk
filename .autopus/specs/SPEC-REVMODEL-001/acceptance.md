@@ -5,7 +5,7 @@ fixture는 모두 temp project 안에 만든다. 폼 test는 SPEC-MODELUX-002처
 
 - R3: `platforms: [claude-code, codex, omp]`. `orchestra.judge: claude`. `orchestra.providers`의 claude·codex·gemini는 모두 `backend: omp`, `subprocess.timeout: 900`이고 model은 차례로 `anthropic/claude-fable-5-1:max`, `openai-codex/gpt-6-astra:max`, `google-antigravity/gemini-3.1-pro:high`다. `orchestra.commands`의 brainstorm·plan·review·secure는 모두 `providers: [claude, codex, gemini]`다. `spec.review_gate`는 `enabled: true`, `strategy: debate`, `providers: [claude, codex, gemini]`, `judge: claude`, `max_revisions: 2`다. 이 branch의 `auto update --yes`로 한 번 맞춘 bytes를 B0라 한다.
 - RH: R3와 같은 값을 손으로 쓴 파일. 들여쓰기 2칸, `spec:` 바로 위에 주석 줄 `# review settings`, 구역 사이 빈 줄, `providers: [claude, codex, gemini] # reviewers`. retired key는 없다.
-- RL: R3에서 `orchestra.providers`만 이 branch의 기본 항목(`DefaultClaudeProviderEntry`, `DefaultCodexProviderEntry`, gemini `binary: agy`)으로 바꾼 것. 셋 다 `backend`가 없다. RB: R3의 `spec.review_gate.providers: [claude]`. RN: R3에서 `spec.review_gate.judge` 줄을 지운 것. RE: R3의 그 줄이 `judge: ""`인 것. RD: R3의 `enabled: false`.
+- RL: R3에서 `orchestra.providers`만 이 branch의 기본 항목(`DefaultClaudeProviderEntry`, `DefaultCodexProviderEntry`, gemini `binary: agy`)으로 바꾼 것. 셋 다 `backend`가 없다. RL을 이 branch의 `auto update --yes`로 한 번 맞춘 bytes를 B1이라 한다. CATC: Codex catalog(`codex debug models` JSON). `gpt-6-astra`·`gpt-6-luna`는 `low`–`max` 다섯 단계, `gpt-6.1-sol`은 `low`·`medium`·`high`·`xhigh`(SPEC-MODELUX-003 CAT-E와 같다). RB: R3의 `spec.review_gate.providers: [claude]`. RN: R3에서 `spec.review_gate.judge` 줄을 지운 것. RE: R3의 그 줄이 `judge: ""`인 것. RD: R3의 `enabled: false`.
 - CATG: strict catalog. 보고 thinking은 `anthropic/claude-fable-5-1` [low, medium, high, max], `anthropic/claude-opus-5-5` [high, max], `openai-codex/gpt-6-astra` [low, medium, high, xhigh, max], `openai-codex/gpt-6-luna` [low, medium, high], `google-antigravity/gemini-3.1-pro` [low, high], `google-antigravity/gemini-3.8-flash` [low, medium, high], `example/foo-1` [high]. 정규화 뒤 순서는 정렬 순서다(예: luna는 `high`, `low`, `medium`).
 - CATN: CATG에서 `google-antigravity/gemini-3.1-pro`를 뺀 것. CATE: CATG에 `thinking: []`인 `example/bar-1`을 더한 것(`catalog_invalid`). CATX: `omp models`가 오류를 내는 runner.
 - FB 응답: claude·codex와 `google-antigravity/gemini-3.8-flash:high`인 gemini는 output `AUTOPUS_PROVIDER_SMOKE_OK`, `google-antigravity/gemini-3.1-pro:high`인 gemini는 error `HTTP 404 Not Found (Cloud Code Assist)`. FB는 요청마다 Provider, Prompt, Timeout, `Config.Model`을 기록한다.
@@ -66,12 +66,12 @@ When 각 파일의 project에서 v0.50.125 바이너리로 `auto config get usag
 Then 다섯 파일은 exit 0이고 대조군은 exit 1과 `field reviewers not found in type config.ReviewGateConf`다
 And 다섯 파일의 key 경로 집합은 시작 파일과 같고, 더해진 key는 S9(b)의 `spec.review_gate.judge` 하나뿐이다
 
-### S8: CLI backend provider는 model을 묻지 않는다
+### S8: OMP가 없으면 agy는 이유 줄이다
 Priority: Must
-Given RL, CATG가 있다
-When 리뷰 탭에서 gemini `끄기`, 나머지 Enter, 확인 호출 Enter, `적용`을 고른다
-Then 출력에 `claude는 CLI backend라 model을 바꾸지 않습니다: 증명된 model 목록은 OMP backend에만 있고 CLI model은 args와 quality 정책이 정합니다`와 같은 모양의 codex 줄이 하나씩 있고 gemini 줄과 model·thinking Select title은 없으며, after 표의 model 칸은 셋 다 `CLI backend`다
-And 적용 뒤 `spec.review_gate.providers`는 [claude, codex]이고 `orchestra.providers` mapping은 적용 전과 deep-equal이다(`args`, `model_policy`, `binary` 그대로)
+Given RL, CATC, 그리고 PATH에 `omp`가 없는 temp bin이 있다
+When 리뷰 탭에서 참여 Enter 셋, claude model Enter, codex model Enter, judge Enter, 확인 호출 Enter를 고르고, 다시 리뷰 탭에서 codex `끄기`, 나머지 Enter, 확인 호출 Enter, `적용`을 고른다
+Then 첫 pass에 `gemini(agy)는 Autopus가 증명할 model 목록이 없어 model을 바꾸지 않습니다. OMP를 설치하면 OMP backend로 전환할 수 있습니다`가 한 번 있고 `OMP backend로 전환` 선택지와 gemini model Select는 없으며 claude·codex model Select는 있다. after 표의 model 칸은 `claude claude-fable-5-1 · max`, `codex gpt-6-astra · max`, `agy`다
+And 첫 pass는 `변경 없음`이고, 두 번째 pass 뒤 `spec.review_gate.providers`는 [claude, gemini], `orchestra.providers` mapping은 적용 전과 deep-equal이다
 
 ### S9: judge 없음과 judge key 삽입
 Priority: Must
@@ -143,9 +143,41 @@ When (1) 리뷰 탭을 열고 참여 Select를 모두 Enter, 오류 뒤 `나가�
 Then (1)은 첫 참여 Select 앞에 `지금 리뷰 provider가 1개뿐입니다. 두 개 이상 켜야 적용할 수 있습니다`를 쓰고, 참여 Select 뒤 `리뷰에는 provider가 두 개 이상 필요합니다 (지금 1개)`와 정확히 `다시 고르기`(기본)·`나가기`인 Select를 보인 뒤 메뉴로 돌아가며 파일 SHA-256은 RB와 같다
 And (2)의 바뀌는 설정은 `spec.review_gate.providers [claude] → [claude, codex]`이고 적용 뒤 loader 값의 그 목록은 [claude, codex], judge는 claude다
 
+### S19: claude CLI model은 args `--model`로 쓴다
+Priority: Must
+Given RL(B1), CATC가 있다
+When (1) 리뷰 탭에서 claude model `claude-opus-5-5` → effort `xhigh`, 나머지 Enter, 확인 호출 Enter, `적용`. (2) 다시 claude model `claude-haiku-4-5`, 나머지 Enter, 확인 호출 Enter, `적용`
+Then (1)의 claude model Select는 정확히 `그대로 — claude-fable-5-1 · max`, `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-4-5`이고 effort Select는 `low`, `medium`, `high`, `xhigh`, `max`, 기본 `max`다
+And (1) 뒤 `orchestra.providers.claude.args`는 `[--print, --model, claude-opus-5-5, --effort, xhigh]`, B1과의 diff는 그 줄 하나이고, loader 값으로 조립한 claude argv(전역 `--effort` 없음)에 `--model claude-opus-5-5 --effort xhigh`가 이어져 있다
+And (2)는 effort Select 없이 args를 `[--print, --model, claude-haiku-4-5]`로 쓴다
+
+### S20: codex CLI model은 `pinned`와 `-m`으로 쓰고 profile이 덮지 않는다
+Priority: Must
+Given RL(B1), CATC가 있다
+When 리뷰 탭에서 codex model `gpt-6.1-sol` → effort `high`, 나머지 Enter, 확인 호출 Enter, `적용`을 고른 뒤, 그 파일과 B1을 각각 loader 값 → `applyRuntimeHarnessOverrides(globalFlags{Effort: "low"})` → `assembleSpecReviewProviders`로 조립한다
+Then codex model Select는 정확히 `그대로 — gpt-6-astra · max`, `gpt-6-astra`, `gpt-6-luna`, `gpt-6.1-sol`이고, `gpt-6.1-sol` effort Select는 `low`, `medium`, `high`, `xhigh`이며 `max`가 없고 기본은 `xhigh`다
+And 적용 뒤 codex 항목은 `model_policy: pinned`, `args: [exec, --json, --sandbox, workspace-write, -m, gpt-6.1-sol, -c, model_reasoning_effort="high"]`이고 B1과의 diff는 그 두 줄이다
+And 조립한 codex argv는 이 파일에서 `-m gpt-6.1-sol`과 `model_reasoning_effort="high"`를, B1에서는 `-m gpt-6-astra`와 `model_reasoning_effort="low"`를 담는다
+
+### S21: agy는 OMP backend로 전환할 수 있다
+Priority: Must
+Given RL(B1), CATG, CATC, temp bin의 `omp`가 있다
+When 리뷰 탭에서 gemini `OMP backend로 전환` → model `google-antigravity/gemini-3.8-flash` → thinking Enter, 나머지 Enter, 확인 호출 Enter, `적용`을 고른다
+Then gemini 선택지는 정확히 `그대로 — CLI backend`, `OMP backend로 전환`이고, 전환 뒤 model Select는 정확히 `google-antigravity/gemini-3.1-pro`, `google-antigravity/gemini-3.8-flash`, thinking Select는 `high`, `low`, `medium`, 기본 `high`다
+And 적용 뒤 gemini 항목에는 `backend: omp`와 `model: google-antigravity/gemini-3.8-flash:high` 두 줄만 더해지고 `binary: agy`, `args`, `prompt_via_args`, `subprocess` 줄은 bytes가 같다
+And loader 값으로 조립한 gemini는 `backend="omp"`, `model="google-antigravity/gemini-3.8-flash:high"`이고 read-only 정책을 지난다
+
+### S22: v0.50.125가 CLI·전환 파일을 읽는다
+Priority: Must
+Given S19(1), S19(2), S20, S21이 남긴 파일과 대조군(S20 파일의 codex에 `models: [x]` key를 더한 것)이 있다
+When 각 파일의 project에서 v0.50.125 바이너리로 `auto config get usage_profile`을 실행하고 key 경로 집합을 B1과 비교한다
+Then 네 파일은 exit 0이고 대조군은 exit 1과 `field models not found`를 담은 오류다
+And 더해진 key는 S21의 `orchestra.providers.gemini.backend`·`orchestra.providers.gemini.model` 둘뿐이고 S20의 `model_policy`는 값만 바뀐다
+
 ## Oracle Acceptance Notes
 
 - Must 시나리오는 concrete 값을 판정한다: Select 선택지 목록·순서·기본값, 바뀌는 설정 줄과 순서, 결과·안내·오류 문구, loader 값, 정확한 selector 문자열, FB 요청 수·Prompt·Timeout·`Config.Model`, diff 줄 수, span 밖 bytes, SHA-256, v0.50.125의 exit 코드와 오류 문구. 파일 존재나 종료 코드만으로 닫는 Must는 없다.
 - 입력은 provider·backend·family·catalog 상태가 서로 다른 fixture다: 세 family의 OMP backend(R3), 손으로 쓴 파일(RH), CLI backend(RL), baseline 참여 1개(RB), judge 없음(RN·RE), 꺼진 gate(RD는 S10(c)와 같은 규칙), catalog 넷(CATG·CATN·CATE·CATX), 통과·404가 섞인 확인 요청(FB).
+- CLI model 시나리오(S19–S21)는 조립된 argv와 backend를 판정한다. 실제 subprocess는 띄우지 않는다. argv는 `Config.Args` 그대로라 조립 결과가 실행 argv의 판정이다(`evidence/probe-cli-model.md`).
 - FB는 `Execute` 요청을 센다. 한 요청 안의 재시도(최대 3회)는 backend 안이라 FB가 보지 않으므로 라벨의 최대 호출 수(3n)는 `ompReviewMaxAttempts`로 판정하고, S15의 동의 범위가 그 수를 덮는다.
 - 기대 값은 2026-10-15에 이 branch 코드와 probe A1–A3에서 계산했다. thinking 순서는 catalog 정규화의 정렬을 따른다. 코드 사실과 다르면 test가 아니라 이 SPEC을 고친다.

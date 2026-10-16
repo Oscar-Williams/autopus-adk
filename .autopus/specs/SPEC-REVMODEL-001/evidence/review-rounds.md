@@ -42,3 +42,10 @@ checklist FAIL(Q-COMP-02/04/05/08, Q-CORR-03, Q-FEAS-01/03, Q-STYLE-01, Q-SEC-01
 - G1-1 확정: 참여 끄기는 `auto spec review`(`spec.review_gate.providers`)에만 적용한다. 미리보기의 명령 안내 줄을 유지한다(`spec.md` Open Issues resolved).
 - G1-2 확정: model 편집은 OMP backend provider만 한다. CLI backend provider에는 탭이 이유 줄을 보인다(Form Text CLI 안내, S8).
 - 이 repo의 gemini 리뷰 model은 `google-antigravity/gemini-3.8-flash:high`로 바뀐다(live: `gemini-3.1-pro:high` 404, `gemini-3-pro` stream 끊김, `3.8-flash` ok). research 증거와 S15 목표 값으로만 쓰고 fixture는 기대지 않는다.
+
+## Gate 1 개정 (2026-10-16, 실제 터미널 설정 뒤 사용자 결정)
+
+- G1-2 superseded: 새 `auto init`은 claude·codex·gemini를 CLI backend로 만들어 "OMP backend만"이면 세 provider 모두 이유 줄만 보였다.
+- 새 결정과 반영: claude CLI는 Claude 탭 model을 args `--model`로(REQ-RVM-21), codex CLI는 run의 Codex catalog model을 `model_policy: pinned` + `-m` args로 써서 `CodexOrchestraProfile`이 더 덮지 않게(REQ-RVM-22), model 목록을 증명할 수 없는 CLI는 OMP 설치 시 `backend: omp` + 증명된 model로 전환, 아니면 이유 줄(REQ-RVM-23). S8 개정, S19–S22 추가, T12–T14 추가, probe A1·A3 확장(행은 validator 상한 3이라 새 행 대신 두 행에 3차 증거를 더함).
+- probe(`evidence/probe-cli-model.md`, model 호출 없음): argv는 `Config.Args` 그대로, CLI는 `Model`을 쓰지 않음, codex quality는 profile이 `-m gpt-6-astra`로 덮고 pinned는 쓴 `-m`을 지킴, claude `--model`은 남음, 설정된 gemini binary는 `agy`이고 `agy`는 `--model`·`models`가 있음(`gemini` CLI는 `-m`), v0.50.125는 pinned·전환 파일을 읽음.
+- G1-3 open: agy는 model flag가 있지만 Autopus에 증명할 목록 해석기가 없어 OMP 전환만 준다. agy model Select는 scope expansion이다.

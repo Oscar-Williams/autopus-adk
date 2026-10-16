@@ -2,7 +2,7 @@
 
 ## Tasks
 
-기준은 `feat/rea-001`(ee811e2e)이고 branch는 `feat/revmodel-001`이다. 순서: T1 → T2 → (T3, T4) → T5 → T6 → T7 → T8 → (T9, T10) → T11. 290줄인 `quality_compose_form_driver.go`에는 호출 두 줄만 더하고, 300줄을 넘으면 선택지 조립(`composeReviewTabOption`)과 요약 줄을 새 파일로 옮긴다.
+기준은 `feat/rea-001`(ee811e2e)이고 branch는 `feat/revmodel-001`이다. 순서: T1 → T2 → (T3, T4) → (T12, T13, T14) → T5 → T6 → T7 → T8 → (T9, T10) → T11. 290줄인 `quality_compose_form_driver.go`에는 호출 두 줄만 더하고, 300줄을 넘으면 선택지 조립(`composeReviewTabOption`)과 요약 줄을 새 파일로 옮긴다.
 
 - [ ] T1: 기존 test 분류. tool tab Select의 건너뛰기·선택지 목록을 단언하는 폼 test, init의 `spec.review_gate.providers` 단언, OMP review backend stderr 단언을 grep으로 모아 Existing Test Changes 1–4 중 하나로 정하고 `research.md`에 붙인다. 소스 변경 없음 (REQ-RVM-19).
 - [ ] T2: 구성 planner. 소유: `[NEW] internal/cli/quality_compose_review_plan.go`(+test). baseline(cfg와 raw `spec.review_gate.judge` 유무·값)과 working 분리, 참여 목록 계산, 수 검사, judge 규칙(judge 없음 포함), `planReviewComposition`의 오류 4종과 문구, 검증 오류 뒤 working = baseline, 변경 줄 순서와 고정 안내, after 표 (REQ-RVM-02, 03, 04, 05, 09).
@@ -15,6 +15,9 @@
 - [ ] T9: Should. 메뉴 요약 1줄(`f.draw()` 뒤) (REQ-RVM-16).
 - [ ] T10: Should. Form Text en, help·README·CHANGELOG v0.50.126. 생성 표면을 고치면 `make generate-templates` (REQ-RVM-17, 18).
 - [ ] T11: 회귀와 smoke. `go test ./internal/cli/... ./pkg/...` 필터 없이, 300줄, `GOOS=windows GOARCH=amd64 go build ./...`, golangci-lint, test 변경이 T1 분류와 같은지. 이 repo의 실제 터미널에서 S15를 하고 `evidence/manual-smoke-revmodel.txt`에 경로를 치환해 남긴다. 빠지면 CD-1이 남는다 (REQ-RVM-19).
+- [ ] T12: claude CLI model. 소유: `[NEW] internal/cli/quality_compose_review_cli.go`(+test). `ClaudeModelForTier` 네 model, haiku 밖 effort low–max와 기본값, args의 `--model`·`--effort` 값 교체·삽입·haiku의 `--effort` 쌍 삭제, 줄 splice의 args 목록 span (REQ-RVM-08, 21).
+- [ ] T13: codex CLI model. 소유: T12 파일. run의 Codex catalog snapshot model, 그 model 보고 effort, `model_policy: pinned` + `ApplyCodexProviderProfile` args, 못 읽음 안내. 먼저 설정 없는 `auto orchestra run` 분기(`orchestra_run.go:118-120`)의 조건을 확인해 research에 적는다 (REQ-RVM-08, 22).
+- [ ] T14: OMP 전환. 소유: T12 파일. claude·codex 밖 CLI에 `그대로 — CLI backend`·`OMP backend로 전환`(`omp` 설치·catalog 읽힘일 때만), 증명된 OMP model·thinking, `backend: omp`+`model` 삽입, 그 밖엔 이유 줄 (REQ-RVM-08, 23).
 
 ## Implementation Strategy
 
@@ -97,15 +100,15 @@ Wireframe B: 편집 없이 확인 요청을 한 뒤(바뀐 것이 없으니 확�
 ## Feature Completion Scope
 
 - 이 SPEC 하나가 Outcome Lock을 닫는다. T2–T7은 탭과 쓰기, T6은 확인 요청과 진단 줄, T8은 안전·호환, T1·T11은 회귀와 smoke, T9·T10은 Should다.
-- 승인된 sibling 의존성은 없다. 규모는 task 11개, 소스 파일 test 포함 약 17개다. Completion Debt CD-1은 T11의 S15 기록으로만 닫힌다.
+- 승인된 sibling 의존성은 없다. 규모는 task 14개, 소스 파일 test 포함 약 19개다. Completion Debt CD-1은 T11의 S15 기록으로만 닫힌다.
 
 ## Risk-First Integration Probe
 
 | assumption_id | class | risk | boundary | input | oracle | isolation | status | reason | evidence |
 |---------------|-------|------|----------|-------|--------|-----------|--------|--------|----------|
-| A1 | verified_fact | high | 실제 loader를 지난 런타임 model이 `orchestra.providers.codex.model`인가 `CodexOrchestraProfile`인가(OMP backend codex) | 이 repo `autopus.yaml` 사본에서 codex model만 `openai-codex/gpt-6-luna:low`, `t.Chdir` 뒤 `loadHarnessConfigForFlags(globalFlags{})`, 그리고 `applyRuntimeHarnessOverrides(…, globalFlags{Effort: "low"})` | loader 뒤와 runtime override 뒤 codex `model`이 쓴 값이고 `args`가 비며 조립된 리뷰 provider의 `Model`도 같음 | `t.TempDir()`, 모델 호출 없음, throwaway test 둘(실행 뒤 삭제) | PASS | `LOADER codex backend="omp" model_policy="" model="openai-codex/gpt-6-luna:low" args=[]`, `RUNTIME(--effort low) codex model="openai-codex/gpt-6-luna:low" args=[]`, `LOADER assemble multi=false provider=codex model="openai-codex/gpt-6-luna:low"`. profile은 `model_policy: quality`일 때 args만 덮는다(`orchestra_run_runtime.go:27-35`) | 2026-10-15 `go test ./internal/cli -run 'TestZZRevmodelProbe2?$' -count=1 -v` 출력(`research.md` `## Probe 기록`) |
+| A1 | verified_fact | high | 실제 loader를 지난 런타임 model은 무엇이 정하나: OMP backend는 `model`, CLI claude는 args `--model`, CLI codex는 `model_policy`에 따라 `CodexOrchestraProfile`(quality) 또는 args `-m`(pinned) | 이 repo 사본(OMP codex `openai-codex/gpt-6-luna:low`)과 CLI 사본(claude `--model claude-opus-5-5`, codex pinned·quality `-m gpt-6-luna`), `loadHarnessConfigForFlags` → `applyRuntimeHarnessOverrides(--effort low)` → `assembleSpecReviewProviders` | OMP codex `Model` 그대로, pinned codex argv `-m gpt-6-luna`, quality codex argv `-m gpt-6-astra`, claude argv `--model claude-opus-5-5` | `t.TempDir()`, 모델 호출 없음, throwaway test 셋(실행 뒤 삭제) | PASS | OMP: `LOADER codex backend=omp model=openai-codex/gpt-6-luna:low args=[]`. CLI: pinned codex argv `-m gpt-6-luna -c model_reasoning_effort="high"` 유지, quality codex argv `-m gpt-6-astra`로 덮임, claude argv `--model claude-opus-5-5`(effort만 전역 flag). 그래서 codex CLI 쓰기는 `pinned`를 함께 쓴다 | 2026-10-15·16 `go test ./internal/cli -run 'TestZZRevmodelProbe[23]?$'` 출력(`research.md` `## Probe 기록`, `evidence/probe-cli-model.md`) |
 | A2 | verified_fact | high | 탭이 쓴 참여가 실제 load 경로(`loadHarnessConfigForFlags` → `loadAndMigrateHarnessConfig` → Migration 3)와 update persist migration을 지나 살아남는가 | 같은 사본에서 `review_gate.providers: [claude, codex]`, `commands.review.providers: [claude, codex]`(gemini 뺌), loader 뒤 `selectSpecReviewProviderNames`·`assembleSpecReviewProviders`, 별도로 `config.Load` + `config.MigrateOrchestraConfig` | review gate 목록은 그대로, 명령 목록은 gemini가 다시 붙음, `--multi`면 gemini가 들어옴 | 같은 throwaway test | PASS | `LOADER review_gate.providers=[claude codex] … commands.review.providers=[claude codex gemini]`, `spec-review names(multi=false)=[claude codex]`, `assemble multi=true … provider=gemini`, `PERSIST migrate changed=true review_gate.providers=[claude codex] commands.review.providers=[claude codex gemini]`. 그래서 참여는 review gate 목록만 쓰고 명령 목록은 쓰지 않는다(J-001) | 같은 출력 |
-| A3 | verified_fact | high | v0.50.125 strict loader가 이 탭이 쓰는 key와 값 모양을 읽는가 | 세 provider `backend: omp`, `review_gate.providers: [claude, codex]`, `judge: codex`, codex model `openai-codex/gpt-6-luna:high`인 `autopus.yaml`. 대조군 둘: `review_gate.reviewers` key, 공백 든 selector | 본 파일 exit 0, 대조군은 모르는 key·selector 오류 | scratch dir, `git archive v0.50.125`로 만든 바이너리, 모델 호출 없음 | PASS | 본 파일 `auto config get usage_profile` exit 0(`developer`). 대조군: `field reviewers not found in type config.ReviewGateConf`, `validate config: provider_model_required: codex` | 2026-10-15 scratch `fc125/autopus.yaml`(sha256 앞 16자 `d27927eeb7fcf1c5`)와 `fc125neg` 실행 출력(`research.md` `## Probe 기록`) |
+| A3 | verified_fact | high | v0.50.125 strict loader가 이 탭이 쓰는 key와 값 모양을 읽는가 | (1) 세 provider `backend: omp`, review gate 목록·judge 편집 파일, 대조군 둘(`review_gate.reviewers`, 공백 든 selector). (2) codex `model_policy: pinned` + `-m gpt-6-luna` args와 claude `--model` args 파일, gemini `backend: omp` + `model` 전환 파일(binary·args 남음) | 본 파일 셋 exit 0, 대조군은 모르는 key·selector 오류 | scratch dir, `git archive v0.50.125`로 만든 바이너리, 모델 호출 없음 | PASS | (1) `config get usage_profile` exit 0(`developer`), 대조군 `field reviewers not found in type config.ReviewGateConf`, `validate config: provider_model_required: codex`. (2) `pinned.yaml`·`switch.yaml` 모두 exit 0(`developer`) | 2026-10-15 `fc125`(sha256 앞 16자 `d27927eeb7fcf1c5`)·`fc125neg`, 2026-10-16 `clim/pinned`·`clim/switch`(`evidence/probe-cli-model.md`) |
 
 ## Plan Statement Classification
 
@@ -126,13 +129,18 @@ Wireframe B: 편집 없이 확인 요청을 한 뒤(바뀐 것이 없으니 확�
 | CI는 update gate만 보고 quality·init gate는 보지 않는다 | verified_fact | `quality_compose_driver_gate.go:66-70`, `quality_compose_entry.go:82-84`, `init.go:100` Read |
 | quorum이 차면 provider 실패가 `degraded_reasons`에 남지 않는다 | verified_fact | `spec_review_integrity.go:32-43` Read |
 | catalog에 있는 `google-antigravity/gemini-3.1-pro:high`가 HTTP 404를 냈다 | verified_fact | planning context의 2026-10-15 one-shot `omp -p` 호출(상위 세션 실행, 이 SPEC에서 재실행 안 함) |
+| CLI 실행 argv는 `Config.Args`이고 CLI backend는 `Model`을 쓰지 않는다 | verified_fact | `subprocess_runner.go:111-127` Read, `evidence/probe-cli-model.md` |
+| codex CLI는 `pinned`면 쓴 `-m`·effort가 load·런타임 뒤에도 남고 `quality`면 profile이 덮는다 | verified_fact | A1 3차 |
+| `agy`는 `--model`과 `models`를 갖지만 Autopus에는 그 목록 해석기가 없다 | verified_fact | `agy --help`, grep |
+| 전환 뒤 남는 `binary`·`args`는 OMP backend 조립과 read-only 정책을 막지 않는다 | verified_fact | A1 3차 `switch gemini backend=omp` 조립 |
+| haiku에 `--effort` 없이 `--model`만 주어도 claude CLI가 받는다 | implementation_assumption | T12, S19 |
 | 줄 splice가 span 밖 bytes를 원본 그대로 둔다(retired key 없는 파일) | implementation_assumption | T4, S12(d) |
 | CLI subprocess가 provider stderr를 터미널에 넘기지 않는다 | implementation_assumption | T6 첫 확인. 넘기면 `terminalSafeMultiline` |
 | 60초가 max thinking provider의 한 줄 답에 충분하다 | implementation_assumption | T6, S15. 틀리면 실패 줄이 나고 쓰기는 사용자 선택으로 남는다 |
 
 ## Scope Expansion Rule
 
-- 구현 중 요구사항보다 넓은 제약이나 동작(예: Migration 3 변경으로 명령 목록에서 provider 빼기, `orchestra.judge` 쓰기, CLI backend args 편집, 확인 요청 자동 실행, `degraded_reasons` 규칙 변경, `--multi` 의미 변경)이 필요해 보이면 요구사항으로 올리지 않는다. scope expansion으로 표시하고 위 표에 probe 행을 더해 fan-out 전에 실제 loader(`loadHarnessConfigForFlags`) 경로에서 확인한다(행은 셋을 넘기지 않으므로 가장 덜 위험한 행과 바꾼다).
+- 구현 중 요구사항보다 넓은 제약이나 동작(예: Migration 3 변경으로 명령 목록에서 provider 빼기, agy model 목록 해석(G1-3), CLI args의 model·effort 밖 flag 편집, `orchestra.judge` 쓰기, CLI backend args 편집, 확인 요청 자동 실행, `degraded_reasons` 규칙 변경, `--multi` 의미 변경)이 필요해 보이면 요구사항으로 올리지 않는다. scope expansion으로 표시하고 위 표에 probe 행을 더해 fan-out 전에 실제 loader(`loadHarnessConfigForFlags`) 경로에서 확인한다(행은 셋을 넘기지 않으므로 가장 덜 위험한 행과 바꾼다).
 - 새 ACL·호환성 제한·보안 제한도 같다. 이 SPEC은 새 key를 쓰지 않으므로 v0.50.125 호환 제한을 더하는 것은 scope expansion이다.
 
 ## Gate Applicability

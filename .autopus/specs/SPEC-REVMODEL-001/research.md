@@ -5,6 +5,7 @@
 - 설정: `OrchestraConf`(`pkg/config/schema_orchestra.go:4-12`), `ProviderEntry`(`:28-37`)의 `backend`·`model`, `CommandEntry`(`:48-53`). `ReviewGateConf`(`pkg/config/schema_spec.go:11-15`)의 `providers`(flow)·`judge`(omitempty 없음). 기본값은 CLI backend 셋(`pkg/config/defaults.go:114-120`)과 review gate 셋·judge claude(`:75-81`).
 - Migration 3(`pkg/config/migrate.go:75-88`)은 `orchestra.providers`의 모든 key를 모든 `orchestra.commands.*.providers`에 없으면 붙인다. 이 migration은 `loadAndMigrateHarnessConfig`(`orchestra_config_fallback.go:39-45`, `auto spec review`·orchestra 명령의 `loadHarnessConfigForFlags`), `init.go:161`(compose 뒤), update의 persist migration에서 돈다. review gate key는 건드리지 않는다(probe A2).
 - 런타임 model: `applyRuntimeHarnessOverrides`(`orchestra_run_runtime.go:12-37`)는 codex `model_policy`가 `quality`일 때만 `CodexOrchestraProfile`(`codex_profile.go:93-95`)로 args를 덮는다. `providerConfigFromEntry`(`orchestra_helpers.go:221`)는 `Model`을 옮기고 OMP review backend는 그 값을 selector로 쓴다(`omp_review_backend.go:40-44`).
+- CLI argv: `buildSubprocessArgs`(`pkg/orchestra/subprocess_runner.go:111-127`)는 `Config.Args`만 쓴다. claude 기본 args `--print --model claude-fable-5-1 --effort max`(`claude_provider.go:10, 36-47`), 등급 model `ClaudeModelForTier`(`quality_tier.go:8-11, 104-115`), codex 기본은 `model_policy: quality`(`defaults.go:35-37`), gemini는 `agy --print ""`(`defaults.go:119`). `agy --help`는 `--model`과 `models`를 보인다(`evidence/probe-cli-model.md`).
 - 리뷰 provider: `resolveSpecReviewProviderNames`(`spec_review_providers.go:39-51`)는 `--multi`가 없으면 `spec.review_gate.providers`만 쓴다. 실제 리뷰는 `planSpecReviewProviders`(`spec_review_readiness.go:59`)의 readiness 필터를 더 거친다. 빈 judge는 judge 없는 리뷰다(`spec_review_loop.go:78`).
 - 구성 UI: `chooseTab`(`quality_compose_form_driver.go:155`), `edit`(`:133`), 확인 `review`(`:213`). OMP 탭 쓰기 뒤 다시 읽기는 `ompApply`(`quality_compose_omp.go:263`). 폼 gate는 `composeFormsTerminal`(`quality_compose_form.go:50-54`). CI는 update gate(`quality_compose_driver_gate.go:66-70`)만 본다. quality(`quality_compose_entry.go:82-84`)와 init(`init.go:100`)은 보지 않는다.
 - 증명·thinking: `installedOMPAttestedModelChoices`(`quality_omp_attested_choices.go:17-37`). strict 선택지는 thinking 없는 model을 뺀다(`quality_omp_custom.go:159`). 정규화는 thinking을 정렬하고(`pkg/adapter/omp/omp_model_catalog_normalize.go:188-200`) 명시된 빈 배열은 `catalog_invalid`다. OMP Autopus 탭의 thinking 규칙은 `quality_compose_omp_autopus.go:159-171`(기본 첫 단계, working이 있으면 그 값, 하나면 묻지 않음).
@@ -15,12 +16,8 @@
 ## Probe 기록
 
 - 1차(2026-10-15, throwaway `TestZZRevmodelProbe`, 실행 뒤 삭제): `config.Load` 경로. `LOADED codex backend="omp" model_policy="" model="openai-codex/gpt-6-luna:low" args=[]`, `RUNTIME(--effort low) codex model="openai-codex/gpt-6-luna:low" args=[]`.
-- 2차(review round 1 뒤, throwaway `TestZZRevmodelProbe2`, 실행 뒤 삭제): `t.Chdir` 뒤 `loadHarnessConfigForFlags(globalFlags{})`. 입력은 이 repo 사본에서 codex model `openai-codex/gpt-6-luna:low`, `review_gate.providers`와 `commands.review.providers`를 둘 다 [claude, codex]로. 출력:
-  - `LOADER codex backend="omp" model_policy="" model="openai-codex/gpt-6-luna:low" args=[]`
-  - `LOADER review_gate.providers=[claude codex] judge="claude" commands.review.providers=[claude codex gemini] commands.brainstorm.providers=[claude codex gemini]`
-  - `LOADER spec-review names(multi=false)=[claude codex]`, `LOADER assemble multi=false` → claude, codex(`openai-codex/gpt-6-luna:low`), `multi=true` → gemini가 더해짐
-  - `PERSIST migrate changed=true review_gate.providers=[claude codex] commands.review.providers=[claude codex gemini]`
-  - `TSAFE "gem\\x1b[2Jini\\nx"`(`terminalSafe` 결과는 역슬래시 글자)
+- 2차(review round 1 뒤, throwaway `TestZZRevmodelProbe2`, 삭제): `t.Chdir` 뒤 `loadHarnessConfigForFlags(globalFlags{})`, 입력은 codex `openai-codex/gpt-6-luna:low`와 두 목록 [claude, codex]. 출력 `LOADER review_gate.providers=[claude codex] … commands.review.providers=[claude codex gemini]`, `spec-review names(multi=false)=[claude codex]`, `multi=true`면 gemini 추가, `PERSIST migrate changed=true review_gate.providers=[claude codex]`, `TSAFE "gem\\x1b[2Jini\\nx"`(역슬래시 글자)
+- 3차(2026-10-16, throwaway `TestZZRevmodelProbe3`, 실행 뒤 삭제, model 호출 없음): `evidence/probe-cli-model.md`. pinned codex argv에 쓴 `-m gpt-6-luna`와 effort `high`가 남고 quality codex는 `-m gpt-6-astra`로 덮인다. claude `--model`은 남는다. `backend: omp`+`model`로 바꾼 gemini는 OMP backend로 조립된다. v0.50.125는 두 모양을 읽는다(exit 0).
 - A3(2026-10-15): `git archive v0.50.125`(dd6d6ea2) 빌드. 본 파일 `config get usage_profile` → exit 0, `developer`. 대조군 → `field reviewers not found in type config.ReviewGateConf`, `validate config: provider_model_required: codex`(둘 다 exit 1). `config get`은 두 key만 받지만 파일 전체를 strict load한다.
 - 상위 세션 live 증거(재실행 안 함): catalog의 `google-antigravity/gemini-3.1-pro:high` one-shot은 HTTP 404, `gemini-3-pro`는 stream 끊김, `gemini-3.8-flash:high`는 `ok`.
 - 2026-10-16 사용자 결정: 이 repo의 gemini 리뷰 model을 `google-antigravity/gemini-3.8-flash:high`로 바꾼다(위 live 증거). catalog 증명만으로는 404를 못 잡는다는 D6의 근거이고 S15의 목표 값이다. fixture는 이 값에 기대지 않는다(R3는 `gemini-3.1-pro:high` 그대로).
@@ -64,10 +61,10 @@ direct `auto plan` 문맥의 ledger다(planning context). 칸은 증거로만 �
 
 ## Outcome Lock
 
-- User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, OMP backend provider의 model·thinking(증명된 선택지만), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 세 경로뿐이다.
-- Mandatory requirements: REQ-RVM-01 ~ 15, 19, 20.
+- User-visible outcome: `auto init`·`auto update`·`auto quality`의 구성 UI에 `멀티프로바이더 리뷰` 탭이 생긴다. `auto spec review`에 참여하는 provider, provider마다 model과 effort·thinking(OMP catalog, Claude 탭 model, run의 Codex catalog가 증명한 것만, 증명할 수 없는 CLI는 OMP 전환), 참여 provider 중 judge를 고르고, 미리보기를 보고, 원하면(편집이 없어도) provider당 1회 확인 요청으로 실제로 답하는지 본 뒤 적용한다. 쓰는 key는 v0.50.125가 읽는 기존 key뿐이다.
+- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 23.
 - Explicit non-goals: `spec.md` `## Outcome Boundary`의 목록. 특히 orchestra 명령 목록과 `--multi`는 바뀌지 않는다(G1-1).
-- Completion evidence: Must S1–S12, S15–S18 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
+- Completion evidence: Must S1–S12, S15–S22 PASS, strict validate, 300줄, Windows build, `evidence/manual-smoke-revmodel.txt`.
 
 ## Visual Planning Brief
 
@@ -100,7 +97,8 @@ sequenceDiagram
 
 - D1 탭 위치: 기존 tool tab의 마지막 선택지다(사용자 답 location=compose tab). gate는 `spec.review_gate.enabled`, provider 둘 이상, CI 아님(J-015, J-020).
 - D2 참여 = `spec.review_gate.providers`만: 명령 목록은 Migration 3이 load마다 다시 채우므로 쓰면 미리보기가 거짓이 되고 다음 update가 되돌린다(J-001, probe A2). planning 예시의 "명령 목록에서도 gemini 제거"는 Migration 3 변경이 필요해 scope expansion이다(G1-1). 미리보기 안내가 명령과 `--multi`는 그대로라고 알린다. 2026-10-16 Gate 1에서 사용자가 이 범위를 확정했다(안내 줄 유지).
-- D3 model은 OMP backend만: OMP catalog가 세 family의 model과 thinking을 모두 보고하는 유일한 증명 원천이다. CLI codex model은 `CodexOrchestraProfile`이 정하고 기본 gemini에는 model flag가 없다(G1-2). 대안(CLI args 편집, CLI→OMP 전환)은 정책 key 변경이라 Evolution Idea다. 2026-10-16 Gate 1에서 사용자가 확정했고, 탭은 CLI backend provider에 이유 줄을 보인다.
+- D3 (대체됨 2026-10-16) model은 OMP backend만: 새 `auto init`의 세 CLI provider에서 쓸모가 없어 사용자가 바꿨다. D3'가 대신한다.
+- D3' CLI model: claude는 Claude 탭의 등급 model을 args `--model`로, codex는 run의 Codex catalog model을 `model_policy: pinned`와 `ApplyCodexProviderProfile` args로 쓴다. CLI 항목에 `model` key를 쓰는 대안은 v0.50.125가 읽기는 해도 실행에서 무시해 옛 바이너리가 다른 model로 조용히 돈다. args는 옛 바이너리도 그대로 실행한다(A3 3차). 증명할 목록이 없는 CLI(agy)는 OMP catalog로 증명하는 전환만 준다(G1-3).
 - D4 family 필터: 런타임의 두 함수로 맞춰 provider 이름과 model family가 어긋나지 않게 한다.
 - D5 judge: `spec.review_gate.judge`만 쓴다. `orchestra.judge`는 명령 쪽 값이라 쓰지 않는다(D2와 같은 경계). 빈 judge는 `그대로 — judge 없음`으로 남는다(J-018). raw node로 key 유무를 baseline에 담아 없으면 넣고 `""`면 값만 바꾼다(J-014).
 - D6 확인 요청: `runProviderTransportSmoke` 전체를 쓴다. 조립 오류와 0개를 그 함수가 이미 결과로 바꾼다(J-017). 통과는 "답했다"이고 readiness 필터는 별개다(J-016). 요청은 provider당 1회지만 model 호출은 최대 3n회라 라벨이 적는다(J-003). 편집 없이도 돈다(J-004).
@@ -132,6 +130,8 @@ sequenceDiagram
 | INV-RVM-07 | "preview before apply" + 쓰기 안전 | 바뀐 span만 쓰고 span 밖 bytes 불변, 거부면 bytes·cfg 불변 | diff, span 밖 bytes, SHA | S12 |
 | INV-RVM-08 | "same flow as the per-tool tabs" | 탭 위치(마지막)와 변경 줄 순서 고정 | 출력 줄 순서 | S1, S2 |
 | INV-RVM-09 | 미리보기·다시 편집 | 변경 판정은 baseline, 기본값은 working, 오류 뒤 working = baseline | `변경 없음`, Select 기본값 | S3, S17 |
+| INV-RVM-11 | "each provider's model + effort/thinking"(CLI) | CLI 실행 argv의 model = 쓴 값: claude `--model X`, codex `-m X`(pinned, profile 미적용) | 조립된 argv | S19, S20 |
+| INV-RVM-12 | "OMP backend로 전환" | 전환은 `backend: omp`와 `model`만 쓰고 조립 backend는 omp, OMP가 없으면 이유 줄 | 조립 config, 이유 줄 | S8, S21 |
 | INV-RVM-10 | Trust Model | 확인 요청 중 터미널에 닿는 이름·사유에 제어 문자 0 | stderr bytes, 거부 줄 | S16 |
 
 ## Feature Coverage Map
@@ -139,9 +139,9 @@ sequenceDiagram
 | Outcome slice | Covered by | Status |
 |---------------|------------|--------|
 | 탭 진입·참여·judge·미리보기 | REQ-RVM-01–05, 09 / S1, S3, S9, S17, S18 | covered |
-| 증명된 model·thinking·CLI 한계 | REQ-RVM-06–08 / S2, S4, S8 | covered |
+| 증명된 model·thinking·CLI model·OMP 전환 | REQ-RVM-06–08, 21–23 / S2, S4, S8, S19–S21 | covered |
 | 확인 요청·터미널 안전 | REQ-RVM-10, 11, 20 / S5, S16 | covered |
-| 쓰기 안전·init·update·비대화형·호환 | REQ-RVM-12–15 / S6, S7, S10–S12 | covered |
+| 쓰기 안전·init·update·비대화형·호환 | REQ-RVM-12–15 / S6, S7, S10–S12, S22 | covered |
 | 실제 터미널(gemini 전환) | REQ-RVM-19 / S15 | completion-debt (CD-1) |
 
 ## Completion Debt
@@ -157,7 +157,7 @@ These are optional improvements and do not block sync completion.
 |------|----------------------|-------------------|
 | quorum이 차도 실패한 provider를 receipt에 남기기(승격을 막지 않는 정보 필드) | `degraded_reasons`는 승격을 막는다. 사유로 넣으면 provider 하나만 실패해도 모든 리뷰가 막혀 리뷰 무결성 quorum 규칙을 바꾼다 | 사용자가 별도 필드를 요청 |
 | Migration 3이 명시적으로 뺀 provider를 다시 붙이지 않게 바꾸기(명령 목록 참여) | load 의미 변경이고 기존 migration test가 바뀐다. Gate 1(2026-10-16)은 리뷰 목록만으로 확정했다 | 사용자가 나중에 명령 목록 참여를 요청 |
-| CLI backend model 편집 또는 CLI→OMP 전환 | 정책 key 변경이고 원천마다 증명 방식이 다르다(G1-2) | init 사용자 요청 |
+| agy model Select(`agy models` 해석으로 증명) | 출력 형식과 증명 규칙이 없다(G1-3) | 사용자가 agy model 편집을 요청 |
 | `auto doctor --provider-smoke`에 "catalog에는 있으나 호출 실패" 안내 | 확인 요청이 같은 판정을 이미 보인다 | doctor 개선 요청 |
 
 ## Sibling SPEC Decision
@@ -172,11 +172,11 @@ These are optional improvements and do not block sync completion.
 |-----------|------|--------------|
 | 위 `pkg/config`, `pkg/orchestra`, `pkg/adapter/omp`, `pkg/content`, `internal/cli` 경로·함수·줄 번호 | existing | Read, grep(2026-10-15, `feat/revmodel-001` = ee811e2e), review round 1 교차 확인 |
 | v0.50.125 schema·바이너리 | existing (tag) | `git show v0.50.125:pkg/config/schema_orchestra.go`, `schema_spec.go`, `git archive` 빌드(A3) |
-| `quality_compose_review*.go`, `composeReviewTabOption`, `planReviewComposition`, `saveReviewComposition`, `verifyReviewLineEdit`, `composeReviewCheckTimeout`, `evidence/manual-smoke-revmodel.txt` | [NEW] planned addition | 부재 확인(grep) |
+| `quality_compose_review*.go`, `composeReviewTabOption`, `planReviewComposition`, `saveReviewComposition`, `verifyReviewLineEdit`, `composeReviewCheckTimeout`, `quality_compose_review_cli.go`, `evidence/manual-smoke-revmodel.txt` | [NEW] planned addition | 부재 확인(grep) |
 
 ## Reviewer Brief
 
-- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, judge, 미리보기), 세 key만 쓰는 줄 splice writer, opt-in 확인 요청, backend 진단 줄 escape, init 순서 수정.
+- Intended scope: 구성 UI의 리뷰 탭(참여, OMP model·thinking, claude·codex CLI model·effort, OMP 전환, judge, 미리보기), 세 key만 쓰는 줄 splice writer, opt-in 확인 요청, backend 진단 줄 escape, init 순서 수정.
 - Explicit non-goals: 명령 목록·`orchestra.judge`·Migration 3, 정책 key, CLI backend model, receipt 규칙, `--multi`, doctor 변경, 확인 요청 자동화.
 - Self-verified: A1·A2(실제 loader 경유 throwaway test), A3(v0.50.125 바이너리와 대조군 둘), catalog 정규화·재시도·CI gate 줄 번호, Traceability Matrix, oracle 시나리오, existing/[NEW] 구분.
 - Reviewer should focus on: 줄 splice의 span·거부·검사, baseline·working, judge 없음, 확인 요청의 비용·터미널 경계, Gate 1에서 확정된 G1-1·G1-2의 반영, 그리고 Completion Debt only.
@@ -190,10 +190,10 @@ These are optional improvements and do not block sync completion.
 - Q-COMP-02 | status: PASS | attempt: 2 | files: spec.md, acceptance.md | reason: 0명 참여(S3d), CI의 init·quality(S6d), catalog_invalid(S4c), 조립 실패(Live Check 엔진 행), judge 없음(S9)을 닫았다
 - Q-COMP-04 | status: PASS | attempt: 2 | files: spec.md, acceptance.md, research.md | reason: 편집 없는 확인 요청을 허용하고 S15 예산을 재시도 포함 18회로, `auto spec review`를 빼 CD-1을 닫을 수 있게 했다
 - Q-COMP-05 | status: PASS | attempt: 4 | files: research.md, acceptance.md | reason: round 2에서 S4(b) 음성 사례를 baseline과 다른 비증명 값으로 바꾸고 baseline 대조군을 더했으며 S18(baseline 1개)을 더했다. INV-RVM-01–10이 S1–S18 oracle에 잇는다. loader 값, 손으로 쓴 파일의 span 밖 bytes, 공유 anchor, 최대 호출 수(3n)를 판정한다
-- Q-COMP-06 | status: PASS | attempt: 2 | files: spec.md | reason: Traceability Matrix가 REQ 20개를 잇는다
+- Q-COMP-06 | status: PASS | attempt: 3 | files: spec.md | reason: Traceability Matrix가 REQ 23개를 잇는다(REQ-RVM-21–23 추가)
 - Q-COMP-07 | status: PASS | attempt: 1 | files: research.md | reason: live 확인을 CD-1로 남겼다
 - Q-COMP-08 | status: PASS | attempt: 2 | files: plan.md | reason: A1·A2를 `loadHarnessConfigForFlags` 경유로 다시 돌렸고 소비처 주장을 진술 분류에 넣었다
-- Q-FEAS-01 | status: PASS | attempt: 2 | files: spec.md, plan.md | reason: 참여를 migration이 지키는 review gate 목록으로 좁혔고 writer를 줄 splice로 바꿨다
+- Q-FEAS-01 | status: PASS | attempt: 3 | files: spec.md, plan.md | reason: 참여를 review gate 목록으로 좁혔고 writer를 줄 splice로 바꿨으며, CLI model은 기존 args·`model_policy`로 쓰고 A1·A3 3차가 실행·호환을 확인했다
 - Q-FEAS-03 | status: PASS | attempt: 2 | files: acceptance.md | reason: S15는 편집 없는 확인 요청으로 시작하고 CATG는 strict 정규화를 지나는 fixture다
 - Q-STYLE-01 | status: PASS | attempt: 2 | files: spec.md | reason: baseline·working을 나눠 비교·기본값·reset 규칙을 따로 적었다
 - Q-SEC-01 | status: PASS | attempt: 2 | files: spec.md | reason: backend 진단 줄의 escape(REQ-RVM-20)와 이름 검사로 확인 요청 중 터미널 출력이 경계 안에 있다

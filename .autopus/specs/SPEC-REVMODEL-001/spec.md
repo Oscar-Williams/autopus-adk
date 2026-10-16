@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-16 (review round 1 J-001–J-021: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. round 2 J-010·F-001: S4(b) 음성 사례, baseline 1개 경로와 `나가기`. Gate 1 G1-1·G1-2 사용자 확정. `evidence/review-rounds.md`)
+**Revised**: 2026-10-16 (review round 1 J-001–J-021: 참여는 `spec.review_gate.providers`만, 줄 splice writer, `runProviderTransportSmoke` 재사용, baseline·working 분리. round 2 J-010·F-001: S4(b) 음성 사례, baseline 1개 경로와 `나가기`. Gate 1 G1-1·G1-2 사용자 확정. 2026-10-16 사용자 결정으로 G1-2 대체: claude·codex CLI model Select, 증명할 목록이 없는 CLI는 OMP 전환(REQ-RVM-21–23, `evidence/probe-cli-model.md`). `evidence/review-rounds.md`)
 **Domain**: REVMODEL
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, SPEC-TEAMAUTO-001, redline capability와 함께). 작업 branch는 `feat/revmodel-001`이고 기준은 `feat/rea-001`(ee811e2e)이다. SPEC-REA-001이 구성 UI의 에이전트 수를 17개로 바꿨기 때문이다.
@@ -13,21 +13,21 @@
 
 `auto spec review`가 어느 provider를 쓰고, provider마다 어느 model·thinking으로 돌며, 누가 judge인지는 지금 `autopus.yaml`을 손으로 고쳐야만 바뀐다. init wizard에는 Review Gate 예/아니오 단계만 있다(`internal/cli/tui/wizard_steps.go` `buildReviewGateStep`). 2026-10-15 실측에서 OMP catalog는 `google-antigravity/gemini-3.1-pro`를 보였지만 한 번 호출하면 HTTP 404였다. 그날의 SPEC 리뷰는 gemini 없이 돌았고, quorum이 차서 receipt의 `degraded_reasons`는 비어 있었다. catalog에 있다는 것만으로는 model이 실제로 답한다고 볼 수 없다.
 
-이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭이 정하는 것은 다섯 가지다: (1) `auto spec review`에 참여하는 provider(`spec.review_gate.providers`), (2) OMP backend provider의 model·thinking(증명된 선택지만), (3) judge(`spec.review_gate.judge`, 참여 provider 또는 지금의 judge 없음), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 요청. 쓰는 key는 v0.50.125가 이미 읽는 세 경로뿐이다.
+이 SPEC은 SPEC-MODELUX-002·003의 구성 UI(`auto init`·`auto update`·`auto quality`)에 `멀티프로바이더 리뷰` 탭을 더한다. 이 탭이 정하는 것은 다섯 가지다: (1) `auto spec review`에 참여하는 provider(`spec.review_gate.providers`), (2) provider마다 model과 effort·thinking(OMP backend는 OMP catalog, claude CLI는 Claude 탭 model, codex CLI는 run의 Codex catalog가 증명한 것만, 증명할 목록이 없는 CLI는 OMP backend 전환), (3) judge(`spec.review_gate.judge`, 참여 provider 또는 지금의 judge 없음), (4) 적용 전 미리보기, (5) 사용자가 고를 때만 도는 provider당 1회 확인 요청. 쓰는 key는 v0.50.125가 이미 읽는 기존 key뿐이다.
 
 ## Outcome Boundary
 
 - Outcome Lock 원문은 `research.md` `## Outcome Lock`이다.
-- Mandatory requirements: REQ-RVM-01 ~ 15, 19, 20 (Must). REQ-RVM-16 ~ 18은 Should다.
+- Mandatory requirements: REQ-RVM-01 ~ 15, 19 ~ 23 (Must). REQ-RVM-16 ~ 18은 Should다.
 - Explicit non-goals:
   - `orchestra.commands.*.providers`와 `orchestra.judge`·`orchestra.commands.*.judge` 쓰기. 명령 목록은 load할 때 `MigrateOrchestraConfig` Migration 3이 `orchestra.providers`의 모든 key로 다시 채운다(`pkg/config/migrate.go:75-88`, probe A2). 그래서 끄기는 orchestra 명령과 `--multi`에 효과가 없고, 미리보기가 그렇게 알린다
   - Migration 3 변경, `--multi`·`--providers` 의미 변경
   - 리뷰 정책 key(strategy, timeout, `enabled`, `max_revisions`, `min_providers`, `verdict_threshold`) 편집
-  - CLI backend provider(`backend` 없음)의 model·effort·args·`model_policy` 편집과 CLI→OMP backend 전환(Gate 1 범위 결정, Evolution Idea)
+  - CLI args 중 model·effort 밖의 flag 편집, agy model 목록 증명(`agy models` 해석, G1-3), OMP→CLI 되돌리기
   - `orchestra.providers` 항목 추가·삭제, `backend`·`binary`·`tools`·`subprocess` 변경
   - review receipt `degraded_reasons` 규칙과 `auto doctor --provider-smoke` 동작 변경(Evolution Idea)
   - 확인 요청 자동 실행, 결과 저장(receipt·cache), 새 YAML key
-- Completion evidence: Must S1–S12, S15–S18 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
+- Completion evidence: Must S1–S12, S15–S22 PASS, `go test ./internal/cli/... ./pkg/...` 필터 없이 통과, 신규·변경 소스 파일 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `evidence/manual-smoke-revmodel.txt`(S15), `auto spec validate --strict`. `research.md` `## Completion Debt`의 CD-1이 남아 있으면 완료가 아니다.
 
 ## Trust Model
 
@@ -94,10 +94,10 @@ WHEN the operator picks a model other than 그대로, THEN THE SYSTEM SHALL ask 
 ### REQ-RVM-08 CLI backend provider
 Priority: Must · EARS: StateDriven
 
-WHERE a participating provider entry has no `backend: omp`, THEN THE SYSTEM SHALL ask no model or thinking select for it, print the CLI-backend note for it once per pass, and leave its `backend`, `binary`, `args`, `model_policy`, and `model` unchanged.
+WHERE a participating provider entry has no `backend: omp`, THEN THE SYSTEM SHALL ask its model by the CLI Model Contract row that matches its binary (claude, codex, or other) and SHALL leave every key of the entry that the matching row does not name unchanged.
 
-- 근거: CLI codex의 model은 `model_policy: quality`일 때 런타임에 `CodexOrchestraProfile`이 args를 덮어 정하고(`orchestra_run_runtime.go:27-35`, `codex_profile.go:93-95`), 기본 gemini(`agy --print`)에는 model flag가 없다(`defaults.go:119`).
-- 안내 줄은 그 이유를 함께 쓴다(Form Text, Gate 1 G1-2 사용자 결정 2026-10-16).
+- 2026-10-16 사용자 결정으로 G1-2(OMP backend만)를 대체한다. 새 `auto init`은 claude·codex·gemini를 모두 CLI backend로 만들어 OMP만으로는 탭이 쓸모없었다.
+- 근거(`evidence/probe-cli-model.md`): CLI 실행의 argv는 `Config.Args` 그대로다(`pkg/orchestra/subprocess_runner.go:111-127`). CLI backend는 `Model`을 쓰지 않는다. codex는 `model_policy: quality`면 load와 런타임이 `CodexOrchestraProfile`로 `-m`·effort를 덮고 `pinned`면 args를 그대로 쓴다.
 
 ### REQ-RVM-09 미리보기
 Priority: Must · EARS: EventDriven
@@ -140,9 +140,9 @@ IF an entry point runs without its interactive compose gate (auto update with `-
 ### REQ-RVM-15 옛 바이너리 호환
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL write only `orchestra.providers.<p>.model`, `spec.review_gate.providers`, and `spec.review_gate.judge`, which v0.50.125 loads, add no other key, and write only model values that pass `validOMPModelSelector`.
+THE SYSTEM SHALL write only `orchestra.providers.<p>.model`, `.args`, `.model_policy`, `.backend`, `spec.review_gate.providers`, and `spec.review_gate.judge`, which v0.50.125 loads, add no key outside the v0.50.125 schema, and write a `model` value only together with `backend: omp` and only when it passes `validOMPModelSelector`.
 
-- probe A3: v0.50.125(dd6d6ea2)로 만든 `auto`가 이 모양의 파일을 읽었고(`config get usage_profile` exit 0), 대조군인 모르는 key와 잘못된 selector는 거부했다.
+- probe A3: v0.50.125(dd6d6ea2)로 만든 `auto`가 이 모양의 파일을 읽었고(`config get usage_profile` exit 0), 대조군인 모르는 key와 잘못된 selector는 거부했다. 3차: codex `pinned` + `-m` args 파일과 gemini `backend: omp` + `model` 전환 파일도 읽었다(exit 0).
 
 ### REQ-RVM-16 메뉴 요약
 Priority: Should · EARS: StateDriven
@@ -173,6 +173,28 @@ THE SYSTEM SHALL pass the provider, the model selector, the tools, and the retry
 
 - 이 두 줄은 `auto spec review`와 `auto doctor --provider-smoke`에서도 같다. 제어 문자가 없는 이름에서는 출력이 지금과 같다.
 
+### REQ-RVM-21 claude CLI model
+Priority: Must · EARS: EventDriven
+
+WHEN the tab asks the model of a participating CLI provider whose binary is `claude`, THEN THE SYSTEM SHALL offer 그대로 followed by `ClaudeModelForTier` of fable, opus, sonnet, and haiku, ask after a model choice the effort over `low`, `medium`, `high`, `xhigh`, and `max` for every model but haiku with the working `--effort` value as default when it is one of them and `max` otherwise, and write the choice into `orchestra.providers.<p>.args` as the values after `--model` and `--effort`, dropping the `--effort` pair for haiku.
+
+- 선택지는 Claude Code 탭의 등급 model(`quality_tier.go:8-11, 104-115`)과 Effort Option Contract의 Claude 행(SPEC-MODELUX-003)이다. args에 `--model`이 없으면 print flag 바로 뒤에 넣는다. 런타임 전역 `--effort` flag는 지금처럼 effort만 덮는다(`orchestra_run_runtime.go:21-26`).
+
+### REQ-RVM-22 codex CLI model
+Priority: Must · EARS: EventDriven
+
+WHEN the tab asks the model of a participating CLI provider whose binary is `codex`, THEN THE SYSTEM SHALL offer 그대로 followed by the models of the run's Codex catalog snapshot ordered by name, ask after a model choice the effort over the levels that model reports among `low`, `medium`, `high`, `xhigh`, and `max`, defaulting to the working effort when reported and otherwise to the highest reported level, and on a change write `orchestra.providers.<p>.model_policy: pinned` and the args `ApplyCodexProviderProfile` produces for that model and effort, so that load and runtime no longer apply `CodexOrchestraProfile` to that provider.
+
+- snapshot은 Codex 탭이 읽는 것과 같다(`driftGenerationSnapshot.codexCatalog`, `doctor_drift_content.go:35-38`, 해석 `CodexCatalogModel`, `codex_profile.go:66-75`). 못 읽으면 codex model Select 없이 Codex 안내 1줄이다.
+- `pinned`는 load migration(`codex_provider.go:200-214`)과 `applyRuntimeHarnessOverrides`(`orchestra_run_runtime.go:27-30`)가 덮지 않는다(probe A1 3차). 설정 없는 `auto orchestra run`(`orchestra_run.go:118`)은 설정을 읽지 않아 이 탭의 대상이 아니다.
+
+### REQ-RVM-23 OMP backend 전환
+Priority: Must · EARS: EventDriven
+
+WHEN the tab asks the model of a participating CLI provider whose binary is neither `claude` nor `codex`, THEN THE SYSTEM SHALL offer 그대로 and, only when `omp` is installed and its catalog is readable, `OMP backend로 전환`, which asks an attested OMP model and thinking by REQ-RVM-06 and REQ-RVM-07 and writes `orchestra.providers.<p>.backend: omp` and `orchestra.providers.<p>.model`, and SHALL otherwise print the no-model reason line.
+
+- 기본 gemini binary `agy`는 `--model`과 `models` 명령을 갖지만 Autopus에는 그 목록을 증명하는 해석기가 없다(G1-3). 전환은 `binary`·`args`·`prompt_via_args`·`subprocess`를 남긴다. OMP backend는 그 key를 쓰지 않는다(probe: 조립 결과 `backend="omp"`, read-only 정책 통과).
+
 ## Contracts
 
 ### Review Tab Contract
@@ -183,9 +205,9 @@ THE SYSTEM SHALL pass the provider, the model selector, the tools, and the retry
 | 값 | baseline(탭 진입: run의 cfg, 그리고 raw document에서 `spec.review_gate.judge` key가 있는지와 그 raw 값)과 working(이번 편집). Select 기본값과 `그대로 — <값>`은 working, 변경 판정과 쓰기는 baseline 기준. 검증 오류 → working = baseline |
 | 참여 | baseline 참여가 둘보다 적으면 첫 Select 앞에 경고 줄. provider마다 Select. 켜짐이면 `그대로 — 켜짐`·`끄기`, 꺼짐이면 `그대로 — 꺼짐`·`켜기`. `orchestra.providers` 항목이 없는 목록 이름은 보이지 않고 바뀌지 않는다 |
 | 수 검사 | 참여 Select 바로 뒤, 보이는 provider만 센다. 둘보다 적으면 오류 줄 → 오류 뒤 Select(`다시 고르기` 기본 → 참여 Select부터 baseline 기본값으로, `나가기` → 쓰지 않고 메뉴로) |
-| model | 참여하는 `backend: omp` provider만(REQ-RVM-06). catalog 읽기는 탭 진입당 1회 |
+| model | OMP backend는 REQ-RVM-06, CLI backend는 CLI Model Contract(REQ-RVM-08, 21–23). OMP·Codex catalog 읽기는 탭 진입당 각 1회 |
 | thinking | model을 바꿨을 때만(REQ-RVM-07) |
-| CLI 안내 | 참여하는 CLI backend provider마다 그 pass에 1줄(REQ-RVM-08) |
+| CLI 안내 | 증명할 목록이 없는 CLI provider에 OMP 전환을 줄 수 없으면 그 pass에 이유 1줄(REQ-RVM-23) |
 | judge | working judge가 참여하면 `그대로 — <j>` 뒤 다른 참여 provider. working judge가 비었으면 `그대로 — judge 없음` 뒤 참여 provider. working judge가 꺼졌으면 안내 1줄 뒤 참여 provider만, 첫 provider가 기본 |
 | 검증 | `planReviewComposition`(REQ-RVM-05). 오류 뒤 Select는 수 검사 행과 같다 |
 | 미리보기 | after 표, 바뀌는 설정 줄(순서: `spec.review_gate.providers` → `orchestra.providers.<p>.model`(provider 순) → `spec.review_gate.judge`, 모양 `<key> <before> → <after>`, 목록은 `[a, b]`, 빈 judge는 `judge 없음`), 고정 안내(provider를 끈 편집이면 명령 안내, model을 바꾼 편집이면 model 안내). 같으면 `변경 없음` |
@@ -193,7 +215,7 @@ THE SYSTEM SHALL pass the provider, the model selector, the tools, and the retry
 | 확인 | 바뀐 편집만: 기존 `review`(`quality_compose_form_driver.go:213`)와 같은 `취소`(기본) · `적용` · `다시 편집`. 바뀐 것이 없으면 확인 없이 메뉴로 |
 | 적용 | update·quality는 Line Splice Writer Contract, init은 메모리 경로. 성공하면 기존 `적용했습니다` 줄 |
 
-after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞추고 바뀐 칸 끝에 `*`, CLI backend의 model 칸은 `CLI backend`):
+after 표(가로는 `terminalSafe` 뒤 rune 폭으로 맞추고 바뀐 칸 끝에 `*`, CLI backend의 model 칸은 `<binary> <model> · <effort>`, model flag 값이 없으면 `<binary>`):
 
 ```text
 provider  리뷰   model                                    judge
@@ -202,14 +224,25 @@ codex     켜짐   openai-codex/gpt-6-luna:high *
 gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 ```
 
+### CLI Model Contract
+
+| binary | 선택지 | 쓰기 | 근거 |
+|---|---|---|---|
+| `claude` | `그대로`, `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-4-5`(`ClaudeModelForTier`). effort는 haiku 밖에서 low–max | args의 `--model`·`--effort` 값(haiku는 `--effort` 쌍 삭제) | `claude_provider.go:36-47`, `quality_tier.go:8-11, 104-115` |
+| `codex` | `그대로`, run의 Codex catalog snapshot model. effort는 그 model 보고 단계 ∩ low–max | `model_policy: pinned` + `ApplyCodexProviderProfile` args | `codex_provider.go:24-27`, `codex_profile.go:66-75` |
+| 그 밖(`agy` 등) | `그대로`, OMP가 설치되고 catalog를 읽으면 `OMP backend로 전환` | `backend: omp` + `model`(REQ-RVM-23) | `agy --help`(`--model`, `models` 있음, 증명 해석기 없음) |
+
 ### Config Write Contract
 
 | 선택 | 쓰는 key | 바뀌는 소비처 |
 |---|---|---|
 | 참여 | `spec.review_gate.providers` = baseline 순서에서 끈 provider를 뺀 것 + 켠 provider(`sortedProviderKeys` 순) | `auto spec review`(`--multi` 없음), `auto doctor` readiness |
 | model (`backend: omp`) | `orchestra.providers.<p>.model` = `<provider>/<model>:<thinking>` | 그 provider의 모든 OMP backend 실행: `auto spec review`, `--multi`, orchestra 명령 |
+| claude CLI model·effort | `orchestra.providers.<p>.args`의 `--model`·`--effort` 값 | 그 provider의 모든 CLI 실행 |
+| codex CLI model·effort | `orchestra.providers.<p>.model_policy: pinned`, `args`의 `-m`·`-c model_reasoning_effort` 값 | 그 provider의 모든 CLI 실행. `CodexOrchestraProfile`은 더 적용되지 않는다 |
+| OMP 전환 | `orchestra.providers.<p>.backend: omp`와 `model` | 그 provider가 OMP review backend로 돈다 |
 | judge | `spec.review_gate.judge` = j. baseline에 key가 없으면 review_gate mapping 끝에 더하고, `""`면 그 값만 바꾼다 | `auto spec review` judge |
-| 쓰지 않음 | `orchestra.commands.*`(Migration 3 소유), `orchestra.judge`, 리뷰 정책 key, `backend`, `binary`, `args`, `model_policy`, `tools`, `subprocess`, provider 항목 추가·삭제 | — |
+| 쓰지 않음 | `orchestra.commands.*`(Migration 3 소유), `orchestra.judge`, 리뷰 정책 key, `binary`, `tools`, `subprocess`, `prompt_via_args`, 위 행이 말하지 않는 args 항목, provider 항목 추가·삭제 | — |
 
 - 바뀌지 않는 값은 쓰지 않는다. working이 baseline과 같으면 파일을 열어 쓰지도 않는다.
 
@@ -218,7 +251,7 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | 항목 | 규칙 |
 |---|---|
 | 원천 | 디스크의 bytes. `saveQualityBlock`처럼 먼저 `pruneRetiredConfig`(`config_retired_keys.go:37`)를 거친다(SPEC-PANERM-001 REQ-10). 대상 위치는 raw document(`parseAutopusConfigDocument`, `platform_omp_config.go:45`, 환경 변수 펼침 없음)의 node `Line`·`Column`으로 찾는다 |
-| 바꾸는 span | scalar(`judge`, `model`): 그 key 줄의 값 token(plain, `'…'`, `"…"`)만. 같은 줄의 inline 주석은 남는다. flow 목록: 같은 줄의 `[`부터 짝 `]`까지. block 목록: 항목 줄들을 같은 들여쓰기의 `- <name>` 줄로 바꾼다. 없는 `judge` key: review_gate mapping의 마지막 줄 뒤에 그 mapping 들여쓰기로 `judge: <j>` 한 줄. 새 값은 `OMPYAMLScalar`(`pkg/content/agent_transformer_omp.go:25`)로 encode한다 |
+| 바꾸는 span | scalar(`judge`, `model`): 그 key 줄의 값 token(plain, `'…'`, `"…"`)만. 같은 줄의 inline 주석은 남는다. flow 목록: 같은 줄의 `[`부터 짝 `]`까지. block 목록: 항목 줄들을 같은 들여쓰기의 `- <name>` 줄로 바꾼다. 없는 `judge` key: review_gate mapping의 마지막 줄 뒤에 그 mapping 들여쓰기로 `judge: <j>` 한 줄. 없는 `model_policy`·`backend`·`model` key도 같은 방식으로 그 provider mapping 끝에 넣는다. CLI args는 목록 token 전체를 새 목록으로 바꾼다(model·effort 값 밖의 항목과 순서는 그대로). 새 값은 `OMPYAMLScalar`(`pkg/content/agent_transformer_omp.go:25`)로 encode한다 |
 | 거부 | 대상 key·값 node나 span 안의 node가 anchor 또는 alias, 부모 mapping에 merge key, 대상 값에 `${`, 부모가 flow mapping, 값이 block scalar(`|`, `>`)이거나 목록 항목이 scalar가 아님, block 목록 span 안의 주석 줄. 문구는 Form Text의 쓰기 거부 줄이고 `<key>`는 첫 거부 경로다 |
 | 검사 | `[NEW] verifyReviewLineEdit`: `verifyQualityLineEdit`(`quality_config_verify.go:20`)처럼 대상 경로를 뺀 두 문서가 같은 data(alias는 가리키는 data로)이고, 대상 경로가 계획 값이며, strict load와 `Validate`를 지나 load 결과가 baseline cfg에 계획 값만 바꾼 것과 같아야 한다. 하나라도 어긋나면 쓰지 않는다 |
 | 쓰기 | `atomicWriteQualityConfig`(`quality_config.go:258`)와 같은 atomic replace. 파일 mode는 그대로다 |
@@ -254,7 +287,10 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 | 참여 | `<p> 리뷰 참여` · `그대로 — 켜짐` · `끄기` · `그대로 — 꺼짐` · `켜기` | `<p> takes part in review` · `keep — on` · `turn off` · `keep — off` · `turn on` |
 | model | `<p> model` · `그대로 — <selector>` · ` (catalog에 없음)` | `<p> model` · `keep — <selector>` · ` (not in catalog)` |
 | thinking | `<p> thinking (<provider>/<model>)` | 같다 |
-| CLI 안내 | `<p>는 CLI backend라 model을 바꾸지 않습니다: 증명된 model 목록은 OMP backend에만 있고 CLI model은 args와 quality 정책이 정합니다` | `<p> runs on a CLI backend, so its model stays: attested model lists exist only for OMP backends, and a CLI model comes from its args and quality policy` |
+| CLI model | `<p> model` · `그대로 — <model> · <effort>` · `<p> effort` | `<p> model` · `keep — <model> · <effort>` · `<p> effort` |
+| Codex 안내 | `Codex catalog를 읽지 못해 codex model은 그대로입니다` | `The Codex catalog is unreadable; the codex model stays` |
+| 전환 | `그대로 — CLI backend` · `OMP backend로 전환` | `keep — CLI backend` · `switch to the OMP backend` |
+| model 없음 이유 | `<p>(<binary>)는 Autopus가 증명할 model 목록이 없어 model을 바꾸지 않습니다. OMP를 설치하면 OMP backend로 전환할 수 있습니다` | `<p> (<binary>) has no model list Autopus can attest, so its model stays; install OMP to switch it to the OMP backend` |
 | catalog 안내 | `OMP catalog를 읽지 못해 model은 그대로입니다` | `The OMP catalog is unreadable; models stay unchanged` |
 | judge | `judge` · `그대로 — judge 없음` · `judge <j>가 꺼져 judge를 다시 고릅니다` | `judge` · `keep — no judge` · `judge <j> was turned off; choose a new judge` |
 | 오류 | `리뷰에는 provider가 두 개 이상 필요합니다 (지금 <n>개)` · `judge <j>는 리뷰에 참여하지 않는 provider라 고를 수 없습니다` · `<p> model <selector>는 설치된 OMP catalog가 증명하지 않습니다` · `<p> thinking <t>는 <selector>가 보고하지 않는 단계입니다` | `The review needs at least two providers (now <n>)` · `judge <j> does not take part in the review and cannot be chosen` · `The installed OMP catalog does not attest <p> model <selector>` · `<selector> reports no thinking level <t> for <p>` |
@@ -274,7 +310,7 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 
 ## 생성 파일 상세
 
-- `internal/cli`: `[NEW] quality_compose_review.go`(+test, 탭 흐름·`composeReviewTabOption`), `[NEW] quality_compose_review_plan.go`(+test, baseline·working, `planReviewComposition`, 변경 줄, after 표), `[NEW] quality_compose_review_choices.go`(+test, family로 거른 증명 목록, thinking 규칙), `[NEW] quality_compose_review_write.go`(+test, `saveReviewComposition`·span·거부·init 메모리 적용), `[NEW] quality_compose_review_verify.go`(+test, `verifyReviewLineEdit`), `[NEW] quality_compose_review_check.go`(+test, 확인 요청), `quality_compose_form_driver.go`(호출 두 줄), `quality_compose_form_text.go`(문구), `init.go`(대입 순서), `omp_review_backend.go`(두 줄에 `terminalSafe`). 메뉴 요약은 `f.draw()` 뒤 한 줄이고 driver가 300줄을 넘으면 `composeReviewTabOption`처럼 새 파일로 옮긴다.
+- `internal/cli`: `[NEW] quality_compose_review.go`(+test, 탭 흐름·`composeReviewTabOption`), `[NEW] quality_compose_review_plan.go`(+test, baseline·working, `planReviewComposition`, 변경 줄, after 표), `[NEW] quality_compose_review_choices.go`(+test, family로 거른 증명 목록, thinking 규칙), `[NEW] quality_compose_review_write.go`(+test, `saveReviewComposition`·span·거부·init 메모리 적용), `[NEW] quality_compose_review_verify.go`(+test, `verifyReviewLineEdit`), `[NEW] quality_compose_review_check.go`(+test, 확인 요청), `[NEW] quality_compose_review_cli.go`(+test, CLI Model Contract와 OMP 전환), `quality_compose_form_driver.go`(호출 두 줄), `quality_compose_form_text.go`(문구), `init.go`(대입 순서), `omp_review_backend.go`(두 줄에 `terminalSafe`). 메뉴 요약은 `f.draw()` 뒤 한 줄이고 driver가 300줄을 넘으면 `composeReviewTabOption`처럼 새 파일로 옮긴다.
 - 문서: README, CHANGELOG(v0.50.126), help 상수(Should). `content/`·`templates/`를 고치면 `make generate-templates`로 생성 표면을 맞춘다.
 - 증거: `evidence/review-rounds.md`, `[NEW] evidence/manual-smoke-revmodel.txt`. 신규·변경 소스는 300줄 이하다.
 
@@ -293,7 +329,8 @@ gemini    꺼짐 * google-antigravity/gemini-3.1-pro:high
 Gate 1 범위 결정 둘은 2026-10-16 사용자가 확정했다(근거는 `research.md` D2·D3).
 
 - G1-1 | resolved 2026-10-16 | 사용자 결정: 참여 끄기는 `auto spec review`(`spec.review_gate.providers`)에만 적용하고, 미리보기의 명령 안내 줄(orchestra 명령과 `--multi`는 그대로)을 유지한다. 명령 목록은 Migration 3이 load마다 다시 채우므로 그것을 바꾸는 일은 scope expansion으로 남는다
-- G1-2 | resolved 2026-10-16 | 사용자 결정: model 편집은 OMP backend provider만 한다. CLI backend provider에는 탭이 이유 줄(Form Text CLI 안내)을 보인다. CLI codex model은 `CodexOrchestraProfile`이, 기본 gemini(agy)는 model flag 없음이 정한다
+- G1-2 | superseded 2026-10-16 | 처음 결정(OMP backend만)은 새 `auto init`의 세 CLI provider에서 쓸모가 없었다. 새 사용자 결정: claude CLI는 `--model`, codex CLI는 `-m`(`pinned`)으로 고르고, model 목록을 증명할 수 없는 CLI는 OMP backend 전환 또는 이유 줄이다(REQ-RVM-21–23)
+- G1-3 | open | probe: 설정된 gemini binary는 `agy`이고 `agy`는 `--model`과 `models` 명령을 갖는다(`gemini` CLI는 `-m, --model`). agy model 목록을 증명할 해석기가 없어 이 SPEC은 OMP 전환만 준다. agy model Select(`agy models` 해석)를 원하면 scope expansion이다
 
 ## Traceability Matrix
 
@@ -306,16 +343,19 @@ Gate 1 범위 결정 둘은 2026-10-16 사용자가 확정했다(근거는 `rese
 | REQ-RVM-05 | T2 | S3, S4, S18 | INV-RVM-02, INV-RVM-03, INV-RVM-09 |
 | REQ-RVM-06 | T3 | S4 | INV-RVM-03 |
 | REQ-RVM-07 | T3, T4 | S2, S5 | INV-RVM-03, INV-RVM-04 |
-| REQ-RVM-08 | T3, T5 | S8 | INV-RVM-01 |
+| REQ-RVM-08 | T3, T5, T12, T13, T14 | S8, S19, S20, S21 | INV-RVM-11 |
 | REQ-RVM-09 | T2, T5 | S1, S2, S11, S17 | INV-RVM-08, INV-RVM-09 |
 | REQ-RVM-10 | T6 | S5, S16 | INV-RVM-05 |
 | REQ-RVM-11 | T6 | S5 | INV-RVM-05 |
 | REQ-RVM-12 | T4, T7 | S11, S12 | INV-RVM-07 |
 | REQ-RVM-13 | T7 | S10 | INV-RVM-01 |
 | REQ-RVM-14 | T8 | S6 | INV-RVM-05 |
-| REQ-RVM-15 | T4, T8 | S7 | INV-RVM-06 |
+| REQ-RVM-15 | T4, T8 | S7, S22 | INV-RVM-06 |
 | REQ-RVM-16 | T9 | S13 | - |
 | REQ-RVM-17 | T10 | S13 | - |
 | REQ-RVM-18 | T10 | S14 | - |
 | REQ-RVM-19 | T1, T11 | S15 | INV-RVM-05 |
 | REQ-RVM-20 | T6 | S16 | INV-RVM-10 |
+| REQ-RVM-21 | T12 | S19 | INV-RVM-11 |
+| REQ-RVM-22 | T13 | S20 | INV-RVM-11 |
+| REQ-RVM-23 | T14 | S8, S21 | INV-RVM-12 |
