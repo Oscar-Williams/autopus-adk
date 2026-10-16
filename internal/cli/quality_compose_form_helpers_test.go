@@ -7,6 +7,7 @@ import (
 	"testing/iotest"
 
 	"github.com/charmbracelet/huh"
+	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +42,7 @@ func useComposeFormRunner(t *testing.T, before func(run int) error) *int {
 	t.Cleanup(func() { composeFormsProbe, composeRunForm = originalProbe, originalRun })
 	runs := new(int)
 	composeFormsProbe = func(*cobra.Command) bool { return true }
-	composeRunForm = func(cmd *cobra.Command, form *huh.Form) error {
+	composeRunForm = func(cmd *cobra.Command, form *huh.Form, _ tui.NavFrame) error {
 		*runs++
 		if err := before(*runs); err != nil {
 			return err

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/huh"
+	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,7 +23,7 @@ func countComposeFormRuns(t *testing.T) *int {
 	original := composeRunForm
 	t.Cleanup(func() { composeRunForm = original })
 	runs := new(int)
-	composeRunForm = func(*cobra.Command, *huh.Form) error {
+	composeRunForm = func(*cobra.Command, *huh.Form, tui.NavFrame) error {
 		*runs++
 		return nil
 	}

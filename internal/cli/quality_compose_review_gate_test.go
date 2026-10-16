@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/insajin/autopus-adk/pkg/adapter/omp"
 )
 
@@ -25,7 +26,7 @@ func countReviewForms(t *testing.T) *int {
 	t.Cleanup(func() { composeFormsProbe, composeRunForm = originalProbe, originalRun })
 	composeFormsProbe = composeFormsTerminal
 	runs := new(int)
-	composeRunForm = func(*cobra.Command, *huh.Form) error {
+	composeRunForm = func(*cobra.Command, *huh.Form, tui.NavFrame) error {
 		*runs++
 		return nil
 	}

@@ -3,7 +3,6 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -14,6 +13,9 @@ type composeFormOptions struct {
 	Presets bool
 	// OMP is the run's OMP tab; nil leaves OMP out of the tool tab.
 	OMP *composeOMPTab
+	// BackOut makes Esc on the menu leave the step with tui.ErrNavBack, as
+	// init's goes back to its wizard; otherwise the menu is a first form.
+	BackOut bool
 }
 
 // composeFormChoice is one menu choice.
@@ -39,6 +41,8 @@ type composeFormRun struct {
 	applied bool
 	// ompNoticed reports that the detected-only OMP notice was printed.
 	ompNoticed bool
+	// nav is the run's position for each form's frame (SPEC-TUIUX-001).
+	nav *composeNav
 }
 
 // runForms runs the form flow of a session newComposeSession built
@@ -51,7 +55,9 @@ type composeFormRun struct {
 // write of the run succeeded; its snapshot is the one every table read,
 // which the same run's generation must use.
 func (s composeDriverSession) runForms(cmd *cobra.Command, options composeFormOptions) (composeDriverResult, error) {
-	f := &composeFormRun{composeDriverState: s.start(cmd), cmd: cmd, form: composeFormTextFor(s.shared.lang), options: options}
+	f := &composeFormRun{composeDriverState: s.start(cmd), cmd: cmd, form: composeFormTextFor(s.shared.lang), options: options,
+		nav: &composeNav{command: cmd.Name(), lang: s.shared.lang, backOut: options.BackOut}}
+	defer f.nav.attach(cmd)()
 	err := f.menu()
 	if errors.Is(err, errComposeInterrupted) {
 		fmt.Fprintln(f.out, f.form.Interrupted)
@@ -250,45 +256,6 @@ func (f *composeFormRun) apply(plan composeDriverPlan) {
 	}
 	f.applied = true
 	fmt.Fprintln(f.out, f.Text.Applied)
-}
-
-// choosePreset asks quality.default among the configured presets, the
-// current default first selected, and writes another choice through the
-// line writer on a detached copy: cfg follows only a successful write. A
-// default that names no configured preset, such as an empty one, gets a
-// keep option of its own, so Enter never writes the first preset.
-func (f *composeFormRun) choosePreset() error {
-	current := f.Config.Quality.Default
-	var options []composeOption[string]
-	if _, configured := f.Config.Quality.Presets[current]; !configured {
-		shown := current
-		if shown == "" {
-			shown = f.form.PresetNone
-		}
-		options = append(options, composeOption[string]{f.form.Keep + " — " + shown, current})
-	}
-	for _, name := range orderedQualityPresets(f.Config) {
-		label := name
-		if description := strings.TrimSpace(f.Config.Quality.Presets[name].Description); description != "" {
-			label += " — " + description
-		}
-		if name == current {
-			label += " " + f.form.PresetCurrent
-		}
-		options = append(options, composeOption[string]{label, name})
-	}
-	choice, err := composeSelect(f.cmd, f.form.Preset, "", options, current)
-	if err != nil || choice == current {
-		return err
-	}
-	plan := composeBindingPlan{Writer: composeWriterLine, Default: choice}
-	if err := persistComposeBinding(f.shared.dir, f.shared.cfg, plan); err != nil {
-		f.warn(err)
-		return nil
-	}
-	f.applied = true
-	fmt.Fprintf(f.out, "quality.default = %s\n", terminalSafe(choice))
-	return nil
 }
 
 func (f *composeFormRun) warn(err error) {
