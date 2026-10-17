@@ -142,6 +142,7 @@ func TestClean_RejectsForgedWorldReadablePermissionLedger(t *testing.T) {
 	err := NewWithRoot(root).Clean(context.Background())
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "owner-only regular file")
+	assert.ErrorContains(t, err, "delete it and the next auto update writes a fresh ledger")
 	assert.Equal(t, []string{"UserDeny"}, permissionValues(readJSONObject(t, settingsPath), "deny"))
 }
 
@@ -224,7 +225,8 @@ func TestClean_PermissionLedgerPreservesUserDuplicatesAndRemovesActualAdds(t *te
 
 	cleaned := readJSONObject(t, settingsPath)
 	assert.Equal(t, []string{"Bash(git *)", "WebSearch", "UserAllow"}, permissionValues(cleaned, "allow"))
-	assert.Equal(t, []string{"Bash(rm -rf:*)", "UserDeny"}, permissionValues(cleaned, "deny"))
+	// Clean never retracts a deny, even one Autopus added: a leftover deny fails safe.
+	assert.Equal(t, []string{"Bash(rm -rf:*)", "UserDeny", "Bash(chmod:*)"}, permissionValues(cleaned, "deny"))
 	assert.NoFileExists(t, filepath.Join(root, filepath.FromSlash(claudePermissionLedgerPath)))
 }
 

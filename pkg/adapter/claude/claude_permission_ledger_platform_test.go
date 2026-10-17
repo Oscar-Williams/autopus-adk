@@ -94,36 +94,48 @@ func TestLoadPermissionLedgerOn_WindowsDropsOnlyTheModeCheck(t *testing.T) {
 }
 
 // A claimed ledger that is gone, as git deletes it from a clone that pulls the
-// commit untracking it, no longer stops update or clean: update starts a fresh
-// owner-only ledger, which records none of the entries .claude/settings.json
-// already held, and clean leaves every permission entry.
-func TestPermissionLedger_ClaimedButGoneReadsAsNone(t *testing.T) {
+// commit untracking it, no longer stops update or clean. Clean on its own
+// retracts nothing. The next update writes a fresh owner-only ledger that
+// re-claims the generated allows settings.json holds, never the user's own
+// allow and never a deny, so a later clean still retracts them.
+func TestPermissionLedger_ClaimedButGoneIsRebuilt(t *testing.T) {
 	t.Parallel()
-	cfg := config.DefaultFullConfig("ledger-gone")
+	ctx := context.Background()
+	cleanRoot, cleanLedger := generatedLedger(t)
+	cleanSettings := filepath.Join(cleanRoot, ".claude", "settings.json")
+	before := readJSONObject(t, cleanSettings)
+	require.NoError(t, os.Remove(cleanLedger))
+	require.NoError(t, NewWithRoot(cleanRoot).Clean(ctx))
+	assert.Equal(t, permissionValues(before, "allow"), permissionValues(readJSONObject(t, cleanSettings), "allow"))
+
 	root, ledger := generatedLedger(t)
+	settingsPath := filepath.Join(root, ".claude", "settings.json")
+	settings := readJSONObject(t, settingsPath)
+	permissions := settings["permissions"].(map[string]any)
+	permissions["allow"] = append(permissions["allow"].([]any), "UserAllow")
+	permissions["deny"] = []any{"UserDeny"}
+	writeJSONFile(t, settingsPath, settings)
 	require.NoError(t, os.Remove(ledger))
 	manifest, err := adapter.LoadManifest(root, adapterName)
 	require.NoError(t, err)
 	require.Contains(t, manifest.Files, claudePermissionLedgerPath, "the manifest still claims the ledger")
 
-	_, err = NewWithRoot(root).Update(context.Background(), cfg)
+	_, err = NewWithRoot(root).Update(ctx, config.DefaultFullConfig("ledger-platform"))
 
 	require.NoError(t, err)
 	info, err := os.Stat(ledger)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 	fresh := readJSONObject(t, ledger)
-	assert.NotContains(t, fresh, "allow", "the entries settings.json already held stay unclaimed")
+	claimed := toStringSlice(fresh["allow"])
+	assert.Contains(t, claimed, "Bash(git:*)")
+	assert.Contains(t, claimed, "Agent")
+	assert.NotContains(t, claimed, "UserAllow")
 	assert.NotContains(t, fresh, "deny")
-
-	cleanRoot, cleanLedger := generatedLedger(t)
-	settingsPath := filepath.Join(cleanRoot, ".claude", "settings.json")
-	before := readJSONObject(t, settingsPath)
-	require.NoError(t, os.Remove(cleanLedger))
-	require.NoError(t, NewWithRoot(cleanRoot).Clean(context.Background()))
-	after := readJSONObject(t, settingsPath)
-	assert.Equal(t, permissionValues(before, "allow"), permissionValues(after, "allow"))
-	assert.Equal(t, permissionValues(before, "deny"), permissionValues(after, "deny"))
+	require.NoError(t, NewWithRoot(root).Clean(ctx))
+	cleaned := readJSONObject(t, settingsPath)
+	assert.Equal(t, []string{"UserAllow"}, permissionValues(cleaned, "allow"))
+	assert.Equal(t, []string{"UserDeny"}, permissionValues(cleaned, "deny"))
 }
 
 // A deleted ledger the manifest claims is written again; any other deleted
