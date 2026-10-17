@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: auto-go가 `Agent Team:` 판단 줄을 바꿔 쓰지 않고 그대로 한 줄로 출력하게 한다** (2026-10-17): 실제 터미널
+  S15에서 lead가 판단 JSON의 `line`을 "분류기가 subagent를 골랐습니다" 같은 문장으로 풀어 쓰고, 완료 보고의 `topology:`
+  줄에도 `Agent Team:`을 한 번 더 적었다. 경로 판단은 맞았다. 생성 auto-go에 "출력"은 JSON 문자열을 번역·요약 없이 그대로
+  한 줄로 옮기는 것이고 완료 보고를 포함해 다른 곳에는 `Agent Team:`을 쓰지 않는다는 문장을 더했다.
 - **v0.50.126: Antigravity CLI(agy) 1.4에서 Autopus 에이전트가 시작되지 않던 도구 이름을 고친다** (2026-10-17): Antigravity
   에이전트 파일의 `tools:`가 Gemini CLI 도구 이름(`glob`, `replace`, `run_shell_command`)을 담아, agy 1.4.0은
   `agy --agent auto-agent-<이름>`과 subagent 호출 모두 `failed to construct executor: failed to resolve components: unknown
