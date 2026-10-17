@@ -16,6 +16,9 @@ All notable changes to this project will be documented in this file.
   - frame: 폼마다 `init · 4/6 리뷰 게이트`, `update · 모델 구성 › 구성 편집 › Codex › 역할 그룹` 같은 header, 지금까지
     고른 값(`지금까지 고른 값`), `방향키 이동 · Enter 선택 · Esc 뒤로 · Ctrl+C 취소` footer가 터미널 높이 안에 보인다.
     요약이 넘치면 머리 줄, `… 외 k개`, 마지막 답만 남긴다.
+  - 첫 frame: Select는 처음 그린 frame부터 첫 선택지와 기본값의 커서 줄을 보이고, 폼이 터미널 높이에 들어가지
+    않으면 커서 줄로 scroll 한다. RC smoke(2026-10-17)에서 `true`를 먼저 둔 리뷰 탭의 `<provider> 리뷰 참여`와 오류
+    뒤 `다시 고르기`·`나가기` Select가 방향키를 누르기 전까지 커서 줄 없이 둘째 선택지와 빈 줄만 보였다.
   - init 확인 화면: 폼으로 묻는 init은 아무 파일도 쓰기 전에 `적용할 설정`(답한 값, 새 설정과의 YAML 차이로 바뀌는
     설정 key 전부, REA 결정과 동작)을 보이고 `이대로 진행할까요?`에 적용(기본값)·뒤로·취소를 묻는다. 뒤로는 구성 단계가
     폼을 물었으면 그 메뉴를 구성 그대로 이어 하고 아니면 wizard 마지막 단계로 간다. 취소와 Ctrl+C는 `init cancelled.`를

@@ -65,6 +65,7 @@ type composeOption[T comparable] struct {
 // values. The title, the note, and every label pass through terminalSafe:
 // huh draws them as they are, and preset names, descriptions, and catalog
 // text come from files the operator may not have written (REQ-MUX2-02).
+// tui.NavSelect opens the field on its first option, the cursor on def.
 func composeSelect[T comparable](
 	cmd *cobra.Command,
 	title, note string,
@@ -76,7 +77,7 @@ func composeSelect[T comparable](
 	for _, option := range options {
 		choices = append(choices, huh.NewOption(terminalSafe(option.label), option.value))
 	}
-	field := huh.NewSelect[T]().Title(terminalSafe(title)).Options(choices...).Value(&value)
+	field := tui.NavSelect(choices, &value).Title(terminalSafe(title))
 	if note != "" {
 		field = field.Description(terminalSafe(note))
 	}

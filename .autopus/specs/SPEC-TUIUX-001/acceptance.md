@@ -175,6 +175,7 @@ When `RunNav`를 `tea.WindowSizeMsg{Width: 80, Height: 24}`로 3개짜리 폼에
 Then 높이 24 view는 24줄 이하이고 첫 줄 `h`, 마지막 줄이 footer다. test가 잰 form 높이 h로 avail = 22 − h일 때 요약은 머리 줄, ko `  … 외 <k>개`(en `  … <k> more`, k = 30 − (avail − 2)), 마지막 avail − 2개 답이고 마지막 답 줄은 `  a30: v`다
 And 높이 10 view는 10줄 이하이고 첫 줄 `h`, 마지막 줄이 footer이며 요약 머리 줄이 없다(avail < 3). form은 8줄 이하다
 And accessible 출력에는 답 30줄이 모두 있고 `외`·`more` 줄이 없다
+And `tui.NavSelect` 폼 둘(`그대로 — 켜짐` true·`끄기` false에 값 true, 선택지 셋에 값 셋째)을 `120x40`·`120x60`·크기 전·`120x4`로 돌리면 첫 key 전의 모든 frame에 header, footer, 커서 줄이 있고, 크기를 받은 frame은 선택지를 모두 보인다(`120x4`는 커서 줄만, 4줄 이하). `composeSelect`를 실제 `tea.Program`으로 돌린 첫 frame도 `> 그대로 — 켜짐`, `  끄기` 두 줄이다
 
 ### S21: TERM=dumb의 accessible 경로
 Priority: Must
