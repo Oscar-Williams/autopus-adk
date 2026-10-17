@@ -147,10 +147,59 @@
 #   REA 조회)이 rollout으로 확인됐다. 판정은 바꾸지 않고 후속 확인 대상으로 둔다.
 #
 # CD 상태 (research.md `## Completion Debt` 기준):
-#   CD-1: 열림. Claude `/mcp`와 agy `autopus_rea` 항목은 PASS지만, A2 시작 절반이 FAIL이다(Codex cold 시작이 30초 timeout을 넘김).
-#     CD-1 규칙("FAIL이면 고친 뒤 다시")대로 고친 뒤 cold 실행을 다시 기록해야 닫힌다. 깨진 _npx가 남는 문제도 함께 다뤄야 한다.
+#   CD-1: (이 시점) 열림. Claude `/mcp`와 agy `autopus_rea` 항목은 PASS지만, A2 시작 절반이 FAIL이다(Codex cold 시작이 30초
+#     timeout을 넘김). CD-1 규칙("FAIL이면 고친 뒤 다시")대로 dd2df735에서 고친 뒤 다시 기록했다 -> 아래 `재기록` 절.
 #   CD-2: 닫힘 조건 충족. Claude 경로 (a)–(e)와 미등록 1회 dispatch PASS, agy `--agent` 3개 OK와 reverse-engineer의 `autopus_rea`
 #     정적 도구 호출 PASS(A1 Antigravity), Codex reverse-engineer의 REA 호출이 60초 안에 성공(A2 도구 절반) PASS.
+#
+# ───────────────────── 재기록 (2026-10-17 20:37–20:45, dd2df735 뒤 릴리즈 바이너리) ─────────────────────
+# 수정: dd2df735(`fix(rea): Codex REA 시작 제한을 120초로 올리고 깨진 npx cache 복구법을 적는다`)가 managed Codex 항목을
+#   `startup_timeout_sec = 120`으로 올리고 README(en/ko)에 `npm cache npx ls` / `npm cache npx rm <key>` 복구 절차를 적었다.
+#   SPEC S18의 A2 시작 기준도 120초로 바뀌었다.
+# 바이너리: `auto 0.50.126-0.20261017113611-dd2df7353cb6 (commit: dd2df73)`. codex-cli 0.163.0, Node v24.20.0. 모델 호출 없음.
+# 기록: 70-rea-cold2-init, 71-pre, 71-codex-cold, 71-times, 72-npx-recovery, 72b-npx-recovery, 72c-npx-after.
+#
+# (4) A2 시작 절반, Codex cold 재기록 (S18) -> PASS
+#   준비: 새 project <scratch>/smoke-kit/rea-cold2를 이 바이너리로 init(REA 켬). 출력:
+#   `Registered the REA reverse-engineering MCP: .mcp.json, .codex/config.toml, .agents/plugins/autopus/mcp_config.json (rea-agents@6.5.0)`.
+#   `.codex/config.toml`: `[mcp_servers.rea]` / `command = "npx"` / `args = ["-y", "rea-agents@6.5.0", "mcp"]` / `startup_timeout_sec = 120`.
+#   실행 전(71-pre, 20:37:33): `ls -la home-cold3/.npm` -> `No such file or directory`, npm-codex3 빈 디렉터리.
+#   이 run 전에 떠 있던 Codex daemon은 없었다(`pgrep -fl app-server`에는 ChatGPT 앱의 app-server 하나만 있고, 이 CLI daemon이
+#   아니라서 그대로 두었다).
+#   부하: 실행 직전 `uptime` -> `load averages: 17.09 14.67 26.12`(27 users).
+#   실행: `env HOME=<scratch>/smoke-kit/home-cold3 CODEX_HOME=<home>/.codex npm_config_cache=<scratch>/smoke-kit/npm-codex3 codex`, 메시지 없음.
+#   시각(71-times와 Codex log `~/.codex/logs_2.sqlite`, 읽기 전용):
+#     20:37:44.80 실행
+#     20:37:47.85 폴더 신뢰
+#     20:38:06.0  MCP 시작(session_init), npx `rea-agents@6.5.0 mcp` 시작(npm debug log 11_38_06_244Z)
+#     20:38:10    `home-cold3/.npm/_npx/ad9a3fdbcad992c6/node_modules/rea-agents` 생성, 20:38:23 그 `package.json` 생성
+#     20:38:26    rea node 프로세스 시작
+#     20:38:27.43 Codex log `rmcp::service new{server_name=rea}: ... Service initialized as client`  <- 연결
+#     20:41:07    `/mcp`에 `• rea: connected (207 tools)`
+#   판정: MCP 시작부터 rea 연결까지 21.4초, 실행부터 42.6초(폴더 신뢰 질문에 답한 시간 포함). 120초 안이다 -> PASS.
+#   `/mcp` 표시가 20:41:07로 늦은 것은 Codex의 hooks 검토 화면이 입력을 가려 20:41:01에 닫은 뒤에야 `/mcp`를 다시 보냈기
+#   때문이다. codex 0.163의 `/mcp`는 목록을 만들 때 서버를 따로 한 번 더 띄운다(20:41:04 두 번째 npm log, Codex log
+#   20:41:06.72 `new{server_name=rea}` 연결 뒤 20:41:07.05 `task cancelled`). 이 연결은 cache가 이미 찬 뒤라 2초였고 cold 판정에
+#   쓰지 않는다. cold 판정은 세션 시작 연결(20:38:27.43)이고, 그 rea 프로세스(npm exec 20:38:06, node 20:38:26 시작)는
+#   Codex를 끝낼 때까지 실행 중이었다.
+#   cold 증명: rea-agents는 npm-codex3(빈 채)가 아니라 scratch HOME의 `.npm/_npx/ad9a3fdbcad992c6/`에 생겼다(version 6.5.0).
+#   참고: 이번 연결은 21.4초라 이전 30초 제한으로도 통과했을 것이다. run 61의 30초 초과는 cold 다운로드 시간이 부하와
+#   네트워크에 따라 흔들린다는 뜻이고, 120초는 그 여유다.
+#   정리: Codex를 끝낸 뒤 이 run이 띄운 app-server daemon 두 프로세스(HOME=home-cold3)를 멈췄다.
+#
+# (5) README 복구 절차 확인 (run 61b에서 깨진 home-cold) -> PASS
+#   전(72-npx-recovery): `HOME=<scratch>/smoke-kit/home-cold npx -y rea-agents@6.5.0 mcp` ->
+#     `Error: Cannot find package '.../_npx/ad9a3fdbcad992c6/node_modules/xmlbuilder/index.js' ...` / `code: 'ERR_MODULE_NOT_FOUND'`
+#   `HOME=<home-cold> npm cache npx ls` -> `ad9a3fdbcad992c6: rea-agents@6.5.0`, `c35ab75beed40a3c: @upstash/context7-mcp@latest`, exit=0
+#   `npm cache npx rm ad9a3fdbcad992c6` -> `Removing npx key at <scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6`, exit=0.
+#     뒤의 `npm cache npx ls`에는 context7 줄만 남는다.
+#   뒤(72c-npx-after): 같은 HOME에서 수동 실행하자 initialize 응답이 7.6초(`serverInfo={'name': 'rea', 'version': '6.5.0'}`),
+#     tools/list가 7.9초에 207개였다. tarball은 `_cacache`에 남아 있어 다시 받는 시간이 짧다.
+#
+# CD 상태 (최종):
+#   CD-1: 닫힘 조건 충족. S18 Codex(rea 207 tools, cold 증명, 120초 안 시작 21.4초), Claude `/mcp` rea 207 tools,
+#     agy `/mcp` `autopus_rea` 207 tools가 모두 PASS다.
+#   CD-2: 닫힘 조건 충족(위 `추가 실행` 절 그대로).
 
 ## S18 Codex /mcp (11-codex)
 >_ OpenAI Codex (v0.162.0)
@@ -347,3 +396,35 @@ exit=0
 $ agy --agent auto-agent-reverse-engineer -p 'Reply with exactly: OK'
 OK
 exit=0
+
+## 재기록 (4) Codex cold, 120초 항목 (71-codex-cold)
+>_ OpenAI Codex (v0.163.0)
+/mcp
+🔌  MCP Tools
+  • codex_apps: connected (429 tools)
+  • context7: connected (2 tools)
+  • node_repl: connected (4 tools)
+  • openaiDeveloperDocs: connected (5 tools)
+  • rea: connected (207 tools)
+(Codex log)
+20:38:06.020 rmcp::service new{server_name=codex_tui}: Service initialized as client
+20:38:21.880 rmcp::service new{server_name=context7}: Service initialized as client
+20:38:27.429 rmcp::service new{server_name=rea}: Service initialized as client
+
+## 재기록 (5) npx cache 복구 (72-npx-recovery, 72b, 72c)
+== before: manual start (broken)
+Error: Cannot find package '<scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6/node_modules/xmlbuilder/index.js' imported from <scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6/node_modules/plist/dist/build.js
+  code: 'ERR_MODULE_NOT_FOUND'
+== npm cache npx ls
+ad9a3fdbcad992c6: rea-agents@6.5.0
+c35ab75beed40a3c: @upstash/context7-mcp@latest
+exit=0
+== npm cache npx rm ad9a3fdbcad992c6
+Removing npx key at <scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6
+exit=0
+== npm cache npx ls (after)
+c35ab75beed40a3c: @upstash/context7-mcp@latest
+exit=0
+== after: manual start
+initialize response after 7.6s: serverInfo={'name': 'rea', 'version': '6.5.0'}
+tools/list after 7.9s: 207 tools
