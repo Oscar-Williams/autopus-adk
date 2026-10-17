@@ -13,9 +13,10 @@ All notable changes to this project will be documented in this file.
     `grep_search`·`find_by_name`은 agy 1.2.7부터 기본 도구에서 빠졌지만 `tools:`에 적은 에이전트는 계속 쓴다. 이 이름으로
     생성한 explorer·executor·reverse-engineer가 agy 1.4.0에서 시작되고 답한다.
   - reverse-engineer: agy가 모르는 도구로 거부하는 `mcp_rea_<도구>` 135개를 빼고 agy Markdown 에이전트의 `inheritMcp:
-    true`를 쓴다. agy에는 Markdown 에이전트에 MCP 도구를 하나씩 주는 방법이 없고 subagent는 `call_mcp_tool`로 세션의
-    MCP 서버 전체에 닿으므로, Antigravity reverse-engineer에는 REA runtime 도구도 보인다. 정적 도구로 제한하는 것은
-    에이전트 본문의 금지와 호출마다 묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+    true`를 쓴다(`enable_mcp_tools`는 `define_subagent` 도구의 인자이고 Markdown field가 아니다). agy 1.4.0에서는
+    `tools:`가 플러그인 MCP를 막지 못해 모든 subagent가 `call_mcp_tool`로 세션의 MCP 서버 전체에 닿는다. 그래서 REA를
+    등록한 project에서는 reverse-engineer뿐 아니라 executor·tester 같은 모든 Autopus 에이전트에 REA runtime 도구까지
+    보이고, 막는 것은 에이전트 본문과 호출마다 묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
   - 같은 내용을 쓰는 `.gemini/agents/autopus/*.md`는 agy도 Gemini CLI 0.52(`.gemini/agents/*.md`만 읽는다)도 읽지 않는
     사본이다. agy가 읽는 것은 `.agents/plugins/autopus/agents/*.md`다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
