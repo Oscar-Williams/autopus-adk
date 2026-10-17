@@ -1,6 +1,6 @@
 # SPEC-TEAMAUTO-001: /auto go가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행
 
-**Status**: approved
+**Status**: implemented
 **Created**: 2026-10-15
 **Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`), 2026-10-17 (S15 실제 터미널 smoke가 A2의 `CLAUDE_CODE_CHILD_SESSION` 가정을 반증해 규칙 8 `not_top_level`을 뺐다. `evidence/probe-teamauto-childsession.md`. 재-smoke에서 Claude Code 2.1.301의 ToolSearch가 `SendMessage`만 돌려줘, 사용자 결정으로 자동 진입과 `--team`의 팀 도구 요구를 `SendMessage`와 `Agent`의 `name` 인자로 줄이고 공유 task-list 도구는 선택으로 바꿨다. `evidence/probe-teamauto-teamtools.md`)
 **Domain**: TEAMAUTO
