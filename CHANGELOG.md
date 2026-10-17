@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: Antigravity 플러그인 MCP 파일에 고정 버전 rea 항목이 이미 있으면 "등록하지 않았습니다"를 내지 않는다** (2026-10-17):
+  Autopus가 쓴 `.agents/plugins/autopus/mcp_config.json`에 사용자가 주석을 달면 엄격한 JSON이 아니어서 user-owned로 남는데,
+  agy는 그 안의 `rea-agents@6.5.0` 항목을 그대로 띄운다. 그런데도 REA가 켜진 update마다 등록하지 않았다는 안내가 찍히고
+  doctor가 경고했다. 이 경우 add의 안내·미리보기 skip 줄·doctor 경고를 내지 않고 파일은 그대로 둔다.
 - **v0.50.126: REA의 Codex 시작 제한을 120초로 올리고 깨진 npx cache 복구법을 적는다** (2026-10-17): 실제 터미널 S18을
   새 HOME으로 다시 재니 rea-agents 첫 다운로드가 한가할 때 26초였고, 부하 중에는 Codex가 30초 시간 초과(`timed out after 30 seconds`)로
   rea 시작을 끊었다. 끊긴 설치는 `~/.npm/_npx/<hash>`를 깨진 채 남겨, 같은 HOME의 이후 시작이 `connection closed`로

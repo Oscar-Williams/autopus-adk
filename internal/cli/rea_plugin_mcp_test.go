@@ -170,14 +170,35 @@ func TestReaPluginMCP_DoctorWarnsOnANotStrictPluginFile(t *testing.T) {
 	require.NoError(t, config.Save(dir, cfg))
 	_, checks, _ = reaDoctorJSON(t, dir)
 	assert.Equal(t, "warning", checks["doctor.rea.platform.antigravity-cli"].Severity, "on cannot register")
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
+	_, checks, _ = reaDoctorJSON(t, dir)
+	assert.Equal(t, "info", checks["doctor.rea.platform.antigravity-cli"].Severity, "on over the pinned entry agy starts")
+}
+
+// Reviewer L1: the likeliest non-strict file is the one Autopus wrote with a
+// user comment added. agy starts its pinned rea entry, so --rea and a plain
+// update say nothing about it and leave its bytes.
+func TestReaPluginMCP_PinnedEntryInANotStrictFileIsQuiet(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	stubDriverProbes(t, false, "")
+	dir := reaOLD(t, reaAllTargets)
+	withRea := reaPluginJSONC(true)
+	writeReaTarget(t, dir, reamcp.Antigravity, withRea)
+	notRegistered := fmt.Sprintf(reaTextKo.PluginNotRegistered, reaPluginMCPRel)
+	for _, args := range [][]string{{"--yes", "--rea"}, {"--yes"}} {
+		out, err := reaUpdate(t, strings.NewReader(""), dir, args...)
+		require.NoError(t, err, out)
+		assert.NotContains(t, out, notRegistered, args)
+		assert.Equal(t, withRea, readReaFile(t, dir, reamcp.Antigravity), args)
+	}
 }
 
 // The preview lists the skip instead of a change.
 func TestReaPluginMCP_PreviewListsTheSkip(t *testing.T) {
 	t.Parallel()
 	dir, cfg := reaFixture(t, "antigravity-cli")
-	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
-	for _, action := range []config.ReaMCPAction{config.ReaMCPAdd, config.ReaMCPRemove} {
+	for action, withRea := range map[config.ReaMCPAction]bool{config.ReaMCPAdd: false, config.ReaMCPRemove: true} {
+		writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(withRea))
 		cfg.Runtime.ReaMCP = action
 		items := reaPluginPreviewItems(dir, cfg)
 		require.Len(t, items, 1, action)
@@ -187,6 +208,10 @@ func TestReaPluginMCP_PreviewListsTheSkip(t *testing.T) {
 	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(false))
 	cfg.Runtime.ReaMCP = config.ReaMCPRemove
 	assert.Empty(t, reaPluginPreviewItems(dir, cfg), "nothing to remove")
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
+	cfg.Runtime.ReaMCP = config.ReaMCPAdd
+	assert.Empty(t, reaPluginPreviewItems(dir, cfg), "the pinned entry is already there")
+	cfg.Runtime.ReaMCP = config.ReaMCPRemove
 	cfg.Platforms = []string{"claude-code"}
 	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
 	sweep := reaSweepPreviewItems(dir, cfg)
