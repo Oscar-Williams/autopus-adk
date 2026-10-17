@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: OMP 18.3 이후에서도 `auto doctor`의 provider-free RPC 검사가 돈다** (2026-10-17): OMP 18.3.0이
+  `hub` 도구를 없애고 `wait`·`write`·`proc://`로 나눴는데, 검사는 여전히 `--tools task,hub,todo`로 RPC를 띄웠다.
+  omp/18.6.1은 `Unknown tool in --tools: hub.`로 RPC 전에 끝나 `rpc.*` 다섯 항목이 모두 `exit_nonzero` FAIL이었다.
+  - 검사는 모든 지원 릴리스가 받는 `--tools task,todo`만 켜고 `get_state.dumpTools`에 켠 도구가 모두 있기를 요구한다
+    (`hub` 요구 제거). omp/17.2.7·18.1.2·18.1.5·18.1.13·18.6.1 모두 이 인자로 RPC를 띄운다(`hub`는 18.6.1이, `wait`는
+    18.3.0 이전이 거부한다).
+  - 그대로: `task` 스키마 검사, 다섯 RPC frame, bootstrap model `openai-codex/gpt-5.6-sol`(OMP가 내장 catalog에서 찾고
+    없으면 종료한다. 17.2.7에는 gpt-6.x가 없다). omp/17.2.7은 `dumpTools`에 parameters가 없어
+    `rpc.dump_tools_pre_intent`가 전과 같이 unsupported다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
   폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
   - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인

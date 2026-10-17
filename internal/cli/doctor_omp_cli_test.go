@@ -98,7 +98,7 @@ func TestOMP002_S10_DoctorCLIProjectsStableOMPChecksInTextAndJSON(t *testing.T) 
 	for _, expected := range []string{
 		"--version", "--help", "config get tools.intentTracing --json",
 		"--mode rpc", "--model openai-codex/gpt-5.6-sol",
-		"--tools task,hub,todo", "provider-requests=0",
+		"--tools task,todo --no-extensions", "provider-requests=0",
 	} {
 		assert.Contains(t, log, expected)
 	}
@@ -215,7 +215,6 @@ func runOMPDoctorBehaviorRPC(logPath string) int {
 					"context": map[string]any{"type": "string"},
 					"tasks":   map[string]any{"type": "array"},
 				}}},
-				map[string]any{"name": "hub", "parameters": map[string]any{"type": "object"}},
 				map[string]any{"name": "todo", "parameters": map[string]any{"type": "object"}},
 			},
 		}},
