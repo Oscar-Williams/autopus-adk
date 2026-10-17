@@ -1,0 +1,218 @@
+# SPEC-REA-001 S18·S19 실제 터미널 smoke (macOS, 실제 TTY). S19는 사용자 모델 호출 동의 아래 실행했다.
+# 날짜: 2026-10-17. 바이너리: v0.50.126 RC (`0.50.126-0.20261016122706-8a0da3a1f660`, RC @ 8a0da3a1). 실행자: maintainer.
+# 도구: Node v24.20.0, Claude Code 2.1.301, codex-cli 0.162.0, Antigravity CLI 1.4.0, rea-agents@6.5.0.
+# 기록: `script -q`로 남긴 00-setup, 11-codex, 12-claude, 13-agy, 13b-agy, 21-claude-reverse, 21-git-status, 22-off,
+#   24-codex-reverse. S19 Claude 판정의 도구 호출 수는 같은 세션의 Claude Code 세션 로그(메인 + subagent jsonl)를
+#   읽기 전용으로 세어 확인했다(TUI는 subagent의 도구 이름을 보이지 않는다).
+# 치환: home -> <home>, scratch 경로 -> <scratch>, 사용자 이름 -> <user>. 계정·이메일·session id는 지웠다.
+#   OSC/CSI 제거, spinner·redraw 줄은 줄였다.
+#
+# 준비(00-setup): `git init`한 <scratch>/smoke-kit/rea-proj에 app/(package.json, index.js, cart.js)와 fixture/hello.js를 두고
+#   `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter(켬)로 넘겼다. 이어서 같은 내용을
+#   rea-proj-off로 복사해 `auto update --no-rea --yes`로 REA를 껐다. 도구마다 빈 npm cache(npm-codex, npm-claude, npm-agy)를 만들었다.
+#   (같은 setup 끝의 team-proj fixture commit이 Lore 검사로 실패한 줄은 TEAMAUTO 준비이고 이 SPEC과 무관하다.)
+#
+# ───────────────────────────────── S18 ─────────────────────────────────
+# 판정 요약: Codex PASS, Claude Code PASS, Antigravity는 RC에서 FAIL -> v0.50.126 수정 뒤 재확인 PASS.
+#   A2 시작 절반(30초)은 시간을 재지 못해 판정하지 않았다(아래).
+#
+# Codex (11-codex): `/mcp`에 `rea: connected (207 tools)`.
+#   cold: setup 직후 `npm-codex cold (empty)`. 실행 뒤에도 <scratch>/npm-codex는 비어 있다. Codex가 MCP 자식 프로세스에
+#   `npm_config_cache`를 넘기지 않아 npx는 사용자 cache를 썼다. `<home>/.npm/_npx/ad9a3fdbcad992c6/node_modules/rea-agents`
+#   (version 6.5.0)의 생성 시각은 07:44:41이고, 기록 파일의 시작(07:43:48)과 끝(07:45:19) 사이다. 따라서 이 실행이
+#   rea-agents를 처음 받았다(cold). 다만 S18 Given의 "Codex용 새 scratch HOME과 CODEX_HOME"은 쓰지 않았다.
+#   시간: 기록에 시각 표시가 없고, 기록 시작부터 설치 완료(07:44:43)까지 55초에는 Codex 업데이트 안내와 폴더 신뢰 질문에
+#   답한 시간이 들어 있다. 30초 안에 rea 도구가 보였는지는 이 기록으로 증명할 수 없다 -> A2 시작 절반 미판정.
+# Claude Code (12-claude): project MCP 승인에서 rea를 켰고, `/mcp`에 `✔rea 207 tools`.
+#   Claude Code 2.1.301에서 `/agents` wizard가 없어져(`The /agents wizard has been removed.`) reverse-engineer 목록은 이 화면으로
+#   보지 못했다. 대신 S19에서 `subagent_type: reverse-engineer` dispatch가 실제로 동작했다.
+# Antigravity 1회차 (13-agy, RC 바이너리): `/mcp`에 `No MCP servers configured.`, 플러그인 목록에도 rea가 없다 -> FAIL.
+#   원인: agy 1.4는 MCP를 `~/.gemini/config/mcp_config.json`과 플러그인의 `<plugin>/mcp_config.json`에서만 읽는다.
+#   RC는 `.gemini/settings.json`에 rea를 썼다.
+#   수정: v0.50.126 a4031069(`fix(rea): Antigravity REA MCP를 agy가 읽는 워크스페이스 플러그인 mcp_config.json에 등록한다`)가
+#   `.agents/plugins/autopus/mcp_config.json`을 쓴다. agy에서는 서버 이름이 `autopus_rea`로 보인다.
+# Antigravity 재확인 (13b-agy): 수정을 담은 바이너리로 init한 별도 project <scratch>/smoke-kit/rea-agy와 새 cache npm-agy2를 썼다
+#   (바이너리 버전 문자열은 이 기록에 없다). `/mcp` 플러그인 목록에 `✓ autopus_rea  Tools: annotate_native_function, ...,
+#   resolve_native_call_targets, +202 more`(5개 표시 + 202 = 207개) -> PASS.
+#
+# ───────────────────────────────── S19 ─────────────────────────────────
+# 판정 요약: Claude Code (a)–(e) PASS, Codex PASS(gate에서 중단, 쓰기 없음), Antigravity PASS(호출별 MCP 승인 4회).
+#   A1: Claude PASS, Antigravity PASS. A2 도구 절반(Codex reverse-engineer의 REA 호출 60초 안)은 시간을 분리할 수 없어 미판정.
+#   `agy agents` 17개와 `agy --agent auto-agent-<이름> -p 'Reply with exactly: OK'` 확인은 이 기록에 없다.
+#
+# Claude Code (21-claude-reverse, 세션 로그로 호출 수 확인):
+#   (a) `/auto reverse app "장바구니 합계 계산"` -> 확인.
+#       reverse-engineer subagent의 도구: mcp__rea__analyze_javascript_application 1, mcp__rea__inspect_analysis_view 3,
+#       mcp__rea__compare_javascript_export_shapes 1, Read 3, Glob 1. Bash·Write·Edit·runtime 도구 0 -> A1 Claude PASS.
+#       결과 절: Behaviour / Inputs and Outputs / Evidence / Unknowns / Acceptance Items, B- 6개, A- 6개, evidence_id 5개,
+#       의사코드·assembly 없음. 메인 세션이 `.autopus/reverse/feature/behaviour-spec.md`(39줄)를 쓰고 tester -> executor -> tester를
+#       보냈다. 세 dispatch prompt 모두 `SPEC: N/A`, `Task: reverse/feature`, `Behaviour Spec:`, ID, 경로, Phase를 담고
+#       `ev_` 문자열(REA 결과)은 없다. 최종 tester Testing은 A-1–A-6을 하나씩 `PASS`로 판정했다.
+#   (b) `/auto reverse app "모듈 구조"` -> `수정`(한 줄 수정 요청) -> reverse-engineer 재분석 1회 -> 다시 나온 명세에서 `중단`.
+#       중단 뒤 Write·dispatch 없음.
+#   (c) `/auto reverse fixture/hello.js "실행 출력" --runtime` -> 첫 결과 `## Runtime Capture Request`(subagent 도구 호출 0) ->
+#       동의 질문 `... 허용할까요? (허용 / 거절) → 거절` -> 정적 분석만으로 재분석. 그 결과의 `## Unknowns`에
+#       "운영자가 runtime capture를 거절했으므로 B-5는 정적 구조와 언어 의미론에서 나온 추론으로 남는다"가 적혔다.
+#       이어진 gate에서 `중단`. 이 시점까지 runtime capture 호출 0.
+#   (e) 같은 명령 -> 첫 결과 다시 `## Runtime Capture Request` -> `허용` -> 메인 세션이 mcp__rea__capture_process_scenario를
+#       정확히 1번 불렀다(executable node, fixture/hello.js). 다시 보낸 dispatch prompt:
+#       `Runtime capture evidence: capture_process_scenario on <scratch>/smoke-kit/rea-proj/fixture/hello.js: ev_1a555932...`
+#       재분석 subagent의 도구는 정적 도구뿐이다(analyze_javascript_application 1, inspect_analysis_view 1, get_evidence_bundle 2,
+#       Read 1, Grep 9). 일곱 번의 reverse-engineer subagent 전체에서 runtime 도구 호출은 0이다.
+#       확인 뒤 `.autopus/reverse/feature-2/behaviour-spec.md`(41줄)와 tester -> executor -> tester. 최종 Testing은 A-1–A-5 PASS.
+#   (d) 끈 사본(22-off, rea-proj-off): dispatch는 reverse-engineer 1번뿐이고 결과는
+#       `REA MCP 도구를 찾지 못했습니다. auto update --rea로 이 프로젝트에 등록하거나 npx -y rea-agents@6.5.0 setup으로
+#       사용자 범위에 등록하세요.`로 끝난다. executor·tester dispatch 0, Write 0.
+#   git status (21-git-status, Claude 실행 직후 rea-proj): `?? package.json`, `?? src/`, `?? test/`만 보이고 `.autopus/reverse/`는
+#       없다(`.gitignore:16:.autopus/reverse/`). -uall로 펼치면 src/cart.js, src/index.js, src/hello.js, test/cart.test.js,
+#       test/hello.test.js, package.json으로, 모두 (a)와 (e)의 gate에서 확인한 경로다. Codex 실행 뒤에도 같다.
+#
+# Codex (24-codex-reverse, rea-proj): `$auto reverse app "장바구니 합계 계산"` -> reverse-engineer(`/root/reverse_cart`) 분석.
+#   정적 증거로 합계 식을 닫지 못해 메인 세션이 runtime 관찰 동의를 물었고(`--runtime` 없이 요청하는 경로, spec 161행), `거절`.
+#   capture 호출 0으로 정적 분석을 이어 B-1–B-4와 evidence_id(ev_ba26cf22..., ev_ec486aac...)를 담은 명세와
+#   `이 행동 명세로 구현할까요? 소유 경로: src/cart.js, src/index.js, package.json · 테스트 경로: test/cart.test.js (확인 / 수정 / 중단)`
+#   gate가 나왔다 -> `중단` -> `역공학 재구현 작업을 중단했습니다. 대상 실행, 명세 저장, 코드·테스트 파일 변경은 하지 않았습니다.`
+#   관찰: 메인 세션 화면에 `Called rea.get_evidence_bundle`(정적 evidence 요약 조회)이 보인다. 판정은 바꾸지 않지만, Claude
+#   경로에서는 메인 세션이 정적 REA 도구를 부르지 않았으므로 후속 확인 대상으로 남긴다.
+#
+# Antigravity (13b-agy, rea-agy): `/autopus:auto reverse app "장바구니 합계 계산"`을 두 번 실행했다.
+#   1회차: reverse-engineer가 `autopus_rea/analyze_javascript_application` 승인을 요청했으나 답하지 않아 시간이 지나 거부됐다
+#   (`The subagent's tool call failed due to a timeout from a denied permission prompt ...`). 증거 없이
+#   `확인된 REA evidence_id가 없어 확정된 행동 항목 없음` 명세와 gate가 나왔고 `중단` -> `No files were written and no further
+#   agents were dispatched.` 안전하게 실패했고 UX 문제로 남긴다(v0.50.127 후속).
+#   2회차: 호출별 승인 4번(analyze_javascript_application, trace_application_feature, trace_javascript_semantics ×2)을 모두
+#   허용했다. subagent가 `autopus_rea`의 정적 도구를 불러 evidence_id 3개(ev_98db16a9..., ev_6df349ae..., ev_f806c408...)와
+#   B-·A- ID를 담은 명세와 gate(`... (확인 / 수정 / 중단)`)가 나왔고 `중단` -> 같은 중단 문장. -> A1 Antigravity PASS.
+#   rea-agy에는 src/, test/, .autopus/reverse/가 생기지 않았다.
+#
+# Completion Debt 메모: S18의 Codex 30초 시간과 S19의 Codex 60초 시간(A2 두 절반)은 이 기록으로 증명하지 못했다.
+#   `agy agents`·`agy --agent ... -p` 확인도 이 기록 범위 밖이다. 이 항목이 묶인 CD는 이 파일만으로 닫히지 않는다.
+
+## S18 Codex /mcp (11-codex)
+>_ OpenAI Codex (v0.162.0)
+<scratch>/smoke-kit/rea-proj
+› /mcp
+🔌 MCP Tools
+  • codex_apps: connected (429 tools)
+  • codex_worktrees: connected (3 tools)
+  • computer-use: disabled (0 tools)
+  • context7: connected (2 tools)
+  • node_repl: connected (4 tools)
+  • openaiDeveloperDocs: connected (5 tools)
+  • rea: connected (207 tools)
+
+## S18 Claude Code /mcp (12-claude)
+3 new MCP servers found in this project
+❯ [✔] context7
+  [✔] rea
+  [✔] sequential-thinking
+Manage MCP servers
+Project MCPs (<scratch>/smoke-kit/rea-proj/...)
+❯ ✔ context7 2 tools
+  ✔ rea 207 tools
+  ✔ sequential-thinking 1 tool
+
+## S18 Antigravity 1회차 (13-agy, RC)
+  Antigravity CLI 1.4.0
+MCP Servers
+> Plugins (~/.gemini/config/plugins)
+  No MCP servers configured.
+   ✓ nanobanana_nanobanana  Tools: generate_image, edit_image, restore_image, generate_icon, generate_pattern, +2 more
+
+## S18 Antigravity 재확인 (13b-agy, 수정 뒤)
+  Antigravity CLI 1.4.0
+MCP Servers
+> Plugins (~/.gemini/config/plugins)
+>  ⣯ autopus_rea  initializing...
+   ✓ autopus_rea  Tools: annotate_native_function, inspect_native_load_image, inspect_native_data_type,
+		  inspect_native_instruction, resolve_native_call_targets, +202 more
+
+## S19 Claude Code (21-claude-reverse) 발췌
+❯ /auto reverse app "장바구니 합계 계산"
+⏺ reverse-engineer(REA 분석: 장바구니 합계 계산)
+│ 이 행동 명세로 구현할까요? 소유 경로: src/cart.js, src/index.js, package.json · 테스트 경로: test/cart.test.js
+  ⎿  · 이 행동 명세로 구현할까요? ... → 확인
+⏺ Write(.autopus/reverse/feature/behaviour-spec.md)
+  ⎿  Wrote 39 lines to .autopus/reverse/feature/behaviour-spec.md
+⏺ tester(Test Scaffold: reverse/feature)
+⏺ executor(GREEN: reverse/feature 구현)
+⏺ tester(Testing: reverse/feature 판정)
+❯ /auto reverse app "모듈 구조"
+  ⎿  · 이 행동 명세로 구현할까요? ... (확인 / 수정 / 중단) → 수정 (권장)
+⏺ reverse-engineer(REA 재분석: 모듈 구조 (수정 반영))
+  ⎿  · 이 행동 명세로 구현할까요? ... (확인 / 수정 / 중단) → 중단
+❯ /auto reverse fixture/hello.js "실행 출력" --runtime
+  ⎿  · REA가 fixture/hello.js를 실행하는 capture_process_scenario를 쓰려 합니다: fixture/ 디렉터리에서 `node
+     fixture/hello.js`를 인자·입력 없이 한 번 실행. 허용할까요? (허용 / 거절) → 거절
+⏺ reverse-engineer(REA 정적 분석: 실행 출력)
+  ⎿  · 이 행동 명세로 구현할까요? 소유 경로: src/hello.js · 테스트 경로: test/hello.test.js (확인 / 수정 / 중단) → 중단
+  ⎿  · REA가 fixture/hello.js를 실행하는 capture_process_scenario를 쓰려 합니다: ... 한 번 실행하고 stdout·stderr·종료 코드를
+     캡처. 허용할까요? (허용 / 거절) → 허용
+⏺ Calling rea…
+  ⎿  prepare: elapsed_ms=0 frames=0 samples=0 interactions=0
+  ⎿  cleanup: elapsed_ms=2195 frames=1 samples=1 interactions=0 disposition=exited owned_process_group=cleaned
+⏺ reverse-engineer(REA 분석: 실행 출력 (캡처 반영))
+  ⎿  · 이 행동 명세로 구현할까요? 소유 경로: src/hello.js · 테스트 경로: test/hello.test.js (확인 / 수정 / 중단) → 확인
+⏺ Write(.autopus/reverse/feature-2/behaviour-spec.md)
+  ⎿  Wrote 41 lines to .autopus/reverse/feature-2/behaviour-spec.md
+       5 - Runtime capture: allowed by operator; one `capture_process_scenario` run
+⏺ tester(Test Scaffold: reverse/feature-2)
+⏺ executor(GREEN: reverse/feature-2 구현)
+⏺ tester(Testing: reverse/feature-2 판정)
+
+## S19 Claude Code 세션 로그 집계 (중복 tool_use id 제거)
+main: Agent 13, Bash 8, AskUserQuestion 7, Skill 4, Write 2, ToolSearch 1, mcp__rea__capture_process_scenario 1
+reverse-engineer | REA 분석: 장바구니 합계 계산         | analyze_javascript_application 1, inspect_analysis_view 3, compare_javascript_export_shapes 1, Read 3, Glob 1
+reverse-engineer | REA 분석: 모듈 구조                   | analyze_javascript_application 1, inspect_analysis_view 3, trace_application_feature 2, Read 3, Glob 1
+reverse-engineer | REA 재분석: 모듈 구조 (수정 반영)     | analyze_javascript_application 1, inspect_analysis_view 5, trace_application_feature 1, Read 3, Glob 1
+reverse-engineer | REA 분석: 실행 출력 (runtime)         | (도구 호출 없음) -> ## Runtime Capture Request
+reverse-engineer | REA 정적 분석: 실행 출력              | analyze_javascript_application 2, inspect_analysis_view 2, trace_javascript_semantics 3, trace_application_feature 1, Read 1, Glob 1
+reverse-engineer | REA 분석: 실행 출력 (runtime)         | (도구 호출 없음) -> ## Runtime Capture Request
+reverse-engineer | REA 분석: 실행 출력 (캡처 반영)       | analyze_javascript_application 1, inspect_analysis_view 1, get_evidence_bundle 2, Read 1, Grep 9
+tester·executor dispatch prompt 6개: 모두 `SPEC: N/A`·`Task: reverse/`·`Behaviour Spec:`·`Phase` 포함, `ev_` 없음
+
+## S19 (d) 끈 사본 (22-off)
+❯ /auto reverse app "장바구니 합계 계산"
+⏺ reverse-engineer(REA analysis of cart total)
+  분석 단계에서 중단했습니다. reverse-engineer 에이전트가 이 세션에서 REA MCP 도구를 찾지 못했습니다.
+  이 프로젝트에만 등록: ! auto update --rea
+  사용자 범위에 등록: ! npx -y rea-agents@6.5.0 setup
+(subagent 결과) REA MCP 도구를 찾지 못했습니다. auto update --rea로 이 프로젝트에 등록하거나 npx -y rea-agents@6.5.0 setup으로 사용자 범위에 등록하세요.
+
+## S19 git status (21-git-status)
+?? package.json
+?? src/
+?? test/
+
+## S19 Codex (24-codex-reverse) 발췌
+› $auto reverse app "장바구니 합계 계산"
+• Started `/root/reverse_cart`
+• Called rea.get_evidence_bundle
+  └ {"result":{"kind":"evidence-bundle-summary","filters":{"evidence_id":"ev_ec486aac4a2e922ce079215a6253c2516691ae3bcc…
+› 거절
+• 런타임 관찰 요청을 거절하신 것으로 반영했습니다. 대상 실행 없이 정적 분석만 이어 가고, 확인하지 못한 계산식과 초기값은 명세의 미확인 항목으로 남...
+  이 행동 명세로 구현할까요? 소유 경로: src/cart.js, src/index.js, package.json · 테스트 경로: test/cart.test.js (확인 / 수정 / 중단)
+› 중단
+• 역공학 재구현 작업을 중단했습니다. 대상 실행, 명세 저장, 코드·테스트 파일 변경은 하지 않았습니다. 🐙
+
+## S19 Antigravity (13b-agy) 발췌
+> /autopus:auto reverse app "장바구니 합계 계산"
+  ● Agent(auto-agent-reverse-engineer: Reverse Engineer)  Processing... · 0s
+ ┃ auto-agent-reverse-engineer needs approval for autopus_rea/analyze_javascript_application
+ ┃ ctrl+k approve · alt+j manage
+  The subagent's tool call failed due to a timeout from a denied permission prompt in a non-interactive environment.
+    - 확인된 REA evidence_id가 없어 확정된 행동 항목 없음
+  이 행동 명세로 구현할까요? 소유 경로: src/cart.js · 테스트 경로: test/cart.test.js (확인 / 수정 / 중단) 🐙
+> 중단
+  Operation stopped as requested (중단). No files were written and no further agents were dispatched. 🐙
+(2회차)
+ ┃ auto-agent-reverse-engineer needs approval for autopus_rea/analyze_javascript_application
+ ┃ auto-agent-reverse-engineer needs approval for autopus_rea/trace_application_feature
+ ┃ auto-agent-reverse-engineer needs approval for autopus_rea/trace_javascript_semantics
+ ┃ auto-agent-reverse-engineer needs approval for autopus_rea/trace_javascript_semantics
+  ● Agent(auto-agent-reverse-engineer: Reverse Engineer)  REA trace JavaScript semantics · 2m1s
+  • A-1: 모듈에서 내보낸 total 함수를 빈 배열로 호출하면 0을 반환한다 (covers: B-1, B-2)
+  • A-2: total 함수를 [{p: 3, q: 2}, {p: 5, q: 1}] 입력으로 호출하면 각 항목의 곱의 합인 11을 반환한다 (covers: B-1, B-2)
+  • A-3: 애플리케이션 진입점 실행 시 샘플 장바구니 합계인 11이 표준 출력에 한 줄로 출력된다 (covers: B-3)
+  이 행동 명세로 구현할까요? 소유 경로: src/cart.js, src/index.js · 테스트 경로: test/cart.test.js (확인 / 수정 / 중단)
+  Operation stopped as requested (중단). No files were written and no further agents were dispatched. 🐙
