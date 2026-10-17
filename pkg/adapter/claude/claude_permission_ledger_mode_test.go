@@ -54,8 +54,9 @@ func TestUpdate_ClaimsACheckedOutLedgerOwnerOnly(t *testing.T) {
 
 // A ledger the manifest already claims but that lost its owner-only mode, as
 // v0.50.124–v0.50.125 left a claimed checkout, stays refused before anything
-// is written, and the error names the file and the recovery; chmod 600
-// restores trust.
+// is written, and the error names the file and the recovery: deleting it lets
+// the next update write a fresh owner-only ledger, which can never weaken a
+// deny the way trusting the unproven one could.
 func TestUpdate_RefusesAClaimedLedgerThatLostItsMode(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -73,13 +74,16 @@ func TestUpdate_RefusesAClaimedLedgerThatLostItsMode(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "permission ledger must be an owner-only regular file: "+
 		".autopus/claude-code-permissions.json has mode 0644, not 0600; "+
-		"if your own auto update wrote it, review its allow and deny lists and chmod 600 it")
+		"delete it and the next auto update writes a fresh ledger")
 	assertFileContent(t, ledgerPath, before)
 	info, err := os.Stat(ledgerPath)
 	require.NoError(t, err)
 	assert.Equal(t, os.FileMode(0o644), info.Mode().Perm())
 
-	require.NoError(t, os.Chmod(ledgerPath, 0o600))
+	require.NoError(t, os.Remove(ledgerPath))
 	_, err = a.Update(context.Background(), cfg)
 	require.NoError(t, err)
+	info, err = os.Stat(ledgerPath)
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
 }
