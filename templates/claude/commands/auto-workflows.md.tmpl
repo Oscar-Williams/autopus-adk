@@ -1259,7 +1259,9 @@ A run prints exactly one `Agent Team:` line: `decision.line`,
 "Print" means: copy the JSON string value verbatim as its own line of your
 reply text, before the Phase 2 dispatch. Do not translate, paraphrase, or
 fold it into a sentence, and write `Agent Team:` nowhere else in the run,
-including the completion report.
+including the completion report. The message that makes the first Phase 2
+`Agent` call carries this line as its text, ahead of the tool call; a
+dispatch message with no text skipped the print.
 
 After the team wave, send every teammate a shutdown request and wait for every
 acknowledgement. Then implement exactly the `decision.followup_units` (the

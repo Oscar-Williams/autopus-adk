@@ -146,6 +146,7 @@ func TestAutoTeamSurfaceSectionOrder(t *testing.T) {
 		// S15 smoke: the lead paraphrased the line, so printing is spelled out.
 		"copy the JSON string value verbatim as its own line",
 		"write `Agent Team:` nowhere else in the run,\nincluding the completion report.",
+		"carries this line as its text, ahead of the tool call;",
 		"send every teammate a shutdown request and wait for every\nacknowledgement.",
 		"implement exactly the `decision.followup_units`",
 		"Only after that, enter Gate 2",
