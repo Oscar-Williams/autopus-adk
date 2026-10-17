@@ -148,7 +148,8 @@ func assertOMPExecutionOwnerSurfaceParity(t *testing.T, commands, skills map[str
 		{name: "auto-status skill", body: skills["auto-status"]},
 	} {
 		assert.Contains(t, surface.body, "execution-owner", "%s lost receipt guidance", surface.name)
-		assert.Contains(t, surface.body, "`hub`", "%s lost OMP-native hub guidance", surface.name)
+		assert.Contains(t, surface.body, "`hub`", "%s lost the older-OMP hub guidance", surface.name)
+		assert.Contains(t, surface.body, "`read proc://`", "%s lost the OMP 18.3+ job guidance", surface.name)
 		assert.Contains(t, surface.body, "user-session roots", "%s claims external session-root visibility", surface.name)
 	}
 }

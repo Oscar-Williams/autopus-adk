@@ -230,9 +230,26 @@ SendMessage(recipient="executor", content="Apply the review feedback")`
 	assert.Contains(t, got, `"tasks"`)
 	assert.Contains(t, got, `todo with {"i":"Updating parent-owned progress","op":"append"`)
 	assert.NotContains(t, got, `"agent":`, "default general workers must omit the optional agent field")
+	assert.Contains(t, got, `write agent://<same agent id> with the follow-up as content (OMP 18.3+)`)
 	assert.Contains(t, got, `hub with {"i":"Following up with an existing worker","op":"send"`)
 	for _, token := range ompLegacyCoordinationTokens {
 		assert.NotContains(t, got, token)
+	}
+}
+
+// omp/18.3.0 replaced the hub tool, so a translated wait or cancellation call
+// must name the 18.3+ form beside the hub payload older releases still take.
+func TestReplacePlatformReferencesOMP_JobCallsNameBothGenerations(t *testing.T) {
+	t.Parallel()
+
+	for call, want := range map[string]string{
+		`wait_agent(ids=["job"])`:     `wait (OMP 18.3+) or hub with {"i":"Waiting for blocked work","op":"wait"`,
+		`close_agent(id="job")`:       `write proc://<job id>/kill (OMP 18.3+) or hub with {"i":"Cancelling abandoned work","op":"cancel"`,
+		`TeamDelete(name="delivery")`: `write proc://<job id>/kill (OMP 18.3+) or hub with {"i":"Cancelling abandoned work","op":"cancel"`,
+	} {
+		got := content.ReplacePlatformReferences(call, "omp")
+		assert.Contains(t, got, want, call)
+		assert.Contains(t, got, "(older OMP)", call)
 	}
 }
 

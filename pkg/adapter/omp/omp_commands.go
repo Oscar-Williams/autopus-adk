@@ -53,7 +53,7 @@ func thinWorkflowCommandBody(name string) string {
 	case "auto-go":
 		body += "\nAccept at most one exact `--execution-owner omp|orca` pair; omission defaults to `omp`, with no aliases or fuzzy fallback."
 	case "auto-status":
-		body += "\nCombine the workspace execution-owner receipt with current-session OMP-native `hub` state; external `auto status` cannot inspect OMP user-session roots."
+		body += "\nCombine the workspace execution-owner receipt with current-session OMP-native job state (`read proc://` on OMP 18.3+, `hub` on older OMP); external `auto status` cannot inspect OMP user-session roots."
 	}
 	return strings.TrimSpace(body)
 }

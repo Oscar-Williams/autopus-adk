@@ -4,12 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **v0.50.126: OMP 18.3 이후에서도 `auto doctor`의 provider-free RPC 검사가 돈다** (2026-10-17): OMP 18.3.0이
-  `hub` 도구를 없애고 `wait`·`write`·`proc://`로 나눴는데, 검사는 여전히 `--tools task,hub,todo`로 RPC를 띄웠다.
-  omp/18.6.1은 `Unknown tool in --tools: hub.`로 RPC 전에 끝나 `rpc.*` 다섯 항목이 모두 `exit_nonzero` FAIL이었다.
-  - 검사는 모든 지원 릴리스가 받는 `--tools task,todo`만 켜고 `get_state.dumpTools`에 켠 도구가 모두 있기를 요구한다
-    (`hub` 요구 제거). omp/17.2.7·18.1.2·18.1.5·18.1.13·18.6.1 모두 이 인자로 RPC를 띄운다(`hub`는 18.6.1이, `wait`는
-    18.3.0 이전이 거부한다).
+- **v0.50.126: OMP 18.3 이후 호환 — doctor RPC 검사, 조율 안내, browser 도구 이름** (2026-10-17): OMP 18.3.0이
+  `hub` 도구를 없애고 `wait`·`write`·`proc://`로 나눴고, 18.x는 `browser`·`inspect_image` 도구도 없다. 그래서
+  omp/18.6.1에서 doctor 검사가 `Unknown tool in --tools: hub.`로 RPC 전에 끝나 `rpc.*` 다섯 항목이 모두
+  `exit_nonzero` FAIL이었고, 생성된 skill은 없는 `hub`를 부르라고 안내했다.
+  - doctor: 검사는 모든 지원 릴리스가 받는 `--tools task,todo`만 켜고 `get_state.dumpTools`에 켠 도구가 모두 있기를
+    요구한다(`hub` 요구 제거). omp/17.2.7·18.1.2·18.1.5·18.1.13·18.6.1 모두 이 인자로 RPC를 띄운다(`hub`는
+    18.6.1이, `wait`는 18.3.0 이전이 거부한다).
+  - 조율 안내: agent-pipeline·auto-go·auto-status·worktree-isolation skill과 auto-status command가 버전 분기 없이 두
+    형태를 함께 적는다. OMP 18.3+는 `wait`·`read proc://`·`write proc://<id>/kill`·`write agent://<id>`, 이전 OMP는
+    `hub`다. Codex 호출 예시의 번역도 두 형태를 쓰고, 도구 이름 치환은 hub 연산 대신 중립 이름(`agent message`,
+    `job wait` 등)을 쓴다. auto-go의 `--team` 문장은 정확 일치가 깨져 Codex 문장과 hub 연산이 남아 있었는데, 줄
+    머리로 찾아 OMP 문장으로 바꾼다.
+  - `auto status --platform omp`: Next는 모든 지원 릴리스에 있는 `/jobs`를 안내하고, Limitation은 hub 대신 활성 OMP
+    세션을 말한다. JSON의 reason·source 값(`live_child_state_hub_only`, `omp_hub`)은 그대로다.
+  - browser 역할: frontend-specialist·ux-validator가 `eval`(18.x의 browser prelude)도 선언한다. OMP는 spawn할 때
+    실행 중인 릴리스에 없는 frontmatter 도구를 빼므로(fake provider로 17.2.7·18.1.13·18.6.1 실측) 17.2.7은
+    `browser`·`inspect_image`를, 18.x는 `eval`과 이미지를 읽는 `read`를 쓴다.
   - 그대로: `task` 스키마 검사, 다섯 RPC frame, bootstrap model `openai-codex/gpt-5.6-sol`(OMP가 내장 catalog에서 찾고
     없으면 종료한다. 17.2.7에는 gpt-6.x가 없다). omp/17.2.7은 `dumpTools`에 parameters가 없어
     `rpc.dump_tools_pre_intent`가 전과 같이 unsupported다.

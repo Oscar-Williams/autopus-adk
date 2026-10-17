@@ -6,8 +6,10 @@ import (
 	"time"
 )
 
-const ompLiveStateLimitation = "Live child state is only available through the OMP hub; Autopus does not read user-owned OMP session roots."
-const ompLiveStateNextCommand = "In the active OMP session, call hub with {\"op\":\"jobs\"}."
+// /jobs is the interactive job view on every supported OMP release; the hub
+// tool the old next step named was removed in omp/18.3.0.
+const ompLiveStateLimitation = "Live child state is only available inside the active OMP session; Autopus does not read user-owned OMP session roots."
+const ompLiveStateNextCommand = "In the active OMP session, run /jobs."
 
 type ompFallbackProjection struct {
 	Index    int    `json:"index"`

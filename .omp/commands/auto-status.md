@@ -9,4 +9,4 @@ Treat the text above as the full argument payload for `/auto-status`.
 Load exact detail skill `auto-status`; this is the same target selected by `/auto status ...`.
 Preserve `--model <provider/model>` and `--variant <value>` when present.
 Do not restate or expand the arguments unless needed for execution.
-Combine the workspace execution-owner receipt with current-session OMP-native `hub` state; external `auto status` cannot inspect OMP user-session roots.
+Combine the workspace execution-owner receipt with current-session OMP-native job state (`read proc://` on OMP 18.3+, `hub` on older OMP); external `auto status` cannot inspect OMP user-session roots.

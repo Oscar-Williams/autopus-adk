@@ -108,19 +108,19 @@ func NormalizeOMPSemanticReferencesWith(body string, opts PlatformReferenceOptio
 		"task tool →", "task batch:",
 		"task tool", "task",
 		"subagent_type", "agent",
-		"send_input", "hub message",
+		"send_input", "agent message",
 		"prompt =", "task =",
 		"prompt=", "task=",
-		"wait_agent", "hub job wait",
-		"close_agent", "hub cancellation",
+		"wait_agent", "job wait",
+		"close_agent", "job cancellation",
 		"TodoWrite", "todo operation",
 		"TaskCreate", "todo append operation",
 		"TaskUpdate", "todo state operation",
 		"TaskList", "todo view operation",
 		"TaskGet", "todo view operation",
 		"TeamCreate", "task batch",
-		"TeamDelete", "hub cancellation",
-		"SendMessage", "hub message",
+		"TeamDelete", "job cancellation",
+		"SendMessage", "agent message",
 		"ToolSearch", "available tool discovery",
 		"AskUserQuestion", "ask the user directly",
 		"request_user_input", "ask the user directly",
@@ -200,12 +200,13 @@ func normalizeOMPNamedLegacyCall(call string, native bool) string {
 		return `todo with {"i":"Inspecting parent-owned progress","op":"view"}`
 	case "TeamCreate":
 		return renderOMPTaskBatch([]ompLegacyDispatch{{}}, native)
+	// omp/18.3.0 replaced the hub tool, so a call names both generations' forms.
 	case "TeamDelete", "close_agent":
-		return `hub with {"i":"Cancelling abandoned work","op":"cancel","ids":["<job id>"]}`
+		return `write proc://<job id>/kill (OMP 18.3+) or hub with {"i":"Cancelling abandoned work","op":"cancel","ids":["<job id>"]} (older OMP)`
 	case "SendMessage", "send_input":
-		return `hub with {"i":"Following up with an existing worker","op":"send","to":"<same agent id>","message":"<follow-up>"}`
+		return `write agent://<same agent id> with the follow-up as content (OMP 18.3+) or hub with {"i":"Following up with an existing worker","op":"send","to":"<same agent id>","message":"<follow-up>"} (older OMP)`
 	case "wait_agent":
-		return `hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]}`
+		return `wait (OMP 18.3+) or hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]} (older OMP)`
 	case "ToolSearch":
 		return "available tool discovery"
 	case "AskUserQuestion", "request_user_input":
