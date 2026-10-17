@@ -165,7 +165,7 @@ func TestDecideTeamAutomaticTeam(t *testing.T) {
 	for _, tc := range cases {
 		in := TeamInput{Units: tc.units, Capability: capOK()}
 		if !NeedsVersionProbe(in) {
-			t.Fatalf("%s: rules 1-8 pass, the probe must run", tc.name)
+			t.Fatalf("%s: rules 1-7 pass, the probe must run", tc.name)
 		}
 		d := DecideTeam(in)
 		if d.Route != "team" || d.Reason != "independent_disjoint_slices" || d.ReadyUnits == nil || *d.ReadyUnits != len(tc.team) {
@@ -195,8 +195,6 @@ func TestDecideTeamCapabilityRulesInOrder(t *testing.T) {
 		{"sdk entrypoint", func(c *Capability) { c.Entrypoint = "sdk-cli" }, "not_interactive", false},
 		{"unattended", func(c *Capability) { c.SessionAttended = "" }, "not_interactive", false},
 		{"injected entrypoint", func(c *Capability) { c.Entrypoint = "cli; rm -rf /" }, "not_interactive", false},
-		{"child session", func(c *Capability) { c.ChildSession = "1" }, "not_top_level", false},
-		{"rule 7 before 8", func(c *Capability) { c.Entrypoint, c.ChildSession = "sdk-cli", "1" }, "not_interactive", false},
 		{"probe not run", func(c *Capability) { c.Version = "" }, "claude_version_unknown", true},
 		{"node version", func(c *Capability) { c.Version = "v24.20.0" }, "claude_version_unknown", true},
 		{"missing suffix", func(c *Capability) { c.Version = "2.1.288" }, "claude_version_unknown", true},

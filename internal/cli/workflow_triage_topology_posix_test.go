@@ -98,7 +98,7 @@ func TestWorkflowTriageTopologyS4TeamProbesOncePerRun(t *testing.T) {
 		if d.Route != "team" || d.Reason != "independent_disjoint_slices" || d.ReadyUnits == nil || *d.ReadyUnits != 2 || strings.Join(d.TeamUnits, ",") != "T1,T2" || d.FollowupUnits == nil || strings.Join(*d.FollowupUnits, ",") != followup {
 			t.Fatalf("%s: %+v", facts, d)
 		}
-		if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다" {
+		if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다" {
 			t.Fatalf("%+v", d)
 		}
 	}
@@ -149,7 +149,9 @@ func TestWorkflowTriageTopologyS5CapabilitySignals(t *testing.T) {
 		{"sdk entrypoint", versionScript, "claude", func(env map[string]string) { env["CLAUDE_CODE_ENTRYPOINT"] = "sdk-cli" }, "not_interactive", notInteractive("sdk-cli", "1"), 0},
 		{"unattended", versionScript, "claude", func(env map[string]string) { delete(env, "CLAUDE_CODE_SESSION_ATTENDED") }, "not_interactive", notInteractive("cli", "unset"), 0},
 		{"entrypoint injection", versionScript, "claude", func(env map[string]string) { env["CLAUDE_CODE_ENTRYPOINT"] = "cli; rm -rf /" }, "not_interactive", notInteractive("unknown", "1"), 0},
-		{"child session", versionScript, "claude", func(env map[string]string) { env["CLAUDE_CODE_CHILD_SESSION"] = "1" }, "not_top_level", "Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다", 0},
+		// CAP-OK carries CLAUDE_CODE_CHILD_SESSION=1 like a real top-level
+		// session; the marker is not read, so dropping it changes nothing.
+		{"child session marker absent", versionScript, "claude", func(env map[string]string) { delete(env, "CLAUDE_CODE_CHILD_SESSION") }, "independent_disjoint_slices", "Agent Team: 전환 — 준비된 slice 3개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다", 1},
 		{"not claude code", versionScript, "claude", func(env map[string]string) { delete(env, "CLAUDECODE") }, "not_claude_code", "Agent Team: 유지 — Claude Code 세션이 아니라 subagent로 실행한다", 0},
 		{"rule 5 before 6", versionScript, "claude", func(env map[string]string) {
 			delete(env, "CLAUDECODE")

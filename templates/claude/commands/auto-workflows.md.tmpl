@@ -1237,14 +1237,22 @@ rm -f "$FACTS"
 4. If `decision.route` is `subagent`, print `decision.line` and run Route A
    Phase 2 unchanged. No named teammate is launched.
 5. If `decision.route` is `team`, load the team tool schemas with ToolSearch
-   `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. If they cannot
-   be loaded, print `decision.tools_fallback_line` instead of `decision.line`
-   and run Route A Phase 2. Otherwise print `decision.line` and run exactly the
-   `decision.team_units` under the Route B lifecycle: one shared task per unit
-   and named teammates `builder-1` … `builder-n` in `team_units` order, each
-   prompt carrying the Phase 2 prompt items (requirement, owned and forbidden
-   paths, acceptance, gate decisions, minimality ladder) and the Route B
-   receipt fields. Launch no `tester` or `guardian` teammate.
+   `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. A team needs
+   only `SendMessage` and the `name` parameter of the `Agent` tool; the shared
+   task-list tools are optional, and current Claude Code releases enable them
+   only in some configurations. If either one is missing,
+   print `decision.tools_fallback_line` instead of `decision.line` and run
+   Route A Phase 2. The CLI cannot tell a subagent from the top-level
+   session, whose environments Claude Code marks alike, so this check is what
+   keeps a session without the team tools, such as a subagent, on subagents.
+   When both are present, print `decision.line` and run exactly the
+   `decision.team_units` under the Route B lifecycle: named teammates
+   `builder-1` … `builder-n` in `team_units` order, one per unit, each prompt
+   carrying its unit assignment, the Phase 2 prompt items (requirement, owned
+   and forbidden paths, acceptance, gate decisions, minimality ladder), and
+   the Route B receipt fields. When the task-list tools loaded, also record
+   one shared task per unit; without them the lead tracks the units itself.
+   Launch no `tester` or `guardian` teammate.
 
 A run prints exactly one `Agent Team:` line: `decision.line`,
 `decision.tools_fallback_line`, or the snippet's failure line.
@@ -1263,13 +1271,18 @@ Preflight:
 1. Claude Code is 2.1.246 or newer.
 2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is present in the current session.
 3. The session is interactive.
-4. The current schemas for `Agent`, `SendMessage`, and shared task-list tools are loaded.
+4. The `Agent` tool exposes its `name` parameter and the `SendMessage` schema is loaded.
 
 If preflight fails, report the blocker and suggest Route A. Do not silently
 switch to `--workflow`.
 
-The lead creates shared tasks with disjoint `owned_paths` and explicit
-`forbidden_paths`, then launches named teammates:
+The shared task-list tools (`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`)
+are optional. Request them in the same ToolSearch call as `SendMessage` and use
+them when they load; current Claude Code releases enable them only in some
+configurations. Without them the lead keeps the assignment table itself.
+
+The lead assigns disjoint `owned_paths` and explicit `forbidden_paths`, then
+launches named teammates, each carrying its assignment in its prompt:
 
 ```python
 Agent(
@@ -1300,14 +1313,18 @@ Agent(
 )
 ```
 
-Named teammates share the working tree and task list. Do not pass call-level
-isolation, permission mode, effort, or a manual team identifier. Coordinate
-assignments and blockers through `SendMessage` using the runtime-exposed schema.
-Reject receipts with missing fields or out-of-scope changes.
+Named teammates share the working tree, and the task list when it exists. Do
+not pass call-level isolation, permission mode, effort, or a team identifier:
+the session has a single implicit team and the runtime ignores a team name.
+Coordinate assignments and blockers through `SendMessage` using the
+runtime-exposed schema. A unit is complete when its teammate returns its
+result or reports it through `SendMessage`; the lead records the five receipt
+fields and rejects receipts with missing fields or out-of-scope changes.
 
-At every terminal state, send each live teammate a shutdown request, wait for
-acknowledgements, and let Claude perform automatic team cleanup. Never edit or
-delete native runtime team configuration manually.
+At every terminal state, send each live teammate a `shutdown_request` through
+`SendMessage`, wait for its `shutdown_response`, and let Claude perform
+automatic team cleanup. Never edit or delete native runtime team configuration
+manually.
 
 Reference: `.claude/skills/agent-teams/SKILL.md`
 

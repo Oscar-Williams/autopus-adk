@@ -22,17 +22,24 @@
 - A3(PASS): v0.50.125는 `workflow.auto_team`을 거부하고(update 종료 1), key 없는 파일은 그대로 읽고, `--topology`를 모른다(`unknown flag`). strict decode(`KnownFields(true)`)는 v0.50.113부터 있다(그 commit을 담은 첫 tag).
 - F5(review, 2026-10-15): tag v0.50.112를 offline 빌드해 `auto_team: false`를 둔 project에서 `auto update --yes`를 돌렸다. 종료 0이고 그 줄이 지워졌다.
 - Y(review round 1): yaml.v3 v3.0.1 `*bool`은 `yes`·`"off"`·`y`·`no`를 bool로, `null`·`~`·빈 값을 nil로 오류 없이 받고 `"false"`·`1`만 거부한다. R: root 오류는 `Error: <msg>\n`, 종료 1이다.
+- A2 일부 FAIL(2026-10-17, S15 실제 터미널 smoke, `evidence/probe-teamauto-childsession.md`): Claude Code 2.1.301 최상위 대화형 세션의 Bash 환경이 `CLAUDE_CODE_ENTRYPOINT=cli`, `CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_CHILD_SESSION=1`이었고, SPEC-A의 `/auto go`는 두 run 모두 `Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다`를 냈다. 그 세션이 띄운 subagent의 Bash 환경도 같다(차이는 `CLAUDE_EFFORT` 하나). 2.1.288 teammate의 Bash 환경도 판단 값 다섯이 모두 같다. 2.1.288·2.1.301 바이너리의 child process env builder는 `CLAUDE_CODE_CHILD_SESSION:"1"`을 조건 없이 넣는다. 2026-10-15 C2가 `1`을 본 것은 subagent여서가 아니었다.
+- 팀 도구(2026-10-17, S15 재-smoke, Claude Code 2.1.301, `evidence/probe-teamauto-teamtools.md`): 규칙 8을 지운 바이너리에서 CLI는 `전환` 줄을 냈지만 세션의 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`이 `SendMessage`만 돌려줘 그때의 fallback 줄로 subagent에 남았다. lead 세션의 deferred-tool 목록에도 task-list 도구가 없다(`TaskStop`만 있다). 2.1.288·2.1.301 bundle에서 `TaskCreate`는 deferred이고 `CLAUDE_CODE_ENABLE_TASKS`가 false가 아니면서 job 실행, launch opt-in, main loop model이 Claude 3.x·4.x 목록이나 inference profile이나 미정, `CLAUDE_CODE_ENABLE_TODO_TOOLS=1` 중 하나일 때만 켜진다. `Agent`의 team 이름 인자는 `Deprecated; ignored. The session has a single implicit team.`이다.
 
 ## 생성 surface 영향 (T9, 2026-10-15)
 
 - T7·T8 뒤 `go test ./pkg/adapter/claude/... ./pkg/content/... -count=1`이 바꾸지 않은 test 그대로 통과했다. 깨진 Claude golden은 없고 갱신한 golden도 없다(목록: 없음).
 - `make generate-templates`는 `templates/**`를 바꾸지 않았다. `agent-teams`는 codex·gemini mirror에서 빠지고 `templates/claude/commands/auto-workflows.md.tmpl`은 생성 대상이 아니기 때문이다.
 - 기준 생성 결과의 SHA-256(auto-go `fd9c9ec2…`, agent-teams `124a1fdf…`, Step 0·Route B·Route C·Workflow 절)은 `pkg/adapter/claude/claude_auto_team_surface_test.go`가 oracle로 고정한다. 새 절을 뺀 branch 생성 결과가 기준과 bytes가 같다.
+- T12(2026-10-17)로 바뀐 test와 golden, 이유:
+  - `pkg/taskroute/team_lines_test.go` `TestDecideTeamToolsFallbackLineOnlyForAutomaticTeam`, `internal/cli/workflow_triage_topology_posix_test.go` `TestWorkflowTriageTopologyS4TeamProbesOncePerRun`, `internal/cli/workflow_triage_topology_report_test.go` `TestWorkflowTriageTopologyReportsWithoutWriting`, `internal/cli/workflow_triage_topology_test.go` `TestWorkflowTriageTopologyConfigSources`: `team_tools_unavailable` 줄이 새 요구(`SendMessage`나 `Agent`의 `name`)를 말하도록 바뀌었다.
+  - `pkg/adapter/claude/claude_auto_team_surface_test.go`: `TestAutoTeamSurfaceKeepsExplicitTopologySectionsByteIdentical`의 Route B digest가 `f34ab9d6…`에서 `a4918c87…`로 바뀌고 새 preflight 4·선택 task list·`shutdown_request` 단언이 붙었다. `TestAutoTeamSurfaceAddsOnlyTheNewSections`는 auto-go를 새 절과 Route B를 뺀 digest `b918511c…`로 비교한다. 이 값은 HEAD 원천과 branch 원천에서 같아 그 두 절 밖은 바뀌지 않았다. agent-teams digest는 `124a1fdf…`에서 `4b9cb120…`로 바뀌고 lifecycle 단언이 붙었다. `TestAutoTeamSurfaceSectionOrder`는 규칙 5의 새 문장 순서를 판정한다.
+  - SPEC-TUIUX-001 `evidence/base-goldens/{init-in,init-pipe,init-yes,update-ci,update-yes}.npd`(`TestTUIUXBaseGoldens_FormlessPlacesKeepTheBaseOutput`, `TestInitReview_S6ShowsTheSettingsBeforeAnyWrite`): TEAMAUTO 병합 뒤 RC에서 이미 실패하던 golden이다. `TUIUX_WRITE_GOLDENS=1`로 다시 썼고 바뀐 줄은 auto-go·agent-teams skill, deferred-tools rule, 그 backup 사본, manifest·journal digest뿐이다. stdout golden은 bytes가 같았고 단언하지 않는 `init-in.stdout`은 되돌렸다.
+  - 바꾸지 않은 계약: `pkg/adapter/orchestration_semantic_contract_test.go`는 agent-teams의 `shutdown acknowledgements`를 요구하므로 문구를 살렸다. `pkg/adapter/latest_cli_platform_contract_test.go`는 deferred-tools rule에 task 도구 이름이 남고(`if available`) `TaskStop`·`TeamCreate`가 없으며 auto-go에 `team_name`이 없어 그대로 통과한다.
 
 ## 설계 결정
 
 - D1 판단 위치: `pkg/taskroute`의 새 순수 함수 + `auto workflow triage --topology`. 기존 `Decide`의 parallel을 그대로 쓰지 않는다. 그 gate는 planned route(파일 수·변경 줄 수로도 켜짐)에 묶여 있어 "File count … never decide this"(Route A 문구)와 어긋난다. prose만으로 두면 조합을 test할 수 없다.
-- D2 감지: env(CLAUDECODE, AGENT_TEAMS, ENTRYPOINT + ATTENDED, CHILD_SESSION) + EXECPATH `--version`. PATH `claude`는 세션 버전이 아니고(A1), TTY는 Bash tool 안에서 늘 거짓이다. 대화형은 ENTRYPOINT와 ATTENDED를 둘 다 요구한다. 거짓 음성은 현재 동작(subagent)이라 안전하고, 거짓 양성(headless에서 팀)은 위험해서 보수적으로 고른다. schema 로드는 세션만 알 수 있어 세션 쪽 fallback(REQ-TA-07)이다.
+- D2 감지: env(CLAUDECODE, AGENT_TEAMS, ENTRYPOINT + ATTENDED) + EXECPATH `--version`. 처음에는 CHILD_SESSION도 읽었으나 2026-10-17에 반증되어 뺐다(D11). PATH `claude`는 세션 버전이 아니고(A1), TTY는 Bash tool 안에서 늘 거짓이다. 대화형은 ENTRYPOINT와 ATTENDED를 둘 다 요구한다. 거짓 음성은 현재 동작(subagent)이라 안전하고, 거짓 양성(headless에서 팀)은 위험해서 보수적으로 고른다. schema 로드는 세션만 알 수 있어 세션 쪽 fallback(REQ-TA-07)이다.
 - D3 설정: `workflow.auto_team`(`*bool`, `omitempty`, 없음 = on). 버린 대안: (a) `future_extension.auto_team`은 옛 typed Save가 지워(SPEC-REA-001 probe V2) 끈 설정이 말없이 사라진다. (b) `workflow.team_default` 재사용은 옛 의미(`--team` → Workflow)가 있고 `pkg/config/workflow_cutover_test.go`의 무시 계약을 깨며 옛 Save가 지운다. (c) env 변수만은 오타가 말없이 무시돼 strict loader 원칙과 맞지 않고 사용자가 고른 "설정"도 아니다. 남는 비용: key를 쓴 사용자(값이 `true`여도)가 auto 0.50.113–0.50.125를 쓰면 load가 막히고(A3), 0.50.112 이하를 쓰면 key가 무시되고 그 `auto update`가 key를 지워 끈 설정이 사라진다(F5). 바이너리가 key를 쓰지 않으니 key를 쓰지 않은 프로젝트에는 비용이 없다. `*bool`만으로는 bool이 아닌 값을 막지 못해(Y) raw node `!!bool` 검사를 `decodeStrict`에 둔다.
 - D4 규칙 순서: 명시 flag → 설정 → slice → 능력. 설정과 plan이 팀을 막으면 실험 env를 권하지 않고, 유일한 실행인 버전 probe는 마지막이다.
 - D5 범위: Phase 2의 준비된 wave 하나. 다른 phase는 의존 관계라 subagent 그대로라는 사용자 결정이다. 남은 unit은 Route A다.
@@ -41,6 +48,8 @@
 - D8 읽기 경로(round 1): `config.Load`는 쓰므로 `LoadPreview` + `Lstat`. 관측과 판단의 경계는 snapshot이다. CLI가 관측하고, 순수 `NeedsVersionProbe`가 probe 필요 여부를, 순수 `DecideTeam`이 결과를 정한다.
 - D9 경로 모양(round 1): Phase 1 표와 delegation 계약은 `pkg/foo/**`를 쓴다. 끝 `/**` 하나만 떼고 나머지 glob은 거부한다.
 - D10 구현 뒤 보안 점검과 리뷰(2026-10-15): 계약보다 엄격해진 네 가지를 계약에 올렸다. (a) 겹침 비교는 NFC + Unicode case folding(`cases.Fold`) 값이다. 대소문자·정규화만 다른 표기는 기본 macOS·Windows 파일 시스템에서 같은 파일이다. (b) facts key는 `^[a-z_]+$`다. encoding/json의 대소문자 무시 매칭과 뒤 key 우선 규칙이 겹침을 숨길 수 있었다. (c) owned path의 shell 특수 문자를 거부하고 facts는 한 Bash 호출의 quoted heredoc으로 쓴다. Bash 호출끼리는 변수를 나누지 않는다. (d) Windows는 drive 경로의 `claude.exe`만 probe한다. 그리고 잘못된 facts를 오류(종료 1) 대신 `invalid_facts` decision(종료 0)으로 바꿨다. snippet이 stderr를 버려 원인이 보이지 않았기 때문이다. snippet bytes와 S13·S14 실행 방식은 그대로다.
+- D11 최상위 판별 제거(2026-10-17): 규칙 8은 "최상위 대화형 세션에는 `CLAUDE_CODE_CHILD_SESSION`이 없다"(A2)에 기대었다. S15 smoke에서 최상위 세션의 Bash 환경에도 `1`이 있어 자동 선택이 한 번도 켜지지 않았다. Claude Code는 이 값을 세션이 띄우는 모든 process에 상수로 넣고(뜻은 "Claude Code 세션이 띄운 process"), 판단이 읽는 다른 값도 최상위·subagent·teammate가 같다. 그래서 규칙 8과 `not_top_level` 줄을 지우고 CLI는 이 변수를 읽지 않는다. subagent에서 판단이 `team`을 내도 팀 도구 schema를 불러오지 못하면 `tools_fallback_line`으로 subagent에 남는다(REQ-TA-07). 버린 대안: (a) `CLAUDE_EFFORT`·`AI_AGENT` 같은 다른 변수는 계약이 아니고 effort 설정과 호출 출처에 따라 붙는다. (b) 규칙 8 유지는 기능이 켜지지 않는다. CAP-OK fixture는 실제 최상위 세션처럼 `CLAUDE_CODE_CHILD_SESSION=1`을 담아 이 회귀를 test가 잡는다.
+- D12 팀 도구 요구(2026-10-17, 사용자 결정): 자동 진입과 `--team`의 필수 도구를 `SendMessage`와 `Agent`의 `name` 인자로 줄이고 공유 task-list 도구는 같은 ToolSearch로 요청해 있으면 쓴다. 없으면 lead가 배정 표를 직접 들고(배정은 각 팀원 prompt, 완료는 팀원 결과나 `SendMessage`, receipt 다섯 필드는 lead 기록), teardown은 `shutdown_request`·`shutdown_response`다. `Agent`의 `name`을 요구하므로 `Agent`가 없는 subagent·teammate는 `SendMessage`가 있어도 fallback으로 남는다. `team_tools_unavailable` 줄도 새 요구를 말하도록 `SendMessage 도구나 Agent의 name 인자를 쓸 수 없어`로 바꿨다. 버린 대안: (a) task-list 도구 계속 요구는 현재 runtime에서 팀이 켜지지 않는다. (b) `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`을 요구하면 실험 env가 하나 더 늘고 사용자 결정도 아니다. (c) `SendMessage`까지 빼면 shutdown 확인 수단이 없다.
 
 ## Plan Intent Ledger
 
@@ -136,7 +145,7 @@ These are optional improvements and do not block sync completion.
 | Reference | Type | Verification |
 |-----------|------|--------------|
 | 위 `templates/claude/…`, `content/skills/…`, `internal/cli/workflow_triage.go`, `pkg/taskroute/*`, `pkg/config/*`, `pkg/processprobe/output.go`, `pkg/adapter/claude/*` 경로·줄·symbol | existing | Read, grep(2026-10-15, `33b5bb55`) |
-| `auto 0.50.125` 동작, Claude Code 2.1.288 env·`--version`·`--disallowedTools`, yaml.v3 v3.0.1 decode, SPEC-REA-001 probe | existing (binary, runtime, library, history) | 실행(evidence C·F·Y·R), `claude --help`, `git show feat/rea-001:…` |
+| `auto 0.50.125` 동작, Claude Code 2.1.288·2.1.301 env·`--version`·`--disallowedTools`·child process env builder, yaml.v3 v3.0.1 decode, SPEC-REA-001 probe | existing (binary, runtime, library, history) | 실행(evidence C·F·Y·R, childsession H·T), 바이너리 문자열(childsession S), `claude --help`, `git show feat/rea-001:…` |
 | `.claude/skills/auto-go/SKILL.md`, `.claude/skills/agent-teams/SKILL.md` | generated surface (원천은 위 template·content) | `claude_workflow_skills.go`, topology test |
 | `TeamInput`, `NeedsVersionProbe`, `DecideTeam`, `firstOverlapPair`, `DecodeTeamFacts`, `TeamDecision`, `team*.go`, `readWorkflowTriageFile`, `workflow_triage_topology.go`, `workflow_triage_capability.go`, `WorkflowConf.AutoTeam`, `AutoTeamEnabled`, `schema_workflow_auto_team.go`, `--topology`, `## Automatic Entry from Route A`, `#### Route A Phase 2 Entry: Agent Team Auto-Selection`, `InvalidFactsDecision`, `invalid_facts`, `facts_error`, `claudeVersionProbePathAllowed`, 새 test 파일, `evidence/manual-smoke-teamauto.txt` | [NEW] planned addition | 부재 확인(grep) |
 
@@ -150,7 +159,8 @@ These are optional improvements and do not block sync completion.
 ## Open Risks
 
 - AS-1(가정): ledger "beyond printing the reason line"을 Claude 표면의 줄로 읽었다. 비 Claude 플랫폼에도 줄을 원한다면 네 플랫폼 go 문구에 고정 한 줄을 더해야 하고 S9 oracle이 바뀐다.
-- R1: A2 not-run. print mode가 (`cli`, `1`)을 보고하면 headless run이 팀을 고를 수 있다. T11 전에는 릴리스하지 않는다.
+- R1: A2의 print mode 부분은 아직 실행 전이다. print mode가 (`cli`, `1`)을 보고하면 headless run이 팀을 고를 수 있다. T11 전에는 릴리스하지 않는다. A2의 CHILD_SESSION 부분은 2026-10-17 FAIL로 닫혔다(D11).
+- R6: subagent·teammate가 자동 선택을 거쳐도 subagent로 남는 근거는 세션 쪽 확인 하나다. D12부터 그 확인은 `SendMessage`와 `Agent`의 `name` 인자를 함께 보므로, `SendMessage`가 있는 teammate도 `Agent`가 없어 fallback으로 남는다(`evidence/probe-teamauto-teamtools.md` S4). 앞으로 runtime이 subagent에 `name` 있는 `Agent`까지 주면 그 run은 `line`을 출력하고 팀원을 띄우려 한다. 중첩 팀을 runtime이 거부하면 Route B Failure Policy("Teammate dispatch fails")로 간다.
 - R2: brownfield_impact assumed. 팀 환경을 켠 사용자는 기본으로 팀 run(토큰 증가)을 보게 된다. 한 줄과 문서(REQ-TA-14), 설정으로 끈다.
 - R3: VS Code 등 다른 entrypoint는 `not_interactive`로 subagent다(거짓 음성, 안전한 쪽).
 - R4: 실험 기능이라 Claude Code가 env 이름이나 팀 동작을 바꿀 수 있다. 바뀌면 판단은 subagent로 떨어진다.

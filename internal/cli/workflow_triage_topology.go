@@ -21,9 +21,11 @@ With --topology, decide whether a Claude Code /auto go run without --team,
 The facts file lists the Phase 1 units (id, execution, owned_paths, depends_on,
 done). The decision prints as JSON, or with --format human as its one reason
 line. Auto-selection is on by default: it picks a team for an interactive
-top-level Claude Code session that has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-and runs Claude Code 2.1.246 or newer, when at least two ready worker units own
-disjoint paths.
+Claude Code session that has CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 and runs
+Claude Code 2.1.246 or newer, when at least two ready worker units own disjoint
+paths. The environment cannot tell a subagent from the top-level session, so a
+session that cannot load the team tools prints tools_fallback_line instead and
+stays on subagents.
 
 Each teammate is a separate Claude session, so a team run uses more tokens, and
 the feature is experimental. Turn it off with workflow.auto_team: false in
@@ -51,7 +53,7 @@ type workflowTriageTopologyReport struct {
 
 // runWorkflowTriageTopology decides whether Phase 2 of a Claude Code /auto go
 // run uses a native Agent Team. It reads the facts file and autopus.yaml, the
-// session environment, and, only when rules 1-8 pass, the version of the
+// session environment, and, only when rules 1-7 pass, the version of the
 // running Claude Code binary. That probe is its only child process. Facts the
 // contract rejects are a subagent decision, not an error, so the reason line
 // names the rejected field where the generated snippet would hide stderr.

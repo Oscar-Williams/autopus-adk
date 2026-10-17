@@ -27,10 +27,12 @@ var teamCapabilityEnv = os.LookupEnv
 // probeClaudeVersion accepted and returns its stdout. Tests replace it.
 var runClaudeVersionProbe = execClaudeVersionProbe
 
-// observeTeamCapability builds the capability snapshot from the six session
+// observeTeamCapability builds the capability snapshot from the five session
 // variables the Capability Observation Contract names and returns the raw
 // CLAUDE_CODE_EXECPATH for the version probe. No other variable is read, so a
 // secret such as CLAUDE_CODE_MESSAGING_TOKEN never enters the snapshot.
+// CLAUDE_CODE_CHILD_SESSION is not one of them: Claude Code sets it to 1 for
+// every process a session spawns, the top-level session's Bash tool included.
 func observeTeamCapability() (taskroute.Capability, string) {
 	read := func(name string) string {
 		value, _ := teamCapabilityEnv(name)
@@ -41,7 +43,6 @@ func observeTeamCapability() (taskroute.Capability, string) {
 		AgentTeams:      read("CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS"),
 		Entrypoint:      read("CLAUDE_CODE_ENTRYPOINT"),
 		SessionAttended: read("CLAUDE_CODE_SESSION_ATTENDED"),
-		ChildSession:    read("CLAUDE_CODE_CHILD_SESSION"),
 	}
 	execPath := read("CLAUDE_CODE_EXECPATH")
 	if execPath != "" {

@@ -46,7 +46,7 @@ func TestWorkflowTriageTopologyReportsWithoutWriting(t *testing.T) {
 	if d.Route != "team" || d.Reason != "independent_disjoint_slices" || d.ReadyUnits == nil || *d.ReadyUnits != 2 || strings.Join(d.TeamUnits, ",") != "T1,T2" || d.FollowupUnits == nil || strings.Join(*d.FollowupUnits, ",") != "T3" {
 		t.Fatalf("%+v", d)
 	}
-	if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다" {
+	if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다" {
 		t.Fatalf("%+v", d)
 	}
 
@@ -84,9 +84,13 @@ func TestWorkflowTriageHelpCarriesTheAutoTeamNotice(t *testing.T) {
 	if run.code != 0 {
 		t.Fatalf("%+v", run)
 	}
-	for _, item := range []string{"--topology", "on by default", "separate Claude session", "experimental", "workflow.auto_team: false", "--solo", "auto 0.50.113 through", "0.50.125 refuse", "auto 0.50.112 and older ignore the key and delete it on auto update", "CLAUDE_CODE_EXECPATH", "claude or claude.exe", "claude_version_unknown", "invalid_facts decision"} {
+	for _, item := range []string{"--topology", "on by default", "separate Claude session", "experimental", "workflow.auto_team: false", "--solo", "auto 0.50.113 through", "0.50.125 refuse", "auto 0.50.112 and older ignore the key and delete it on auto update", "CLAUDE_CODE_EXECPATH", "claude or claude.exe", "claude_version_unknown", "invalid_facts decision", "cannot tell a subagent from the top-level session", "tools_fallback_line"} {
 		if !strings.Contains(run.stdout, item) {
 			t.Fatalf("help lacks %q:\n%s", item, run.stdout)
 		}
+	}
+	// Auto-selection cannot check for a top-level session, so help must not claim it does.
+	if strings.Contains(run.stdout, "top-level Claude Code session") {
+		t.Fatalf("help claims a top-level check:\n%s", run.stdout)
 	}
 }
