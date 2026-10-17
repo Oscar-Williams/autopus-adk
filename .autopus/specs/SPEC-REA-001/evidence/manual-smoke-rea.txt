@@ -14,7 +14,7 @@
 #
 # ───────────────────────────────── S18 ─────────────────────────────────
 # 판정 요약: Codex PASS, Claude Code PASS, Antigravity는 RC에서 FAIL -> v0.50.126 수정 뒤 재확인 PASS.
-#   A2 시작 절반(30초)은 시간을 재지 못해 판정하지 않았다(아래).
+#   A2 시작 절반(30초)은 아래 첫 기록으로는 시간을 재지 못했다. 후속 실행(아래 `추가 실행` 절, 61-codex-cold)에서 FAIL로 판정했다.
 #
 # Codex (11-codex): `/mcp`에 `rea: connected (207 tools)`.
 #   cold: setup 직후 `npm-codex cold (empty)`. 실행 뒤에도 <scratch>/npm-codex는 비어 있다. Codex가 MCP 자식 프로세스에
@@ -22,7 +22,7 @@
 #   (version 6.5.0)의 생성 시각은 07:44:41이고, 기록 파일의 시작(07:43:48)과 끝(07:45:19) 사이다. 따라서 이 실행이
 #   rea-agents를 처음 받았다(cold). 다만 S18 Given의 "Codex용 새 scratch HOME과 CODEX_HOME"은 쓰지 않았다.
 #   시간: 기록에 시각 표시가 없고, 기록 시작부터 설치 완료(07:44:43)까지 55초에는 Codex 업데이트 안내와 폴더 신뢰 질문에
-#   답한 시간이 들어 있다. 30초 안에 rea 도구가 보였는지는 이 기록으로 증명할 수 없다 -> A2 시작 절반 미판정.
+#   답한 시간이 들어 있다. 30초 안에 rea 도구가 보였는지는 이 기록으로 증명할 수 없다 -> 이 기록만으로는 A2 시작 절반 미판정(후속 실행 61에서 FAIL).
 # Claude Code (12-claude): project MCP 승인에서 rea를 켰고, `/mcp`에 `✔rea 207 tools`.
 #   Claude Code 2.1.301에서 `/agents` wizard가 없어져(`The /agents wizard has been removed.`) reverse-engineer 목록은 이 화면으로
 #   보지 못했다. 대신 S19에서 `subagent_type: reverse-engineer` dispatch가 실제로 동작했다.
@@ -37,8 +37,8 @@
 #
 # ───────────────────────────────── S19 ─────────────────────────────────
 # 판정 요약: Claude Code (a)–(e) PASS, Codex PASS(gate에서 중단, 쓰기 없음), Antigravity PASS(호출별 MCP 승인 4회).
-#   A1: Claude PASS, Antigravity PASS. A2 도구 절반(Codex reverse-engineer의 REA 호출 60초 안)은 시간을 분리할 수 없어 미판정.
-#   `agy agents` 17개와 `agy --agent auto-agent-<이름> -p 'Reply with exactly: OK'` 확인은 이 기록에 없다.
+#   A1: Claude PASS, Antigravity PASS. A2 도구 절반은 TUI만으로는 시간을 분리할 수 없었고, 후속으로 Codex rollout을 읽어
+#   PASS로 판정했다(아래 `추가 실행` 절). `agy agents` 17개와 `agy --agent ... -p` 확인도 후속 실행에서 PASS다.
 #
 # Claude Code (21-claude-reverse, 세션 로그로 호출 수 확인):
 #   (a) `/auto reverse app "장바구니 합계 계산"` -> 확인.
@@ -85,8 +85,72 @@
 #   B-·A- ID를 담은 명세와 gate(`... (확인 / 수정 / 중단)`)가 나왔고 `중단` -> 같은 중단 문장. -> A1 Antigravity PASS.
 #   rea-agy에는 src/, test/, .autopus/reverse/가 생기지 않았다.
 #
-# Completion Debt 메모: S18의 Codex 30초 시간과 S19의 Codex 60초 시간(A2 두 절반)은 이 기록으로 증명하지 못했다.
-#   `agy agents`·`agy --agent ... -p` 확인도 이 기록 범위 밖이다. 이 항목이 묶인 CD는 이 파일만으로 닫히지 않는다.
+# Completion Debt 메모: 첫 기록으로 증명하지 못한 항목(A2 두 절반, agy agents·--agent)은 아래 `추가 실행` 절에서 다시 확인했다.
+#   CD 상태는 그 절 끝에 적는다.
+#
+# ───────────────────── 추가 실행 (2026-10-17 19:56–20:10, v0.50.126 릴리즈 바이너리) ─────────────────────
+# 바이너리: `auto 0.50.126-0.20261017104825-537dab361454 (commit: 537dab3)`. 도구: codex-cli 0.163.0, Antigravity CLI 1.4.0,
+#   Node v24.20.0, npm 11.19.0. 모델 호출은 agy `-p` 세 번뿐이다(Claude·OMP는 실행하지 않음).
+# 기록: 60-rea-cold-init, 61-pre, 61-codex-cold, 61-times, 61b-codex-warm, 61b-times, 61d(수동 cold probe), 63-agy-agents,
+#   64-agy-explorer·executor·reverse-engineer. 사용자 ~/.codex·~/.gemini·~/.npm 내용은 손대지 않았다.
+#
+# (1) A2 시작 절반, Codex cold (S18) -> FAIL
+#   준비: 새 project <scratch>/smoke-kit/rea-cold(`git init`, app/·fixture/는 rea-proj와 같음)에서 릴리즈 바이너리로
+#   `auto init --platforms claude-code,codex,antigravity-cli`, REA 단계 Enter(켬). `.codex/config.toml`의 `[mcp_servers.rea]`는
+#   `npx -y rea-agents@6.5.0 mcp`, `startup_timeout_sec = 30`이다.
+#   cold 상태(61-pre, 19:57:41): `ls -la home-cold/.npm` -> `No such file or directory`, npm-codex2는 빈 디렉터리.
+#   실행: `env HOME=<scratch>/smoke-kit/home-cold CODEX_HOME=<home>/.codex npm_config_cache=<scratch>/smoke-kit/npm-codex2 codex`
+#   (메시지 없음). 시각(61-times): 실행 19:57:49.36, 폴더 신뢰 19:58:05.98, session 생성과 npx 시작 19:58:08
+#   (rollout timestamp 10:58:08.015Z, npm debug log 10_58_08_864Z), `/mcp` 첫 결과 19:59:37.
+#   결과: `• rea: failed (0 tools)`, 경고 `MCP client for `rea` timed out after 30 seconds. Add or adjust `startup_timeout_sec` ...`.
+#   같은 시각에 사용자 설정의 context7(npx)도 cold로 받으며 30초를 넘겼다(`failed (0 tools)`).
+#   cache: rea-agents는 npm-codex2가 아니라 `home-cold/.npm/_npx/ad9a3fdbcad992c6/`에 받아졌다(`npm_config_cache`는 MCP 자식에
+#   닿지 않고 HOME은 닿는다). 그 아래 `node_modules/rea-agents`는 19:58:24에 생겼다가 timeout 뒤 사라졌고,
+#   이후 Codex가 다시 띄운 npx가 20:00:51에 `rea-agents@6.5.0`을 남겼다. 즉 cold는 증명했고 30초 안 시작은 실패했다.
+#   비교(61d, Codex 밖 수동 probe): 또 다른 빈 HOME(home-cold2)에서 `npx -y rea-agents@6.5.0 mcp`에 initialize를 보내면
+#   응답이 25.9초, tools/list가 26.2초에 207개였다. 단독으로는 30초 안이지만 여유가 4초쯤이고, Codex 안에서는
+#   다른 MCP의 동시 설치와 겹쳐 30초를 넘었다.
+#   재실행(61b, 같은 home-cold, 20:01:39): `• rea: failed (0 tools)`, 경고 `MCP client for `rea` failed to start: MCP startup failed:
+#   handshaking with MCP server failed: connection closed: initialize response`. 같은 HOME에서 수동으로 띄우면
+#   `Error: Cannot find package '.../_npx/ad9a3fdbcad992c6/node_modules/xmlbuilder/index.js' imported from .../plist/dist/build.js`
+#   (ERR_MODULE_NOT_FOUND)로 바로 끝난다. timeout으로 끊긴 설치와 재시도가 겹쳐 _npx 디렉터리가 깨진 채 남았고, 그 HOME에서는
+#   사용자가 `~/.npm/_npx/<hash>`를 지우기 전까지 rea가 계속 뜨지 않는다. 새 결함으로 보고한다(30초 timeout만의 문제가 아님).
+#   부수 관찰: codex-cli 0.163.0은 첫 실행이 띄운 app-server daemon을 같은 CODEX_HOME의 다음 세션이 다시 쓴다. 이 실행이 띄운
+#   daemon은 HOME=home-cold 환경을 갖고 있어, smoke 뒤 그 daemon(우리가 띄운 프로세스 두 개)을 멈췄다. 첫 기록(11-codex)에서
+#   npm_config_cache가 무시된 것도 이미 떠 있던 daemon의 환경 때문일 수 있다(확인하지 않은 가설).
+#
+# (2) agy 에이전트 시작 (S19 Antigravity) -> PASS
+#   <scratch>/smoke-kit/rea-agy(수정 바이너리로 init, 13b와 같은 project, 사용자 HOME)에서:
+#   `agy agents` -> `Available agents:` 아래 auto-agent-* 17개(annotator, architect, debugger, deep-worker, devops, executor,
+#   explorer, frontend-specialist, perf-engineer, planner, reverse-engineer, reviewer, security-auditor, spec-writer, tester,
+#   ux-validator, validator), exit=0.
+#   `agy --agent auto-agent-<explorer|executor|reverse-engineer> -p 'Reply with exactly: OK'` -> 셋 다 `OK`, exit=0.
+#   세 기록 모두 `failed to construct executor`·`unknown component: tool` 0건.
+#
+# (3) A2 도구 절반, Codex reverse-engineer의 REA 호출 (S19 Codex) -> PASS
+#   24-codex-reverse의 Codex rollout을 읽기 전용으로 읽었다(그 실행의 CODEX_HOME은 터미널이 정한 별도 Codex 계정 home이었다).
+#   main thread가 12:29:31.32에 `spawn_agent`(`/root/reverse_cart`)를 불렀고, subagent thread의 source는
+#   `{"subagent":{"thread_spawn":{"parent_thread_id":<main>,"depth":1,"agent_path":"/root/reverse_cart",... "agent_role":"reverse-engineer"}}}`다.
+#   subagent의 McpToolCall(server rea, 완료 시각 / duration / status):
+#     12:29:51.90 analyze_javascript_application 2.53s completed   <- spawn 뒤 20.6초에 첫 REA 호출 성공
+#     12:30:00.72 inspect_analysis_view 0.004s completed
+#     12:30:00.80 get_evidence_bundle 0.007s completed
+#     12:30:18.94 inspect_analysis_view 0.003s failed
+#     12:30:26.90 open_binary 0.025s completed
+#     12:30:29.20 read_bytes 0.002s failed
+#     12:31:00.51 trace_application_feature 0.012s completed
+#     12:31:00.58 trace_javascript_semantics 0.004s completed
+#     12:31:00.64 trace_javascript_semantics 0.002s completed
+#   모든 호출이 tool_timeout 60초보다 훨씬 짧게 끝났고, 성공한 호출이 7개다. 그래서 62-codex-reverse 재실행은 하지 않았다.
+#   subagent의 최종 답은 `## Runtime Capture Request`였다(메인 세션이 동의를 물은 이유).
+#   main thread도 12:30:43.89에 rea `get_evidence_bundle`(readOnlyHint true, 0.003s)을 직접 1번 불렀다. 앞의 관찰(메인 세션의 정적
+#   REA 조회)이 rollout으로 확인됐다. 판정은 바꾸지 않고 후속 확인 대상으로 둔다.
+#
+# CD 상태 (research.md `## Completion Debt` 기준):
+#   CD-1: 열림. Claude `/mcp`와 agy `autopus_rea` 항목은 PASS지만, A2 시작 절반이 FAIL이다(Codex cold 시작이 30초 timeout을 넘김).
+#     CD-1 규칙("FAIL이면 고친 뒤 다시")대로 고친 뒤 cold 실행을 다시 기록해야 닫힌다. 깨진 _npx가 남는 문제도 함께 다뤄야 한다.
+#   CD-2: 닫힘 조건 충족. Claude 경로 (a)–(e)와 미등록 1회 dispatch PASS, agy `--agent` 3개 OK와 reverse-engineer의 `autopus_rea`
+#     정적 도구 호출 PASS(A1 Antigravity), Codex reverse-engineer의 REA 호출이 60초 안에 성공(A2 도구 절반) PASS.
 
 ## S18 Codex /mcp (11-codex)
 >_ OpenAI Codex (v0.162.0)
@@ -216,3 +280,70 @@ tester·executor dispatch prompt 6개: 모두 `SPEC: N/A`·`Task: reverse/`·`Be
   • A-3: 애플리케이션 진입점 실행 시 샘플 장바구니 합계인 11이 표준 출력에 한 줄로 출력된다 (covers: B-3)
   이 행동 명세로 구현할까요? 소유 경로: src/cart.js, src/index.js · 테스트 경로: test/cart.test.js (확인 / 수정 / 중단)
   Operation stopped as requested (중단). No files were written and no further agents were dispatched. 🐙
+
+## 추가 실행 (1) cold 준비 (61-pre)
+== pre-launch 19:57:41
+$ ls -la home-cold/.npm
+ls: <scratch>/smoke-kit/home-cold/.npm: No such file or directory
+$ ls -la npm-codex2
+total 0
+
+## 추가 실행 (1) Codex cold (61-codex-cold)
+>_ OpenAI Codex (v0.163.0)
+/mcp
+🔌  MCP Tools
+  • codex_apps: connected (429 tools)
+  • context7: failed (0 tools)
+  • node_repl: connected (4 tools)
+  • openaiDeveloperDocs: connected (5 tools)
+  • rea: failed (0 tools)
+  Warnings · 2 of 2 · MCP · rea
+  MCP client for `rea` timed out after 30 seconds. Add or adjust `startup_timeout_sec` in your config.toml:
+  [mcp_servers.rea]
+  startup_timeout_sec = XX
+  MCP startup incomplete (failed: context7, rea)
+
+## 추가 실행 (1) 같은 HOME으로 재실행 (61b-codex-warm)
+  • context7: connected (2 tools)
+  • rea: failed (0 tools)
+  Warnings · 2 of 2 · MCP · rea
+  MCP client for `rea` failed to start: MCP startup failed: handshaking with MCP server failed: connection closed:
+  initialize response: connection closed: initialize response
+(같은 HOME에서 수동 실행)
+Error: Cannot find package '<scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6/node_modules/xmlbuilder/index.js' imported from <scratch>/smoke-kit/home-cold/.npm/_npx/ad9a3fdbcad992c6/node_modules/plist/dist/build.js
+  code: 'ERR_MODULE_NOT_FOUND'
+
+## 추가 실행 (1) Codex 밖 cold probe (61d, 빈 HOME home-cold2)
+initialize response after 25.9s: {"result":{"protocolVersion":"2025-06-18",...,"serverInfo":{"name":"rea","version":"6.5.0"},...
+tools/list after 26.2s: 207 tools
+
+## 추가 실행 (2) agy (63-agy-agents, 64-agy-*)
+$ agy agents
+Available agents:
+auto-agent-annotator
+auto-agent-architect
+auto-agent-debugger
+auto-agent-deep-worker
+auto-agent-devops
+auto-agent-executor
+auto-agent-explorer
+auto-agent-frontend-specialist
+auto-agent-perf-engineer
+auto-agent-planner
+auto-agent-reverse-engineer
+auto-agent-reviewer
+auto-agent-security-auditor
+auto-agent-spec-writer
+auto-agent-tester
+auto-agent-ux-validator
+auto-agent-validator
+exit=0
+$ agy --agent auto-agent-explorer -p 'Reply with exactly: OK'
+OK
+exit=0
+$ agy --agent auto-agent-executor -p 'Reply with exactly: OK'
+OK
+exit=0
+$ agy --agent auto-agent-reverse-engineer -p 'Reply with exactly: OK'
+OK
+exit=0
