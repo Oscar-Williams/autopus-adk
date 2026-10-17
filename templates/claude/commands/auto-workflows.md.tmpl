@@ -1256,6 +1256,10 @@ rm -f "$FACTS"
 
 A run prints exactly one `Agent Team:` line: `decision.line`,
 `decision.tools_fallback_line`, or the snippet's failure line.
+"Print" means: copy the JSON string value verbatim as its own line of your
+reply text, before the Phase 2 dispatch. Do not translate, paraphrase, or
+fold it into a sentence, and write `Agent Team:` nowhere else in the run,
+including the completion report.
 
 After the team wave, send every teammate a shutdown request and wait for every
 acknowledgement. Then implement exactly the `decision.followup_units` (the

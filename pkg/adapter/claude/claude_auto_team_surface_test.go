@@ -143,6 +143,9 @@ func TestAutoTeamSurfaceSectionOrder(t *testing.T) {
 		"The CLI cannot tell a subagent from the top-level",
 		"such as a subagent, on subagents.",
 		"without them the lead tracks the units itself.",
+		// S15 smoke: the lead paraphrased the line, so printing is spelled out.
+		"copy the JSON string value verbatim as its own line",
+		"write `Agent Team:` nowhere else in the run,\nincluding the completion report.",
 		"send every teammate a shutdown request and wait for every\nacknowledgement.",
 		"implement exactly the `decision.followup_units`",
 		"Only after that, enter Gate 2",
