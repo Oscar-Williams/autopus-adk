@@ -84,9 +84,12 @@ func TestAcceptance_S2_GeminiRuleSetMatchesSource(t *testing.T) {
 		"spec-quality.md", "subagent-delegation.md", "techstack-freshness.md",
 		"worktree-safety.md",
 	}
+	for name := range platformRuleAdditions["gemini"] {
+		want = append(want, name)
+	}
 	// @AX:NOTE: [AUTO] magic constant — 14 equals the total canonical rule count in content/rules/; update this oracle when source rules are added or removed
-	assert.ElementsMatch(t, want, got, "Gemini rule basenames must equal the 14 content/rules sources")
-	assert.Len(t, got, 14)
+	assert.ElementsMatch(t, want, got, "Gemini rule basenames must equal the 14 content/rules sources plus the documented Antigravity additions")
+	assert.Len(t, got, 14+len(platformRuleAdditions["gemini"]))
 	// Gemini rule exclusion set must be empty.
 	assert.Empty(t, platformRuleExclusions["gemini"])
 }
@@ -183,8 +186,8 @@ func TestAcceptance_S9_ParityGateCoversOMP(t *testing.T) {
 	ompRules := generatePlatformRules(t, "omp")
 	assert.Len(t, ompRules, 14, "omp generates exactly 14 rules")
 	for _, platform := range []string{"claude", "gemini", "opencode"} {
-		assert.Len(t, generatePlatformRules(t, platform), 14,
-			"%s still generates exactly 14 rules after omp joins the gate", platform)
+		assert.Len(t, generatePlatformRules(t, platform), 14+len(platformRuleAdditions[platform]),
+			"%s still generates exactly the 14 source rules (plus its documented additions) after omp joins the gate", platform)
 	}
 	assert.Empty(t, generatePlatformRules(t, "codex"),
 		"Codex 0.149.1 carries policy through native skills and AGENTS.md")

@@ -63,7 +63,8 @@ func TestParity_RelocationConservesRuleCount(t *testing.T) {
 	assert.Equal(t, 14, claudeCounts.Rules, "relocation must conserve the claude rule count")
 	assert.Zero(t, countFeatures(codexFiles).Rules,
 		"Codex 0.149.1 must not receive inert markdown under .codex/rules")
-	assert.Equal(t, 14, countFeatures(geminiFiles).Rules)
+	assert.Equal(t, 14+len(platformRuleAdditions["gemini"]), countFeatures(geminiFiles).Rules,
+		"the 14 source rules plus the Antigravity-only REA guard")
 
 	var baseline, relocated int
 	for _, file := range claudeFiles.Files {

@@ -112,7 +112,7 @@
 
 ## agy 1.4 수정 (2026-10-17, branch `fix/v0126-agy`, 규칙 14)
 
-기준: `git diff --name-status 8a0da3a1..fix/v0126-agy -- '*_test.go' '*.golden' 'evals/'`. 바뀐 기존 파일 14개는 모두 규칙 14이고, 새 test 파일 `pkg/content/agent_transformer_gemini_test.go`, `pkg/adapter/antigravity/antigravity_rea_mcp_boundary_test.go`(다시 쓴 REA test의 clean·symlink 절을 300줄 한도로 떼어 냄), `internal/cli/rea_plugin_mcp_test.go`는 기존 test 변경이 아니다.
+기준: `git diff --name-status 8a0da3a1..fix/v0126-agy -- '*_test.go' '*.golden' 'evals/'`. 바뀐 기존 파일 17개(보안 후속 L2의 parity test 3개 포함)는 모두 규칙 14이고, 새 test 파일 `pkg/content/agent_transformer_gemini_test.go`, `pkg/adapter/antigravity/antigravity_rea_mcp_boundary_test.go`(다시 쓴 REA test의 clean·symlink 절을 300줄 한도로 떼어 냄), `internal/cli/rea_plugin_mcp_test.go`, `pkg/reamcp/read_test.go`는 기존 test 변경이 아니다.
 
 | 파일 | 규칙 | 이유 |
 |---|---|---|
@@ -130,3 +130,6 @@
 | `pkg/content/hooks_rea_test.go` | 14 | 사전 승인 단언이 플러그인 파일의 managed 항목을 읽는다 |
 | `pkg/reamcp/file_test.go` | 14 | 오류 문구의 Antigravity 파일이 같고, 주석 JSON 거부와 `RemovesFile` test가 더해진다 |
 | `pkg/reamcp/shape_test.go` | 14 | `TargetRelPath(Antigravity)`와 `LegacyTargetRelPath` 기대 |
+| `pkg/adapter/parity_acceptance_test.go` | 14 | 보안 후속 L2: S2·S9의 Gemini rule 기대가 content 14개에 Antigravity 전용 `rea-mcp-guard.md`(`platformRuleAdditions`)를 더한 15개다 |
+| `pkg/adapter/parity_conditional_test.go` | 14 | 같은 이유로 Gemini rule 수가 14+1이다 |
+| `pkg/adapter/parity_helpers_test.go` | 14 | 문서화된 Antigravity 전용 rule 목록 `platformRuleAdditions`를 둔다 |

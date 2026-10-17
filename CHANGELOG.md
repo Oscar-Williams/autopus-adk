@@ -12,11 +12,21 @@ All notable changes to this project will be documented in this file.
     AllowMultiple), Grep은 `grep_search`, Glob은 `find_by_name`(fd의 glob 패턴), Bash는 `run_command`로 쓴다.
     `grep_search`·`find_by_name`은 agy 1.2.7부터 기본 도구에서 빠졌지만 `tools:`에 적은 에이전트는 계속 쓴다. 이 이름으로
     생성한 explorer·executor·reverse-engineer가 agy 1.4.0에서 시작되고 답한다.
+  - 필요한 agy 버전: 실제로 확인한 것은 1.4.0이다. 이 이름 집합은 1.2.7 이상을 전제한다(그때부터 `grep_search`·
+    `find_by_name`을 `tools:`에 적어야 쓴다). `edit_file`이 생긴 버전은 agy changelog에 없어 1.4.0보다 오래된 agy는
+    확인하지 않았고, readiness의 검증된 최소 버전(1.1.26)은 관측 없이 올리지 않는다.
   - reverse-engineer: agy가 모르는 도구로 거부하는 `mcp_rea_<도구>` 135개를 빼고 agy Markdown 에이전트의 `inheritMcp:
     true`를 쓴다(`enable_mcp_tools`는 `define_subagent` 도구의 인자이고 Markdown field가 아니다). agy 1.4.0에서는
     `tools:`가 플러그인 MCP를 막지 못해 모든 subagent가 `call_mcp_tool`로 세션의 MCP 서버 전체에 닿는다. 그래서 REA를
     등록한 project에서는 reverse-engineer뿐 아니라 executor·tester 같은 모든 Autopus 에이전트에 REA runtime 도구까지
-    보이고, 막는 것은 에이전트 본문과 호출마다 묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+    보인다. 그래서 플러그인에 always-on rule `rea-mcp-guard.md`(`trigger: always_on`, agy는 always_on rule만 늘 읽고
+    subagent도 읽는다)를 더해, `autopus_rea` 호출은 reverse-engineer와 `/auto reverse` 메인 세션만 하고 runtime capture는
+    `/auto reverse`의 `허용` 뒤에만 하며 권한 질문은 호출마다 답하고 "항상 허용"을 고르지 않게 한다. 마지막 방어는 호출마다
+    묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+  - 읽기 전용 역할(source에 Write·Edit가 없는 reviewer·validator·security-auditor·explorer·architect·planner·spec-writer·
+    perf-engineer·ux-validator)도 source의 Bash대로 `run_command`를 받아 테스트를 돌린다. agy Markdown 에이전트에는
+    read-only·plan field가 없고(`commandExecutionPolicy`는 명령 승인 정책이며 `request-review`·`strict` 값으로는 agy가
+    에이전트를 읽지 않았다), 쓰지 않는 것은 에이전트 본문과 agy의 명령 승인이 맡는다.
   - 같은 내용을 쓰는 `.gemini/agents/autopus/*.md`는 agy도 Gemini CLI 0.52(`.gemini/agents/*.md`만 읽는다)도 읽지 않는
     사본이다. agy가 읽는 것은 `.agents/plugins/autopus/agents/*.md`다.
 - **v0.50.126: OMP 18.3 이후 호환 — doctor RPC 검사, 조율 안내, browser 도구 이름** (2026-10-17): OMP 18.3.0이
@@ -163,8 +173,12 @@ All notable changes to this project will be documented in this file.
     서버를 읽고 프로젝트 `.gemini/settings.json`은 읽지 않아, 그곳에 쓴 항목으로는 서버가 뜨지 않았다(2026-10-17 smoke).
     플러그인 서버는 `<plugin>_<server>`로 이름이 붙어 `autopus_rea`로 뜬다. 그 파일은 manifest가 소유하지 않아 사용자가
     더한 서버는 add·remove·`auto platform remove`에서 값이 그대로이고, managed 항목만 담던 파일은 항목과 함께 지운다.
-    읽을 수 없는 JSON(agy가 받는 주석·끝 쉼표 포함)은 덮어쓰지 않는다: add는 그 파일을 담은 오류로 끝나고 remove는
-    그대로 둔다. v0.50.126 RC가 `.gemini/settings.json`에 남긴 managed `rea` 항목은 다음 실행이 지운다.
+    엄격한 JSON이 아닌 파일(agy가 받는 주석·끝 쉼표)은 사용자 소유로 보고 덮지도 실패하지도 않는다: `--rea`는
+    `REA MCP 항목을 등록하지 않았습니다: … 주석과 끝 쉼표를 지우고 다시 실행하거나 rea 항목을 직접 더하세요` 한 줄을
+    내고, `--no-rea`와 `auto platform remove antigravity-cli`는 그 파일에 `rea-agents@`가 남아 있으면 `REA MCP 항목을
+    자동으로 지우지 못했습니다: …` 한 줄과 지우는 법을 낸다. doctor는 그 상태를 warning(`rea_target_not_strict_json`)으로,
+    `--plan`은 `skip` 줄로 보인다. symlink·일반 파일이 아닌 것·1 MiB를 넘는 파일은 읽지 않고, 그 파일이 필요한 변경은
+    파일을 담은 오류로 끝난다. v0.50.126 RC가 `.gemini/settings.json`에 남긴 managed `rea` 항목은 다음 실행이 지운다.
   - doctor: 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류, OMP·OpenCode 안내를 텍스트와 `--json`의
     `data.rea`·`doctor.rea.*` check로 보고하고 REA 서버를 띄우거나 네트워크를 쓰지 않는다. `mcp__rea` 권한 사전 승인과
     project MCP 자동 승인은 쓰지 않는다.

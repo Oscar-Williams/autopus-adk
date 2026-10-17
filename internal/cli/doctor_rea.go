@@ -19,6 +19,10 @@ type doctorReaPayload struct {
 	Node           doctorReaNode     `json:"node"`
 	Platforms      map[string]string `json:"platforms"`
 	Guidance       []string          `json:"guidance"`
+	// pluginNotice is the Form Text line for an Antigravity plugin file that
+	// is not strict JSON and blocks the decision (reaPluginNotice); its row
+	// warns. It stays out of data.rea, whose platform values are classes.
+	pluginNotice string
 }
 
 // doctorReaNode is the Node gate verdict; Version is set for pass and
@@ -51,6 +55,10 @@ func diagnoseRea(ctx context.Context, dir string, cfg *config.HarnessConfig) doc
 	for _, p := range reaSelectedTargets(cfg.Platforms) {
 		payload.Platforms[string(p)] = string(reaFileClass(dir, p))
 	}
+	if _, selected := payload.Platforms[string(reamcp.Antigravity)]; selected {
+		action := map[reaState]config.ReaMCPAction{reaOn: config.ReaMCPAdd, reaOff: config.ReaMCPRemove}[decision.State]
+		payload.pluginNotice = reaPluginNotice(reaCurrentText(), readReaPluginState(dir), action)
+	}
 	if decision.State != reaOff {
 		payload.Guidance = reaGuidancePlatforms(cfg.Platforms)
 	}
@@ -77,7 +85,8 @@ func reaDoctorChecks(payload doctorReaPayload) []reaDoctorCheck {
 		if class, selected := payload.Platforms[string(p)]; selected {
 			checks = append(checks, reaDoctorCheck{
 				id: "doctor.rea.platform." + string(p), detail: class,
-				warning: on && pass && class == string(reamcp.ClassAbsent),
+				warning: on && pass && class == string(reamcp.ClassAbsent) ||
+					p == reamcp.Antigravity && payload.pluginNotice != "",
 			})
 		}
 	}
@@ -97,7 +106,11 @@ func (r *doctorJSONReport) collectReaChecks(ctx context.Context, dir string, cfg
 		if check.warning {
 			severity, status = "warning", "warn"
 			r.status = jsonStatusWarn
-			r.warnings = append(r.warnings, jsonMessage{Code: "rea_not_registered", Message: check.id + ": " + check.detail})
+			code, message := "rea_not_registered", check.id+": "+check.detail
+			if check.id == "doctor.rea.platform."+string(reamcp.Antigravity) && payload.pluginNotice != "" {
+				code, message = "rea_target_not_strict_json", message+" ("+reamcp.TargetRelPath(reamcp.Antigravity)+" is not strict JSON)"
+			}
+			r.warnings = append(r.warnings, jsonMessage{Code: code, Message: message})
 		}
 		r.checks = append(r.checks, jsonCheck{ID: check.id, Severity: severity, Status: status, Detail: check.detail})
 	}
@@ -124,6 +137,9 @@ func checkReaText(ctx context.Context, out io.Writer, dir string, cfg *config.Ha
 		default:
 			tui.OK(out, label+": "+check.detail)
 		}
+	}
+	if payload.pluginNotice != "" {
+		tui.Info(out, payload.pluginNotice)
 	}
 	if len(payload.Guidance) > 0 {
 		tui.Info(out, text.Guidance)
