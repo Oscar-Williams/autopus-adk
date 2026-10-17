@@ -58,21 +58,22 @@ type reaPluginMCP struct {
 // cleaning the plugin tree must never delete those, so Autopus owns only the
 // managed entry, exactly as in the other REA target files.
 //
-// A file that does not decode cannot hold a managed entry, so remove leaves
-// it alone, and add refuses it rather than overwrite it. A change whose path
-// crosses a symlink or leaves the project is refused before anything is
-// written.
+// The file is read through reamcp.ReadTarget, the guarded read the CLI uses:
+// a symlink anywhere on the path, a file that is not regular, or one larger
+// than reamcp.TargetLimit is never read, and the add or remove that needed it
+// ends the run with an error naming the file. A file that does not decode
+// cannot hold a managed entry, so remove leaves it alone, and add refuses it
+// rather than overwrite it. A change whose path crosses a symlink or leaves
+// the project is refused before anything is written.
 func (a *Adapter) planReaPluginMCP(action config.ReaMCPAction) (reaPluginMCP, bool, error) {
 	if action != config.ReaMCPAdd && action != config.ReaMCPRemove {
 		return reaPluginMCP{}, false, nil
 	}
 	rel := reamcp.TargetRelPath(reamcp.Antigravity)
-	data, err := readReaPluginMCP(filepath.Join(a.root, filepath.FromSlash(rel)))
+	data, err := reamcp.ReadTarget(a.root, rel)
 	if err != nil {
-		if action == config.ReaMCPRemove {
-			return reaPluginMCP{}, false, nil
-		}
-		return reaPluginMCP{}, false, fmt.Errorf("REA MCP 쓰기 거부 %s: %w", rel, err)
+		// The read error already names the file.
+		return reaPluginMCP{}, false, fmt.Errorf("REA MCP 쓰기 거부: %w", err)
 	}
 	out, changed, err := reamcp.ApplyFile(reamcp.Antigravity, data, action)
 	switch {
@@ -88,23 +89,6 @@ func (a *Adapter) planReaPluginMCP(action config.ReaMCPAction) (reaPluginMCP, bo
 		return reaPluginMCP{}, false, fmt.Errorf("REA MCP 쓰기 거부 %s: %w", rel, err)
 	}
 	return reaPluginMCP{content: out, remove: reamcp.RemovesFile(reamcp.Antigravity, out)}, true, nil
-}
-
-// readReaPluginMCP reads the plugin MCP file; a missing file is nil data. It
-// opens only a regular file, so a FIFO or device planted there cannot stall
-// the run.
-func readReaPluginMCP(path string) ([]byte, error) {
-	info, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	if !info.Mode().IsRegular() {
-		return nil, fmt.Errorf("not a regular file")
-	}
-	return os.ReadFile(path)
 }
 
 // writeReaPluginMCP applies a planned change outside a transaction (Generate

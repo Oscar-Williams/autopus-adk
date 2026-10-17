@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,42 @@ func TestReaMCP_AntigravityRefusesSymlinkedTargetWhenReaChangesContent(t *testin
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), ".gemini/settings.json")
 	assert.Equal(t, managed, readAntigravityBytes(t, o4))
+}
+
+// The plugin file is read through reamcp.ReadTarget: an oversized file is
+// refused for add and remove alike, with an error naming the file, and its
+// bytes stay.
+func TestReaMCP_AntigravityRefusesAnOversizedPluginFile(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	big := `{"mcpServers": {"rea": ` + antigravityReaG1 + `}, "pad": "` +
+		strings.Repeat("x", reamcp.TargetLimit) + `"}`
+	path := writeAntigravityPluginMCP(t, root, big)
+	for _, action := range []config.ReaMCPAction{config.ReaMCPAdd, config.ReaMCPRemove} {
+		_, _, err := NewWithRoot(root).planReaPluginMCP(action)
+		require.Error(t, err, action)
+		assert.Contains(t, err.Error(), reamcp.TargetRelPath(reamcp.Antigravity)+": larger than 1 MiB", action)
+	}
+	_, changed, err := NewWithRoot(root).planReaPluginMCP(config.ReaMCPKeep)
+	require.NoError(t, err)
+	assert.False(t, changed, "a keep run never reads the file")
+	assert.Equal(t, big, string(readAntigravityBytes(t, path)))
+}
+
+// Every agy agent loads the REA guard: it is an always_on plugin rule, since
+// agy applies only always_on rules unconditionally and an agent's tools list
+// does not keep it from the autopus_rea server.
+func TestReaMCP_AntigravityPluginCarriesTheAlwaysOnGuardRule(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	_, err := NewWithRoot(root).Generate(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
+	require.NoError(t, err)
+	rule := string(readAntigravityBytes(t, filepath.Join(root, antigravityPluginDir, "rules", "rea-mcp-guard.md")))
+	assert.Contains(t, rule, "\ntrigger: always_on\n")
+	for _, want := range []string{
+		"Only `auto-agent-reverse-engineer` and the main session running the `/auto reverse` flow call `autopus_rea` tools.",
+		"`허용` (`allow`)", "once per call", "never choose an \"always allow\" option",
+	} {
+		assert.Contains(t, rule, want)
+	}
 }

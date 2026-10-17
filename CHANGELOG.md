@@ -16,7 +16,14 @@ All notable changes to this project will be documented in this file.
     true`를 쓴다(`enable_mcp_tools`는 `define_subagent` 도구의 인자이고 Markdown field가 아니다). agy 1.4.0에서는
     `tools:`가 플러그인 MCP를 막지 못해 모든 subagent가 `call_mcp_tool`로 세션의 MCP 서버 전체에 닿는다. 그래서 REA를
     등록한 project에서는 reverse-engineer뿐 아니라 executor·tester 같은 모든 Autopus 에이전트에 REA runtime 도구까지
-    보이고, 막는 것은 에이전트 본문과 호출마다 묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+    보인다. 그래서 플러그인에 always-on rule `rea-mcp-guard.md`(`trigger: always_on`, agy는 always_on rule만 늘 읽고
+    subagent도 읽는다)를 더해, `autopus_rea` 호출은 reverse-engineer와 `/auto reverse` 메인 세션만 하고 runtime capture는
+    `/auto reverse`의 `허용` 뒤에만 하며 권한 질문은 호출마다 답하고 "항상 허용"을 고르지 않게 한다. 마지막 방어는 호출마다
+    묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+  - 읽기 전용 역할(source에 Write·Edit가 없는 reviewer·validator·security-auditor·explorer·architect·planner·spec-writer·
+    perf-engineer·ux-validator)도 source의 Bash대로 `run_command`를 받아 테스트를 돌린다. agy Markdown 에이전트에는
+    read-only·plan field가 없고(`commandExecutionPolicy`는 명령 승인 정책이며 `request-review`·`strict` 값으로는 agy가
+    에이전트를 읽지 않았다), 쓰지 않는 것은 에이전트 본문과 agy의 명령 승인이 맡는다.
   - 같은 내용을 쓰는 `.gemini/agents/autopus/*.md`는 agy도 Gemini CLI 0.52(`.gemini/agents/*.md`만 읽는다)도 읽지 않는
     사본이다. agy가 읽는 것은 `.agents/plugins/autopus/agents/*.md`다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로

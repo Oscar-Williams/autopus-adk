@@ -3,20 +3,17 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
 
-// reaTargetLimit caps one REA target file read: a larger file is refused
-// unread, so a committed file can never make a run read without bound.
-const reaTargetLimit = 1 << 20
+// reaTargetLimit caps one REA target file read (reamcp.TargetLimit).
+const reaTargetLimit = reamcp.TargetLimit
 
 // reaRefusal is why the CLI left a REA target file alone.
 type reaRefusal int
@@ -49,50 +46,31 @@ func (e *reaTargetError) line(text reaText) string {
 
 func (e *reaTargetError) Error() string { return e.line(reaCurrentText()) }
 
-// readReaTarget reads p's target file under dir. A missing file is nil data.
-// It never follows a symlink anywhere on the path, opens only a regular file,
-// and reads at most reaTargetLimit bytes; each refusal is a *reaTargetError.
+// readReaTarget reads p's target file under dir through reamcp.ReadTarget: a
+// missing file is nil data, and a symlink anywhere on the path, a file that
+// is not regular, or one larger than reaTargetLimit comes back as a
+// *reaTargetError naming the reason.
 func readReaTarget(dir string, p reamcp.Platform) ([]byte, error) {
 	rel := reamcp.TargetRelPath(p)
-	refused := func(reason reaRefusal) error { return &reaTargetError{Rel: rel, Reason: reason} }
-	path := filepath.Join(dir, filepath.FromSlash(rel))
-	current := filepath.Clean(dir)
-	var info fs.FileInfo
-	for _, part := range strings.Split(filepath.FromSlash(rel), string(os.PathSeparator)) {
-		current = filepath.Join(current, part)
-		var err error
-		if info, err = os.Lstat(current); errors.Is(err, fs.ErrNotExist) {
-			return nil, nil
-		} else if err != nil {
-			return nil, refused(reaRefusedUnreadable)
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return nil, refused(reaRefusedSymlink)
-		}
+	data, err := reamcp.ReadTarget(dir, rel)
+	var refused *reamcp.ReadError
+	if errors.As(err, &refused) {
+		return nil, &reaTargetError{Rel: rel, Reason: reaRefusalOf(refused.Reason)}
 	}
-	if !info.Mode().IsRegular() {
-		return nil, refused(reaRefusedIrregular)
+	return data, err
+}
+
+// reaRefusalOf maps a guarded-read reason onto the CLI's refusal text.
+func reaRefusalOf(reason reamcp.ReadReason) reaRefusal {
+	switch reason {
+	case reamcp.ReadSymlink:
+		return reaRefusedSymlink
+	case reamcp.ReadIrregular:
+		return reaRefusedIrregular
+	case reamcp.ReadTooLarge:
+		return reaRefusedTooLarge
 	}
-	if info.Size() > reaTargetLimit {
-		return nil, refused(reaRefusedTooLarge)
-	}
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, refused(reaRefusedUnreadable)
-	}
-	defer file.Close()
-	// The file swapped after the Lstat is not the one inspected.
-	if opened, err := file.Stat(); err != nil || !opened.Mode().IsRegular() || !os.SameFile(info, opened) {
-		return nil, refused(reaRefusedIrregular)
-	}
-	data, err := io.ReadAll(io.LimitReader(file, reaTargetLimit+1))
-	if err != nil {
-		return nil, refused(reaRefusedUnreadable)
-	}
-	if len(data) > reaTargetLimit {
-		return nil, refused(reaRefusedTooLarge)
-	}
-	return data, nil
+	return reaRefusedUnreadable
 }
 
 // removeReaEntry removes a managed rea entry from p's target file, deleting
