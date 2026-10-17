@@ -66,6 +66,24 @@ func ApplyFile(p Platform, data []byte, a config.ReaMCPAction) ([]byte, bool, er
 	}
 }
 
+// RemovesFile reports whether out, a target file ApplyFile changed, holds
+// nothing but an empty mcpServers object, so the caller deletes the file
+// instead of writing it. Only the Antigravity plugin file qualifies: Autopus
+// creates it for the managed entry alone and the base commit has no such
+// file, so removing the entry from a file nobody else added to restores that
+// state (REQ-REA-04). A file that holds any other key or server stays.
+func RemovesFile(p Platform, out []byte) bool {
+	if p != Antigravity {
+		return false
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out, &doc); err != nil || len(doc) != 1 {
+		return false
+	}
+	servers, ok := doc["mcpServers"].(map[string]any)
+	return ok && len(servers) == 0
+}
+
 // decodeJSONTarget decodes a JSON target file and returns the document and its
 // mcpServers object (nil when the key is absent).
 func decodeJSONTarget(p Platform, data []byte) (map[string]any, map[string]any, error) {

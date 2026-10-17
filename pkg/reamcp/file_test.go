@@ -86,7 +86,12 @@ func TestClassifyFile_RejectsUnreadableJSON(t *testing.T) {
 
 	_, err = ClassifyFile(Antigravity, []byte(`{"mcpServers": "x"}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), ".gemini/settings.json")
+	assert.Contains(t, err.Error(), ".agents/plugins/autopus/mcp_config.json")
+
+	// agy accepts comments and trailing commas there; Autopus refuses the file
+	// rather than re-encode it without them.
+	_, _, err = ApplyFile(Antigravity, []byte("{\n  // mine\n  \"mcpServers\": {},\n}\n"), config.ReaMCPAdd)
+	require.Error(t, err)
 
 	_, err = ClassifyFile(Platform("omp"), nil)
 	require.Error(t, err)
@@ -108,6 +113,33 @@ func TestApplyFile_JSONEncodesLikeTheAdapterMerge(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, changed)
 	assert.Equal(t, antigravityWithoutRea, string(out))
+}
+
+// The plugin file Autopus creates for the entry alone goes when the entry
+// goes; a file with another server or key, and every other platform's file,
+// stays.
+func TestRemovesFile_OnlyTheEmptiedAntigravityPluginFile(t *testing.T) {
+	created, changed, err := ApplyFile(Antigravity, nil, config.ReaMCPAdd)
+	require.NoError(t, err)
+	require.True(t, changed)
+	emptied, changed, err := ApplyFile(Antigravity, created, config.ReaMCPRemove)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.True(t, RemovesFile(Antigravity, emptied))
+	assert.False(t, RemovesFile(Claude, emptied), "only the plugin file is Autopus-created")
+	assert.False(t, RemovesFile(Antigravity, created))
+
+	withMine := []byte(`{"mcpServers": {"mine": {"command": "mine-mcp"}, "rea": ` + jsonG1 + `}}`)
+	kept, changed, err := ApplyFile(Antigravity, withMine, config.ReaMCPRemove)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.False(t, RemovesFile(Antigravity, kept))
+	withKey := []byte(`{"note": "mine", "mcpServers": {"rea": ` + jsonG1 + `}}`)
+	kept, changed, err = ApplyFile(Antigravity, withKey, config.ReaMCPRemove)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.False(t, RemovesFile(Antigravity, kept))
+	assert.False(t, RemovesFile(Antigravity, []byte("{not json")))
 }
 
 func TestApplyFile_UnchangedFilesReturnTheirOwnBytes(t *testing.T) {

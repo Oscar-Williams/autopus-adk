@@ -61,7 +61,7 @@ func reaUpdate(t *testing.T, in io.Reader, dir string, args ...string) (string, 
 func reaSums(t *testing.T, dir string) map[string]string {
 	t.Helper()
 	sums := map[string]string{}
-	for _, rel := range []string{".mcp.json", ".codex/config.toml", ".gemini/settings.json", "autopus.yaml"} {
+	for _, rel := range []string{".mcp.json", ".codex/config.toml", ".agents/plugins/autopus/mcp_config.json", "autopus.yaml"} {
 		data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
 		if err != nil {
 			sums[rel] = "missing"
@@ -200,9 +200,12 @@ func TestUpdateRea_Flags(t *testing.T) {
 	require.NoError(t, err, out)
 	assert.Equal(t, before, reaSums(t, both))
 	assert.Equal(t, [3]int{0, 0, 0}, reaCounts(out), out)
-	for _, rel := range []string{".mcp.json", ".codex/config.toml", ".gemini/settings.json"} {
+	for _, rel := range []string{".mcp.json", ".codex/config.toml"} {
 		assert.Contains(t, out, "emit "+rel+" ", "the preview plans the rea change")
 	}
+	// The Antigravity plugin MCP file is written outside the adapter manifest,
+	// so the preview names it through the REA plan instead of a mapping.
+	assert.Contains(t, out, "create .agents/plugins/autopus/mcp_config.json (antigravity-cli) — REA would register")
 	assert.NotContains(t, out, "features.rea.enabled", "the planned entries carry the decision")
 
 	out, err = reaUpdate(t, strings.NewReader(""), both, "--plan", "--no-rea")

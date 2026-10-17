@@ -109,3 +109,24 @@
 | `pkg/config/role_model_policy_pins_test.go` | 1 | OMP agent 이름 수 17→18 |
 | `pkg/config/role_model_policy_test.go` | 1 | policy 계약 matrix에 reverse-engineer(`autopus_reverse_engineer`, deep_reasoning) 행 |
 | `pkg/worker/a2a/control_plane_test.go` | 밖 | 같은 branch의 별도 commit `33b5bb55`(A2A `redline_instructions.v1` capability), 이 SPEC 변경 아님 |
+
+## agy 1.4 수정 (2026-10-17, branch `fix/v0126-agy`, 규칙 14)
+
+기준: `git diff --name-status 8a0da3a1..fix/v0126-agy -- '*_test.go' '*.golden' 'evals/'`. 바뀐 기존 파일 14개는 모두 규칙 14이고, 새 test 파일 `pkg/content/agent_transformer_gemini_test.go`, `pkg/adapter/antigravity/antigravity_rea_mcp_boundary_test.go`(다시 쓴 REA test의 clean·symlink 절을 300줄 한도로 떼어 냄), `internal/cli/rea_plugin_mcp_test.go`는 기존 test 변경이 아니다.
+
+| 파일 | 규칙 | 이유 |
+|---|---|---|
+| `evals/harness/baseline.json` | 14 | GT-AGENT-READONLY-REVIEW의 expectation digest와 set digest만 바뀐다 |
+| `evals/harness/tasks/surface/GT-AGENT-READONLY-REVIEW.json` | 14 | Antigravity needle이 `glob`·`run_shell_command`·`replace` 대신 `find_by_name`·`run_command`·`edit_file`이다 |
+| `internal/cli/init_rea_test.go` | 14 | 등록 줄의 Antigravity 파일이 `.agents/plugins/autopus/mcp_config.json`이다 |
+| `internal/cli/rea_run_test.go` | 14 | 등록 줄의 Antigravity 파일이 같다 |
+| `internal/cli/rea_target_posix_test.go` | 14 | 거부·건너뜀 줄의 Antigravity 파일이 같다 |
+| `internal/cli/update_rea_test.go` | 14 | SHA-256 목록의 Antigravity 파일이 같고 `--plan --rea`는 그 파일의 `create` 줄을 기대한다 |
+| `internal/cli/update_rea_off_test.go` | 14 | off sweep 미리보기가 managed 항목만 담던 플러그인 파일의 `remove` 줄이다 |
+| `pkg/adapter/antigravity/antigravity_rea_mcp_test.go` | 14 | 대상이 플러그인 파일로 옮겨 다시 썼다(add·remove·사용자 서버·other_pin·user_owned·읽을 수 없는 JSON·legacy sweep·clean·symlink) |
+| `pkg/adapter/antigravity/antigravity_skill_compiler_evolution_test.go` | 14 | executor 도구 기대가 agy 이름이다 |
+| `pkg/content/agent_transformer_rea_test.go` | 14 | Antigravity reverse-engineer는 읽기 도구 셋과 `inheritMcp: true`, REA gate fixture도 같은 규칙이다 |
+| `pkg/content/context_evolution_test.go` | 14 | 도구 투영 기대가 agy 이름이고 frontmatter 구조체에 `inheritMcp`가 더해진다 |
+| `pkg/content/hooks_rea_test.go` | 14 | 사전 승인 단언이 플러그인 파일의 managed 항목을 읽는다 |
+| `pkg/reamcp/file_test.go` | 14 | 오류 문구의 Antigravity 파일이 같고, 주석 JSON 거부와 `RemovesFile` test가 더해진다 |
+| `pkg/reamcp/shape_test.go` | 14 | `TargetRelPath(Antigravity)`와 `LegacyTargetRelPath` 기대 |

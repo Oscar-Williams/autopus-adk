@@ -74,8 +74,8 @@ All notable changes to this project will be documented in this file.
   기존 앱·바이너리의 기능을 증거와 함께 분석해 다시 구현하려 해도 하네스에는 역공학 도구 등록, 분석 격리,
   디컴파일 결과와 구현 사이의 clean-room 경계가 없었다.
   - 기본 on: Node 조건을 충족하면 새 `auto init`은 프로젝트 범위 REA MCP(`npx -y rea-agents@6.5.0 mcp`)를 Claude Code
-    `.mcp.json`, Codex `.codex/config.toml`, Antigravity `.gemini/settings.json`에 등록한다. 대화형 wizard는 한 번
-    묻는다(기본 Yes). 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace
+    `.mcp.json`, Codex `.codex/config.toml`, Antigravity 워크스페이스 플러그인의 `.agents/plugins/autopus/mcp_config.json`에
+    등록한다. 대화형 wizard는 한 번 묻는다(기본 Yes). 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace
     실행은 아무것도 더하지 않고 `auto update --rea`를 알리는 hint 한 줄만 쓴다.
   - flag: `--rea`·`--no-rea`는 init과 update에서 묻지 않고 결정한다. 둘을 함께 쓰면 `--rea와 --no-rea는 함께 쓸 수
     없습니다`, update에서 `--workspace`와 섞으면 `--rea·--no-rea는 --workspace와 함께 쓸 수 없습니다. repo마다 --local로
@@ -105,12 +105,18 @@ All notable changes to this project will be documented in this file.
     저장 → tester·executor·tester로 잇는다. dispatch prompt에는 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지
     않는다. OMP에서 `reverse`는 대화형 command이고 headless managed OMP RPC backend(`/autopus-pipeline`)는 이 route를
     돌리지 않는다.
+  - Antigravity 위치: agy 1.4는 사용자 `~/.gemini/config/mcp_config.json`과 플러그인마다의 `mcp_config.json`에서만 MCP
+    서버를 읽고 프로젝트 `.gemini/settings.json`은 읽지 않아, 그곳에 쓴 항목으로는 서버가 뜨지 않았다(2026-10-17 smoke).
+    플러그인 서버는 `<plugin>_<server>`로 이름이 붙어 `autopus_rea`로 뜬다. 그 파일은 manifest가 소유하지 않아 사용자가
+    더한 서버는 add·remove·`auto platform remove`에서 값이 그대로이고, managed 항목만 담던 파일은 항목과 함께 지운다.
+    읽을 수 없는 JSON(agy가 받는 주석·끝 쉼표 포함)은 덮어쓰지 않는다: add는 그 파일을 담은 오류로 끝나고 remove는
+    그대로 둔다. v0.50.126 RC가 `.gemini/settings.json`에 남긴 managed `rea` 항목은 다음 실행이 지운다.
   - doctor: 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류, OMP·OpenCode 안내를 텍스트와 `--json`의
     `data.rea`·`doctor.rea.*` check로 보고하고 REA 서버를 띄우거나 네트워크를 쓰지 않는다. `mcp__rea` 권한 사전 승인과
     project MCP 자동 승인은 쓰지 않는다.
 - **REA reverse-engineer 도구 표면을 정적 분석으로 좁힌다** (2026-10-16, SPEC-REA-001 보안 감사 M1–M3):
-  - Claude Code·Antigravity의 reverse-engineer는 REA 서버 전체(`mcp__rea`, `mcp_rea_*`) 대신 rea-agents@6.5.0의
-    정적 분석 도구 135개만 하나씩 받는다. 대상을 실행·부착·계측·캡처하는 runtime 도구 68개와 호출자가 고른 경로에
+  - Claude Code의 reverse-engineer는 REA 서버 전체(`mcp__rea`) 대신 rea-agents@6.5.0의 정적 분석 도구 135개만 하나씩
+    받는다. Antigravity는 agy가 MCP 도구를 하나씩 주지 못해 이 제한을 표현할 수 없다(위 agy 1.4 항목). 대상을 실행·부착·계측·캡처하는 runtime 도구 68개와 호출자가 고른 경로에
     쓰는 도구 4개는 메인 세션만 부르고, runtime 도구는 운영자의 `허용` 답 뒤에만 부른다(`--auto`도 묻는다).
     분류와 근거는 `.autopus/specs/SPEC-REA-001/evidence/rea-tool-catalog-6.5.0.md`다.
   - Codex reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`를 쓴다. Codex 역할에는 도구 목록이 없고 MCP

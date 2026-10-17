@@ -144,7 +144,7 @@ func TestReaRunFinish_RegistersAndLeavesKeyAbsent(t *testing.T) {
 
 	require.NoError(t, run.finish(&out, dir, cfg))
 
-	assert.Equal(t, "  REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml, .gemini/settings.json (rea-agents@6.5.0)\n"+
+	assert.Equal(t, "  REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml, .agents/plugins/autopus/mcp_config.json (rea-agents@6.5.0)\n"+
 		"  "+reaTextKo.Guidance+"\n", out.String())
 	reloaded, err := config.Load(dir)
 	require.NoError(t, err)

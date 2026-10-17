@@ -40,7 +40,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 | Q8 | 공유 MCP 목록은 만들지 않는다. REA 모양·변환만 `pkg/reamcp` 한 곳 | 템플릿 불변으로 REQ-REA-16, 소비처 5곳(세 adapter, CLI sweep, doctor) |
 | Q9 | `.autopus/reverse/<slug>/behaviour-spec.md`, slug 규칙과 `-2` 보존, 생성 `.gitignore`로 로컬 전용 | 에이전트에 쓰기 도구가 없다. 제3자 대상 유래이고 `rootTrackedPrefixes`(`sync_verify_policy.go:26-29`)에 없다(J-14, J-24) |
 | Q10 | HB6(balanced 16, v0.50.116–v0.50.125, runtimeStandard), HU3(ultra 16, v0.50.115–v0.50.125) | `git show v0.50.115/116/125` 비교 |
-| Q11 | OMP·OpenCode 에이전트에 MCP 이름 없음, 안내는 세 도구에서 분석하라고 말한다. Antigravity는 `mcp_rea_*`(M2 뒤 `mcp_rea_<정적 도구>`) | OMP 이름 미확인(R11), J-12, Gemini CLI 문서 |
+| Q11 | OMP·OpenCode 에이전트에 MCP 이름 없음, 안내는 세 도구에서 분석하라고 말한다. Antigravity는 tools에 MCP 이름을 쓰지 않고 `inheritMcp: true`(2026-10-17, `## agy 1.4 Smoke`. 이전 결정 `mcp_rea_<정적 도구>`는 agy가 모르는 도구로 거부했다) | OMP 이름 미확인(R11), J-12, agy 1.4.0 probe |
 | 정리 | 정리 경로는 `auto platform remove`. off는 선택되지 않은 파일도 sweep | `clean` 명령 없음(J-02), J-18 |
 | 보존 | JSON은 값 보존 + 기존 정규화, Codex는 bytes | 기존 merge가 다시 marshal한다(J-03) |
 | handoff | tester(Test Scaffold) → executor → tester(Testing), `SPEC: N/A`·`Task: reverse/<slug>` | executor·tester 입력 계약(J-07) |
@@ -112,8 +112,15 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 ## Completion Debt
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 30초 시작, Claude `/mcp`의 rea connected와 도구 목록, Antigravity MCP 목록 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
-| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), Antigravity `mcp_rea_<정적 도구>` 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
+| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 30초 시작, Claude `/mcp`의 rea connected와 도구 목록, agy `/mcp`의 `autopus_rea` connected와 도구 수 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
+| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), agy 에이전트 시작(`--agent` 3개 `OK`)과 reverse-engineer의 `call_mcp_tool` 정적 도구 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
+
+## agy 1.4 Smoke
+2026-10-17 실제 터미널 smoke와 probe(Antigravity CLI 1.4.0, `strings`로 본 바이너리 struct tag·내장 changelog·도구 설명, scratch 프로젝트의 local echo MCP 서버).
+- MCP 위치: agy는 사용자 `~/.gemini/config/mcp_config.json`과 `<plugin>/mcp_config.json`에서만 MCP 서버를 읽는다. 프로젝트 `.gemini/settings.json`의 `mcpServers`로는 `/mcp`에 서버가 없었고, `.agents/plugins/autopus/mcp_config.json`의 `{"mcpServers": {...}}`는 `autopus_<server>`로 connected였다(1.2.2: 플러그인 서버는 `<plugin>_<server>`). `agy mcp list`는 사용자 범위만 보인다.
+- 에이전트 위치: agy는 `.agents/plugins/<plugin>/agents/`와 `.agents/agents/`를 읽고 `.gemini/agents/`는 읽지 않는다. Gemini CLI 0.52는 `.gemini/agents/*.md`만(하위 디렉터리 없이) 읽어, `.gemini/agents/autopus/`는 어느 쪽도 읽지 않는다. 같은 이름의 워크스페이스 플러그인은 사용자 범위의 오래된 `autopus` 플러그인을 가린다.
+- 도구 이름: `tools:`에 registry 밖 이름이 하나라도 있으면 `failed to construct executor: ... unknown component: tool "<name>" not found in registry`로 모델 호출 전에 끝난다(종료 3). 해석됨: `read_file`, `view_file`, `write_file`, `write_to_file`, `edit_file`, `replace_file_content`, `multi_replace_file_content`, `grep_search`, `find_by_name`, `list_dir`, `run_command`, `search_web`, `read_url_content`. 거부: `glob`, `replace`, `run_shell_command`, `codebase_search`, `command_status`. 고른 대응: Edit → `edit_file`(1.2.7부터의 core 편집 도구, Target·Replacement가 한 곳에 정확히 맞아야 하고 여러 곳은 AllowMultiple), Glob → `find_by_name`(fd, glob 패턴), Bash → `run_command`.
+- MCP와 subagent: Markdown 에이전트 frontmatter의 MCP field는 `inheritMcp`(바이너리 tag `yaml:"inheritMcp"`, 1.1.6 changelog)이고 `enable_mcp_tools`는 `define_subagent` 도구의 JSON 인자다. probe에서 `tools: [read_file]`인 플러그인 subagent는 key가 없을 때, `inheritMcp`·`enable_mcp_tools`가 true일 때, false일 때 모두 `call_mcp_tool`로 echo 서버를 불렀다(서버 기록의 `parent_conversation_id`). print mode에서는 그 호출을 운영자 없이 `soft-denying`했다. 그래서 tools 목록은 MCP를 막지 못하고 호출별 권한만 남는다.
 
 ## Evolution Ideas
 These are optional improvements and do not block sync completion.
@@ -147,7 +154,7 @@ These are optional improvements and do not block sync completion.
 ## Open Risks
 - R1 opt-out과 gate에 막힌 opt-in 프로젝트는 v0.50.113–v0.50.125가 읽지 못한다(REQ-REA-17 줄). v0.50.125는 17개 preset을 customized로 본다(J-28, REQ-REA-19 문서). R2 login shell PATH와 Codex 프로세스 PATH가 다를 수 있다. doctor가 버전을 보이고 gate는 지우지 않는다. R3 runtime capture는 사용자 권한으로 대상을 실행한다. 메인 세션 동의 뒤에만 부른다(REQ-REA-21).
 - R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. 보안 감사 M1(2026-10-16)로 reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`(Codex 0.162.0 역할 파일 field 표에서 확인)를 더해 shell 쓰기는 막지만, MCP 호출은 sandbox 밖이라 runtime REA 도구 금지는 여전히 instruction과 메인 세션 동의 질문의 권고 수준이다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
-- R7 명세 문자열은 대상 유래 비신뢰 데이터다(Trust Model, 확인 gate). R8 OpenCode reverse-engineer는 `task` permission이 없어 다른 에이전트를 보내지 못하고(보안 M1) REA 도구가 없어 증거를 만들지 못한다. R9 runtime capture 도구는 rea-agents@6.5.0 `toolEffects.js`의 효과 감사로 이름이 정해졌다(정적 135, runtime 68, 호출자 경로 쓰기 4, `evidence/rea-tool-catalog-6.5.0.md`). subagent는 정적 도구만 이름으로 받는다(보안 M2).
+- R7 명세 문자열은 대상 유래 비신뢰 데이터다(Trust Model, 확인 gate). R8 OpenCode reverse-engineer는 `task` permission이 없어 다른 에이전트를 보내지 못하고(보안 M1) REA 도구가 없어 증거를 만들지 못한다. R9 runtime capture 도구는 rea-agents@6.5.0 `toolEffects.js`의 효과 감사로 이름이 정해졌다(정적 135, runtime 68, 호출자 경로 쓰기 4, `evidence/rea-tool-catalog-6.5.0.md`). Claude Code subagent는 정적 도구만 이름으로 받는다(보안 M2). R10 Antigravity reverse-engineer는 agy가 Markdown 에이전트에 MCP 도구를 하나씩 주지 못해 REA 도구가 모두 보인다(`## agy 1.4 Smoke`). runtime 도구 금지는 R4의 Codex처럼 본문과 메인 세션 동의, agy가 호출마다 묻는 MCP 권한의 권고 수준이다.
 
 ## Self-Verify Summary
 - Q-CORR-01 | status: PASS | attempt: 2 | files: spec.md, research.md, acceptance.md | reason: `auto clean`을 `auto platform remove`로 바꾸고 clone·wizard seam·merge 재marshal·executor 입력을 코드로 다시 확인했다
