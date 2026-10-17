@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-17 (v0.50.126 smoke: update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -182,6 +182,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 
 - M은 이번 실행의 platform 쓰기가 끝난 뒤 선택된 대상 파일을 다시 읽어 정하고 autopus.yaml은 그 뒤에 쓴다. preview는 계획된 mapping으로 정한다. manifest에 있던 파일을 사용자가 지워 `ActionSkip`(`pkg/adapter/manifest.go:137`)이 되면 `--rea`도 그 파일을 다시 만들지 않고 그 파일은 M에 들지 않는다.
 - key를 지우는 경로는 없다. 재-init은 기존 key를 옮긴다(REQ-REA-02). 사용자가 지운 key는 위 판정을 다시 탄다.
+- key 쓰기 방식: update는 autopus.yaml을 다시 encode하지 않는다(`[NEW] saveReaKey`, `internal/cli/rea_save.go`). `pruneRetiredConfig` 뒤 bytes에서 `features.rea.enabled` 값 token만 바꾸고(tag와 줄 끝 주석은 그대로), 없으면 `features`·`rea`·`enabled` 줄을 있는 가장 깊은 mapping의 끝에 그 파일의 들여쓰기 단계로 더한다(`features`도 없으면 root 끝). 다른 byte는 그대로다. 거부 규칙은 SPEC-REVMODEL-001 리뷰 줄 쓰기와 같다: 길 위의 mapping이 flow이거나 alias가 가리키거나 merge key를 담거나, key·값에 anchor·alias가 있거나, YAML 전용 줄바꿈이 있거나, 결과가 그 key만 바뀐 같은 설정으로 읽히지 않으면 아무것도 쓰지 않는다. 설정 전체 저장으로 대신하지 않고 그 run은 `features.rea 저장 실패: refuse to edit features.rea.enabled in autopus.yaml …` 오류로 끝난다(옛 바이너리 줄 없음). init은 `DefaultFullConfig`로 파일 전체를 새로 쓰는 실행이라 key도 설정 전체 저장(`config.Save`)으로 쓴다(smoke 2026-10-17: RC update의 전체 저장이 key 순서를 바꾸고 `binary: ""`·`args: []`를 더했다).
 - adapter 입력은 `[NEW] config.RuntimeConf.ReaMCP`(`[NEW] config.ReaMCPAction`, yaml `-`, `pkg/config/runtime.go:13-15` 옆)다. zero 값 `keep`, `add`, `remove`. on + pass → add, on + gate 실패 → keep, off → remove, undecided → keep, `auto platform remove`의 Clean → remove. CLI를 거치지 않는 생성(`DefaultFullConfig` test, eval harness)과 결정을 풀지 않는 `auto platform add`는 keep이라 넣거나 지우지 않는다(다음 update가 더한다).
 - action 전달: `cloneHarnessConfig`(`internal/cli/update_preview.go:20-35`)는 YAML round trip 뒤 `Runtime.ReaMCP`를 복사한다(다른 `Runtime` 필드는 지금처럼). update는 preview 분기(`update.go:112`) 전에 flag와 기존 결정으로 action을 정하고 질문 뒤 다시 정한다. 그래서 preview, 기존 플랫폼(`update.go:226`), 새로 감지된 플랫폼(`platform_update.go:64`)이 같은 action을 받는다.
 - off sweep: off는 선택되지 않은 대상 플랫폼 파일의 managed 항목도 지운다. adapter가 돌지 않는 파일은 CLI가 `[NEW] pkg/reamcp`의 같은 변환을 `adapter.SafeWorkspacePath`·`adapter.WriteFileIfChanged`(`pkg/adapter/writeutil.go:11`)로 적용한다.

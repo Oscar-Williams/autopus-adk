@@ -30,7 +30,9 @@ func prepareInitRea(dir string, cfg *config.HarnessConfig, on, off bool) *initRe
 	if preset == reaUndecided {
 		preset = resolveReaDecision(dir, cfg).State
 	}
-	return &initRea{reaRun: newReaRun(dir, cfg, held), preset: preset}
+	run := newReaRun(dir, cfg, held)
+	run.wholeSave = true // init writes autopus.yaml whole from cfg
+	return &initRea{reaRun: run, preset: preset}
 }
 
 // wizardPreset is InitWizardOpts.Rea: the preset decision, or nil so the
