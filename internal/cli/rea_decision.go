@@ -189,12 +189,51 @@ func reaSweepPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem {
 		if err != nil || data == nil {
 			continue
 		}
-		if _, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove); err == nil && changed {
-			items = append(items, previewItem{Path: reamcp.TargetRelPath(p), Kind: "update", Scope: string(p),
+		if out, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove); err == nil && changed {
+			items = append(items, previewItem{Path: reamcp.TargetRelPath(p), Kind: reaPreviewKind(p, data, out), Scope: string(p),
 				Reason: "REA off would remove the managed rea entry of this unselected platform"})
 		}
 	}
 	return items
+}
+
+// reaPluginPreviewItems lists the selected Antigravity plugin file when the
+// run's REA action changes it. The adapter writes that file outside its
+// manifest, because the user may add servers to it, so no planned mapping of
+// a preview shows it.
+func reaPluginPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem {
+	p := reamcp.Antigravity
+	if cfg == nil || !containsPlatform(cfg.Platforms, string(p)) {
+		return nil
+	}
+	action := cfg.Runtime.ReaMCP
+	if action != config.ReaMCPAdd && action != config.ReaMCPRemove {
+		return nil
+	}
+	data, err := readReaTarget(dir, p)
+	if err != nil {
+		return nil
+	}
+	out, changed, err := reamcp.ApplyFile(p, data, action)
+	if err != nil || !changed {
+		return nil
+	}
+	reason := "REA would register its managed rea entry in this plugin MCP file"
+	if action == config.ReaMCPRemove {
+		reason = "REA off would remove the managed rea entry from this plugin MCP file"
+	}
+	return []previewItem{{Path: reamcp.TargetRelPath(p), Kind: reaPreviewKind(p, data, out), Scope: string(p), Reason: reason}}
+}
+
+// reaPreviewKind names the change a REA write makes to a target file.
+func reaPreviewKind(p reamcp.Platform, before, after []byte) string {
+	switch {
+	case reamcp.RemovesFile(p, after):
+		return "remove"
+	case before == nil:
+		return "create"
+	}
+	return "update"
 }
 
 // sweepReaUnselected removes the managed rea entry from the target file of

@@ -120,13 +120,15 @@ func TestAntigravityAgents_ProjectNativeToolsWithoutChangingBodyOrSkills(t *test
 	mirrorPath := filepath.Join(root, ".agents", "plugins", "autopus", "agents", "executor.md")
 	native := readAntigravityAgentContract(t, nativePath)
 	mirror := readAntigravityAgentContract(t, mirrorPath)
+	// agy 1.4 resolves these names; Gemini CLI's replace, glob, and
+	// run_shell_command keep it from constructing the agent.
 	wantTools := []string{
 		"read_file",
 		"write_file",
-		"replace",
+		"edit_file",
 		"grep_search",
-		"glob",
-		"run_shell_command",
+		"find_by_name",
+		"run_command",
 	}
 
 	assert.Equal(t, wantTools, native.Frontmatter.Tools)

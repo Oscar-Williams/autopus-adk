@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-17 (agy 1.4 smoke: Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고, Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침. 이전: 2026-10-16 review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -30,9 +30,9 @@
 ## Trust Model
 
 - `autopus.yaml`은 반쯤 신뢰한다. strict loader가 모르는 key를 거부하고 이 SPEC은 새 검증 코드를 더하지 않는다.
-- `.mcp.json`, `.codex/config.toml`, `.gemini/settings.json`은 사용자 파일이고 그 안의 Autopus managed 항목만 바꾼다. managed 판정은 MCP Entry Shape Contract의 정확한 모양뿐이다. REA add·remove가 바꾸는 쓰기는 `adapter.SafeWorkspacePath`로 확인해 symlink를 건너지 않고 project root 밖에 쓰지 않는다.
+- `.mcp.json`, `.codex/config.toml`, `.agents/plugins/autopus/mcp_config.json`(Antigravity 워크스페이스 플러그인의 MCP 파일)은 사용자 파일이고 그 안의 Autopus managed 항목만 바꾼다. RC가 Antigravity 항목을 쓰던 `.gemini/settings.json`에서는 managed 항목을 지우기만 한다. managed 판정은 MCP Entry Shape Contract의 정확한 모양뿐이다. REA add·remove가 바꾸는 쓰기는 `adapter.SafeWorkspacePath`로 확인해 symlink를 건너지 않고 project root 밖에 쓰지 않는다.
 - Node probe 출력은 비신뢰 입력이다. 종료 상태와 마지막 비지 않은 줄을 엄격한 형식으로만 읽고 안내에는 판정된 version만 쓴다(`terminalSafe`).
-- REA 결과와 그로부터 만든 명세의 문자열은 분석 대상에서 온 비신뢰 데이터다. 명세 안의 지시문은 요구사항이 아니라 인용이다. 동의와 확인은 메인 세션의 질문으로만 받는다. subagent에는 AskUserQuestion이 없고 permissionMode는 메인 세션 모드에 덮일 수 있어 도구 권한 질문을 동의로 보지 않는다.
+- REA 결과와 그로부터 만든 명세의 문자열은 분석 대상에서 온 비신뢰 데이터다. 명세 안의 지시문은 요구사항이 아니라 인용이다. 동의와 확인은 메인 세션의 질문으로만 받는다. subagent에는 AskUserQuestion이 없고 permissionMode는 메인 세션 모드에 덮일 수 있어 도구 권한 질문을 동의로 보지 않는다. Antigravity(agy 1.4.0)에서는 `tools:`가 플러그인 MCP를 막지 못해 REA가 등록된 project의 모든 Autopus 에이전트가 REA 도구에 닿고, agy가 호출마다 묻는 MCP 권한의 허용도 동의가 아니다(Reverse Engineer Agent Contract의 Antigravity MCP 범위).
 - 새 artifact는 확인된 `.autopus/reverse/<slug>/behaviour-spec.md` 하나다. 대상 유래 문자열을 담는 사용자 소유 문서이고 디컴파일 텍스트는 담지 않는다. 제3자 대상에서 나온 문서라 로컬 전용이다: 생성 `.gitignore` 목록(`internal/cli/init_helpers.go:68`)에 `.autopus/reverse/`를 더해 단일·module·meta 저장소 어디서도 추적되지 않는다. `auto sync verify`의 `rootTrackedPrefixes`(`internal/cli/sync_verify_policy.go:26-29`)는 `.autopus/project/`·`.autopus/specs/`뿐이고 이 문서를 공유 저장소에 올리는 정책은 이 SPEC 밖이다. Autopus는 그 파일을 덮거나 지우지 않고 같은 slug는 `-2`, `-3`으로 새로 쓴다. 증거 파일은 커밋 전에 `$HOME`, scratch 경로, 사용자 이름을 placeholder로 바꾼다.
 
 ## Requirements
@@ -54,14 +54,14 @@ WHEN `auto init` runs, THEN THE SYSTEM SHALL fail before any write when both `--
 ### REQ-REA-03 managed 항목 쓰기
 Priority: Must · EARS: StateDriven
 
-WHERE the REA decision is on and the Node gate passes, THEN THE SYSTEM SHALL write exactly one entry of the MCP Entry Shape Contract into `.mcp.json`, `.codex/config.toml`, and `.gemini/settings.json` of the selected platforms through each adapter's merge path, replace a managed entry with the current shape, keep `other_pin` and `user_owned` entries value-identical with Codex sections byte-identical, change no byte beyond the base commit's merge normalization, and refuse a write whose path crosses a symlink or leaves the project root.
+WHERE the REA decision is on and the Node gate passes, THEN THE SYSTEM SHALL write exactly one entry of the MCP Entry Shape Contract into `.mcp.json`, `.codex/config.toml`, and `.agents/plugins/autopus/mcp_config.json` of the selected platforms through each adapter's merge path or, for the Antigravity plugin file, the adapter's REA write outside its manifest, replace a managed entry with the current shape, keep `other_pin` and `user_owned` entries value-identical with Codex sections byte-identical, change no byte beyond the base commit's merge normalization, and refuse a write whose path crosses a symlink or leaves the project root.
 
 ### REQ-REA-04 제거
 Priority: Must · EARS: EventDriven
 
-WHEN the REA decision becomes off or `auto platform remove <platform>` cleans a REA target platform, THEN THE SYSTEM SHALL remove the managed `rea` entry from all three files whether or not their platform is selected, or from that platform's file respectively, including the Codex `[mcp_servers.rea]` header with the blank line Autopus put before it and the Antigravity `mcpServers.rea` key, so that removing an entry this SPEC added restores the bytes the base commit's merge produces, and SHALL keep `other_pin` and `user_owned` entries value-identical.
+WHEN the REA decision becomes off or `auto platform remove <platform>` cleans a REA target platform, THEN THE SYSTEM SHALL remove the managed `rea` entry from all three files whether or not their platform is selected, or from that platform's file respectively, including the Codex `[mcp_servers.rea]` header with the blank line Autopus put before it and the Antigravity `mcpServers.rea` key, deleting the Antigravity plugin file when the managed entry was all it held, so that removing an entry this SPEC added restores the bytes the base commit's merge produces, and SHALL keep `other_pin` and `user_owned` entries value-identical.
 
-- 공개 정리 경로는 `auto platform remove <platform>`이고 `cleanPlatformThenSave`가 adapter Clean을 부른다(`internal/cli/platform.go:142-195`). 지금 Antigravity merge는 key를 지우지 못하고(`antigravity_settings.go:187-198`) clean은 현재 렌더와 같은 서버만 지운다(`antigravity_lifecycle_clean.go:92-101`). Codex merge는 render에 없는 managed key를 지우지만 header를 남긴다(`codex_config_structural.go:48-127`).
+- 공개 정리 경로는 `auto platform remove <platform>`이고 `cleanPlatformThenSave`가 adapter Clean을 부른다(`internal/cli/platform.go:142-195`). Antigravity 플러그인 파일은 manifest mapping이 아니라 Clean의 prune이 지우지 않고 REA 제거만 managed 항목을 뺀다. Codex merge는 render에 없는 managed key를 지우지만 header를 남긴다(`codex_config_structural.go:48-127`).
 
 ### REQ-REA-05 Node gate
 Priority: Must · EARS: Unwanted
@@ -95,7 +95,7 @@ WHERE the project includes OMP or OpenCode and the REA decision is not off, THEN
 ### REQ-REA-10 reverse-engineer 에이전트
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL ship `content/agents/reverse-engineer.md` by the Reverse Engineer Agent Contract, so that every platform generates it whatever the REA decision, its Claude Code and Antigravity tools are the read tools and REA's static analysis tools granted one by one (never the whole REA server), no platform's file grants Write, Edit, Bash, a runtime-capture tool, or a REA tool that writes a caller-chosen path, it returns a Runtime Capture Request naming the runtime tool and its arguments instead of calling one, and its body demands a behaviour specification with item IDs, evidence_id references, and unknowns, never decompiled pseudocode or assembly, ending with the platform's unavailable sentence when REA tools are missing.
+THE SYSTEM SHALL ship `content/agents/reverse-engineer.md` by the Reverse Engineer Agent Contract, so that every platform generates it whatever the REA decision, its Claude Code tools are the read tools and REA's static analysis tools granted one by one (never the whole REA server), its Antigravity tools are the read tools with `inheritMcp: true` because an Antigravity CLI Markdown agent takes no per-tool MCP grant, no platform's file grants Write, Edit, Bash, a runtime-capture tool, or a REA tool that writes a caller-chosen path, it returns a Runtime Capture Request naming the runtime tool and its arguments instead of calling one, and its body demands a behaviour specification with item IDs, evidence_id references, and unknowns, never decompiled pseudocode or assembly, ending with the platform's unavailable sentence when REA tools are missing.
 
 ### REQ-REA-11 17번째 에이전트 파급
 Priority: Must · EARS: Ubiquitous
@@ -129,7 +129,7 @@ THE SYSTEM SHALL NOT add any `mcp__rea` entry to `permissions.allow` and SHALL N
 ### REQ-REA-16 꺼져 있으면 bytes 그대로
 Priority: Must · EARS: Ubiquitous
 
-WHILE the REA decision is undecided or off and no managed `rea` entry exists, THE SYSTEM SHALL generate `.mcp.json`, `.codex/config.toml`, and `.gemini/settings.json` byte-identical to the output of the base commit `4d73aa91` for the same configuration.
+WHILE the REA decision is undecided or off and no managed `rea` entry exists, THE SYSTEM SHALL generate `.mcp.json`, `.codex/config.toml`, and `.gemini/settings.json` byte-identical to the output of the base commit `4d73aa91` for the same configuration and create no `.agents/plugins/autopus/mcp_config.json`.
 
 ### REQ-REA-17 옛 바이너리 줄
 Priority: Must · EARS: EventDriven
@@ -192,7 +192,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | 플랫폼 | 자리 | managed 모양(pin 6.5.0) |
 |---|---|---|
 | Claude Code | `.mcp.json` `mcpServers.rea` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
-| Antigravity | `.gemini/settings.json` `mcpServers.rea` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
+| Antigravity | `.agents/plugins/autopus/mcp_config.json` `mcpServers.rea`(agy가 `autopus_rea`로 띄운다) | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
 | Codex | `.codex/config.toml` 끝 | 빈 줄 하나, `[mcp_servers.rea]`, `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 30` |
 
 | 분류 | 조건 | add | remove | doctor |
@@ -203,11 +203,11 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 | user_owned | 그 밖(다른 command·args, 더한 key·`env`, 다른 `$comment`, Claude 두 자리 pin 불일치, Codex 주석 줄, 빠진 key, `[mcp_servers.rea.*]` 하위 table) | 손대지 않는다 | 손대지 않는다 | `user_owned` |
 
 - 실행 형식은 그 파일의 기존 서버와 같다(Claude·Antigravity `/bin/bash -l -c "exec npx …"`, Codex `npx`). Windows에서는 `/bin/bash`가 없어 Claude·Antigravity 서버가 시작되지 않는다. 기존 서버와 같은 한계이고 REQ-REA-19 문서가 알린다.
-- 보존: JSON(Claude·Antigravity)은 기존 merge가 파일을 decode한 뒤 `json.MarshalIndent`로 다시 쓴다(`claude_files.go:25-87`, `antigravity_settings.go:18-60`). 그래서 사용자 항목은 값(deep-equal)으로 보존되고 서식은 기준 commit의 merge가 이미 모든 update에서 정규화하는 대로다. 이 SPEC은 그 정규화 밖의 byte를 바꾸지 않는다. Codex는 줄 단위 merge라 rea 서버 table 밖의 줄과 user_owned table은 bytes가 같다.
+- 보존: JSON(Claude·Antigravity)은 파일을 decode한 뒤 `json.MarshalIndent`로 다시 쓴다(Claude merge `claude_files.go:25-87`, Antigravity 플러그인 파일은 `reamcp.ApplyFile`). 그래서 사용자 항목은 값(deep-equal)으로 보존되고 서식은 기준 commit의 merge가 이미 모든 update에서 정규화하는 대로다. 이 SPEC은 그 정규화 밖의 byte를 바꾸지 않는다. Codex는 줄 단위 merge라 rea 서버 table 밖의 줄과 user_owned table은 bytes가 같다.
 - Claude: managed 삭제 loop(`claude_files.go:60-68`)는 `rea`를 건너뛰고 rea는 action으로만 바뀐다. clean(`claude_clean.go:176-207`)은 remove와 같은 함수를 부른다.
 - Codex: `codexManagedConfigKeys`(key 단위, `codex_config_structural.go:10-27`)에 넣지 않는다. 넣으면 사용자 `[mcp_servers.rea]`의 `command`·`args`를 덮는다. rea 서버 table은 `[mcp_servers.rea]`와 `[mcp_servers.rea.*]` 전부이고 줄 읽기는 기존 `codexTOMLScanState`를 써서 multiline 문자열 안의 `[`를 header로 보지 않는다. remove는 managed table과 그 앞 빈 줄 하나를 지운다. clean(`codex_clean_merge.go:180-213`)은 generic clean 전에 같은 제거를 한다.
-- Antigravity: `mergeSettingsMaps` 뒤에 rea를 적용해 key를 지울 수 있다. clean은 현재 렌더와 무관하게 managed 모양이면 지운다.
-- 쓰기 경계: REA가 내용을 바꾸는 쓰기는 `adapter.SafeWorkspacePath`(`pkg/adapter/transaction_helpers.go:278`, symlink를 건너는 경로를 거부)로 확인한다. 거부되면 그 플랫폼 쓰기는 경로를 담은 오류로 끝나고 밖 파일은 그대로다. Antigravity Generate(`antigravity.go:130-137`)와 clean(`antigravity_lifecycle_clean.go:69-110`)은 지금 `os.WriteFile`을 바로 쓰므로 REA가 내용을 바꾸는 실행에서만 이 확인을 더한다(keep 실행의 기존 동작은 그대로).
+- Antigravity: agy 1.4는 사용자 `~/.gemini/config/mcp_config.json`과 플러그인마다의 `<plugin>/mcp_config.json`에서만 MCP 서버를 읽고 프로젝트 `.gemini/settings.json`은 읽지 않는다. 플러그인 서버는 `<plugin>_<server>`로 이름이 붙는다(2026-10-17 smoke, `research.md` `## agy 1.4 Smoke`). 그래서 항목은 워크스페이스 플러그인의 `mcp_config.json`에 둔다. 이 파일은 manifest mapping이 아니다(사용자가 서버를 더할 수 있고 prune·Clean이 그 서버를 지우면 안 된다). add는 없으면 `{"mcpServers": {"rea": …}}`로 만들고, remove는 managed 항목만 담던 파일을 지운다(`reamcp.RemovesFile`, 기준 commit에는 그 파일이 없다). decode되지 않는 파일(agy가 받는 주석·끝 쉼표 포함)은 덮어쓰지 않는다: add는 그 파일을 담은 오류로 끝나고 remove·keep은 그대로 둔다. update에서는 그 쓰기를 platform transaction에 넣어 함께 commit·rollback한다. manifest에 없으니 사용자가 지운 플러그인 파일은 `ActionSkip`이 아니고 다음 add가 다시 만든다(끄는 길은 `--no-rea`). `.gemini/settings.json`(`reamcp.LegacyTargetRelPath`)에 RC가 남긴 managed 항목은 action과 무관하게 모든 실행이 지우고 clean도 지운다. other_pin·user_owned는 두 파일 모두 그대로다.
+- 쓰기 경계: REA가 내용을 바꾸는 쓰기는 `adapter.SafeWorkspacePath`(`pkg/adapter/transaction_helpers.go:278`, symlink를 건너는 경로를 거부)로 확인한다. 거부되면 그 플랫폼 쓰기는 경로를 담은 오류로 끝나고 밖 파일은 그대로다. Antigravity Generate는 아무것도 쓰기 전에 플러그인 파일의 REA 변경을 확인하고, `.gemini/settings.json`을 `os.WriteFile`로 쓰는 Generate·clean은 legacy 항목을 지우는 실행에서만 이 확인을 더한다(keep 실행의 기존 동작은 그대로).
 - `tool_timeout_sec`는 쓰지 않는다(Codex 기본 60초). probe A2가 필요를 보이면 scope expansion 규칙으로 더한다.
 
 ### Node Gate Contract
@@ -251,7 +251,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 |---|---|
 | source frontmatter | `name: reverse-engineer`, `model: opus`, `effort: high`, `tools: Read, Grep, Glob, ` 뒤에 `reamcp.StaticAnalysisTools()`의 135개를 `mcp__rea__<tool>`로 하나씩(서버 전체 `mcp__rea` 없음), `permissionMode: default`, `maxTurns: 120`, skills 없음 |
 | Claude `.claude/agents/autopus/reverse-engineer.md` | source와 같은 `tools` 줄, `permissionMode: default`. balanced 표준 배치면 `model: claude-opus-5-5`, `effort: high`, ultra면 `model: opus`, `effort: max` |
-| Antigravity `.gemini/agents/autopus/reverse-engineer.md` | tools `read_file`, `grep_search`, `glob`, 그 뒤 정적 도구마다 `mcp_rea_<tool>`(source 순서). `mcp_rea_*` wildcard 없음 |
+| Antigravity `.agents/plugins/autopus/agents/reverse-engineer.md`(agy가 읽는 사본, `.gemini/agents/autopus/`는 같은 내용) | tools `read_file`, `grep_search`, `find_by_name`와 `inheritMcp: true`. `inheritMcp`는 agy Markdown 에이전트 field다(바이너리 struct tag `yaml:"inheritMcp,omitempty"`, agy 1.1.6 changelog의 Markdown agent field 목록 `mainAgent`·`subagent`·`hidden`·`inheritMcp`·`commandExecutionPolicy`). `enable_mcp_tools`는 `define_subagent` 도구의 JSON 인자(`json:"enable_mcp_tools,omitempty"`)라 쓰지 않는다. `mcp_`로 시작하는 tools 값 없음. agy 1.4는 모르는 도구 이름(`mcp_rea_<tool>`, Gemini CLI의 `glob`·`replace`·`run_shell_command`)이 하나라도 있으면 에이전트를 만들지 못하고, Markdown 에이전트에는 MCP 도구를 하나씩 주는 칸이 없으며 subagent는 `call_mcp_tool`로 세션의 MCP 서버 전체에 닿는다(2026-10-17 probe). 그래서 M2의 도구별 제한은 Antigravity에서 표현할 수 없다: 에이전트에 REA runtime 도구도 보이고, 제한은 본문의 금지와 호출마다 묻는 agy MCP 권한이다(권고 수준, Codex와 같은 잔여 위험 R4) |
 | Codex `.codex/agents/reverse-engineer.toml` | balanced `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`, `sandbox_mode = "read-only"`(이 역할만, Codex 0.162.0 역할 파일이 받는 key). Autopus Codex 에이전트 형식에는 도구 칸이 없어(`pkg/content/agent_transformer.go:113`) 세션 도구를 상속하고 MCP 호출은 sandbox 밖이다. runtime 도구 금지는 developer_instructions와 메인 세션 동의 질문이 맡는다(권고 수준 잔여 위험, `research.md` Open Risks R4) |
 | OMP `.omp/agents/reverse-engineer.md` | `tools` = `glob`, `grep`, `read`(정렬), `mcp_`로 시작하는 값 없음. override가 없으면 `thinkingLevel: high` |
 | OpenCode `.opencode/agents/reverse-engineer.md` | `"*": deny` 아래 allow는 `glob`, `grep`, `question`, `read`, `skill`뿐이고 `task`(다른 에이전트 dispatch)와 `mcp__` key가 없다 |
@@ -261,7 +261,8 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - 실행 모드: subagent는 fork·background로 돌 수 있고 Claude가 foreground를 고를 수 없을 수 있다(review round 1의 문서 근거). 이 계약은 실행 모드에 기대지 않는다. 에이전트는 사용자와 대화하지 않고 동의·확인은 메인 세션이 받는다. background에서도 MCP 도구와 Read·Grep·Glob은 남는다.
 - `permissionMode: default`는 메인 세션이 `acceptEdits`·`auto`·`bypassPermissions`면 덮일 수 있다. 그래서 도구 권한 질문을 runtime capture 동의로 보지 않는다(REQ-REA-21).
 - Claude Code 문서(2026-10-15): `tools`는 `mcp__<server>`와 `mcp__<server>__*`를 받고, 해석되는 항목이 하나라도 있으면 실행된다. REA가 등록되지 않아도 Read·Grep·Glob이 해석되어 에이전트가 미등록 문장을 낸다.
-- 보안 감사 M2(2026-10-16, lead 결정): subagent는 runtime capture 도구를 갖지 않는다. 도구 분류는 `evidence/rea-tool-catalog-6.5.0.md`(rea-agents@6.5.0 `dist/contracts/toolEffects.js`의 207개 effect audit을 실행 없이 읽은 결과: 정적 135, runtime 68, 호출자 경로 쓰기 4)이고 코드의 원천은 `pkg/reamcp/tools.go`다. pin을 바꾸면 이 분류를 다시 한다.
+- 보안 감사 M2(2026-10-16, lead 결정): subagent는 runtime capture 도구를 갖지 않는다(Claude Code. Codex와 Antigravity는 도구별 목록을 표현할 수 없어 본문과 동의 질문이 맡는다). 도구 분류는 `evidence/rea-tool-catalog-6.5.0.md`(rea-agents@6.5.0 `dist/contracts/toolEffects.js`의 207개 effect audit을 실행 없이 읽은 결과: 정적 135, runtime 68, 호출자 경로 쓰기 4)이고 코드의 원천은 `pkg/reamcp/tools.go`다. pin을 바꾸면 이 분류를 다시 한다.
+- Antigravity MCP 범위(2026-10-17 probe, `research.md` `## agy 1.4 Smoke`): agy 1.4.0에서 `tools:`는 어떤 플러그인 subagent의 MCP도 막지 못한다. tools가 `read_file` 하나인 다섯 변형(key 없음, `inheritMcp` true·false, `enable_mcp_tools` true·false)이 모두 `call_mcp_tool`로 echo 도구를 불렀다. 그래서 REA가 등록된 project에서는 reverse-engineer뿐 아니라 executor·tester 같은 모든 Autopus 에이전트가 runtime 도구를 포함한 `autopus_rea`의 REA 도구에 닿는다. Antigravity의 방어는 에이전트 본문(REA를 다루는 것은 reverse-engineer 본문뿐)과 agy가 호출마다 묻는 MCP 권한이고, print mode는 운영자가 없어 그 호출을 거절한다. `inheritMcp: true`는 이 동작을 바꾸지 않고 에이전트가 세션의 MCP 서버를 쓴다는 의도를 agy field로 적을 뿐이다(research R10).
 
 ### Reverse Route Contract
 
@@ -350,6 +351,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 11. `internal/cli/json_contract_commands_test.go:56`(`TestJSONContract_PhaseOneCommandsRequireEnvelopeSupport`의 doctor 행): 따로 빌드한 `auto` binary에는 `TestMain`의 seam이 닿지 않아 doctor의 Node probe(`/bin/bash -l`)가 실제로 돈다. 결과가 개발자 기계의 login profile에 기대지 않도록 그 행만 자식 HOME을 `t.TempDir()`로 둔다(REQ-REA-20 결정성). envelope 단언은 그대로이고 Node 상태는 단언하지 않는다.
 12. `internal/cli/edit_guard_corpus_test.go:148`(합법 corpus fixture): `README.md`를 실제 프로젝트 파일로 심는다. 없는 상대 경로의 Gemini CLI `replace`는 host가 그 경로로 끝나는 workspace 파일로 바꿔 쓰므로(guard의 suffix search) 없는 `README.md`의 replace는 보호된 `.claude/hooks/README.md`를 고치는 편집이고 합법이 아니다. 기본 실행은 target마다 shape 하나를 index로 돌리는데, 생성 표면이 늘어 `README.md`가 index 1415(`1415 % 12 = 11`, Gemini replace)에 닿았다. `AUTOPUS_EDITGUARD_CORPUS_FULL=1`은 이 SPEC 전 corpus에서도 같은 deny로 실패한다. guard 판정, corpus 범주, target 수는 그대로이고 없는 파일의 search deny는 `pkg/editguard`의 `TestGeminiReplace_RelativePathNamingNoFile_DeniesTheProtectedFileItReaches`가 고정한다.
 13. Codex analysis rung 대체(T23 scope expansion, lead 결정 (a), commit `7b444d1b`): Codex catalog에 `gpt-6.1-sol`·`xhigh`가 없는 compose golden(`table-D-CAT-B.golden`)에서는 reverse-engineer의 Codex 칸이 `세션 모델`이고 footer에 대체 줄 1개가 더해진다.
+14. agy 1.4 smoke 수정(2026-10-17, branch `fix/v0126-agy`): Antigravity 에이전트 도구 이름과 REA 대상 파일을 고정한 단언만 바뀐다. `pkg/content/context_evolution_test.go`, `agent_transformer_rea_test.go`, `pkg/adapter/antigravity/antigravity_skill_compiler_evolution_test.go`, `evals/harness/tasks/surface/GT-AGENT-READONLY-REVIEW.json`(과 `evals/harness/baseline.json`의 그 expectation digest·set digest)은 `glob`·`replace`·`run_shell_command`·`mcp_rea_<tool>` 대신 `find_by_name`·`edit_file`·`run_command`·`inheritMcp: true`를 기대한다. `pkg/reamcp/shape_test.go`·`file_test.go`, `pkg/content/hooks_rea_test.go`, `internal/cli`의 `init_rea_test.go`·`rea_run_test.go`·`rea_target_posix_test.go`·`update_rea_test.go`·`update_rea_off_test.go`는 `.gemini/settings.json` 대신 `.agents/plugins/autopus/mcp_config.json`을 기대하고, 미리보기 줄은 그 파일의 `create`·`remove`를 기대한다. `pkg/adapter/antigravity/antigravity_rea_mcp_test.go`는 플러그인 파일 기준으로 다시 썼다. 다른 단언은 그대로다.
 
 - 규칙 1은 정규 에이전트 집합을 literal로 적은 map·목록(기본 등급, 표준 배치, role 행, test 이름의 수)에 reverse-engineer를 그 기본값으로 더하는 것과, 17번째 에이전트로 하나씩 느는 파생 수(사용자 수정 `N개 다름`, Codex `대체 N칸`, compose `*` 칸 수, OMP 표면 줄 수, catalog를 모를 때 보고하는 profile 수)를 포함한다.
 - 규칙 2는 route 수(20 → 21)를 고정한 OMP test와 reverse를 더한 GT-ROUTE task의 digest를 담은 `evals/harness/baseline.json`을 포함한다.
@@ -365,6 +367,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 - content·templates: `[NEW] content/agents/reverse-engineer.md`, `content/agents/executor.md`, `content/agents/tester.md`, `content/skills/adaptive-quality.md`, `pkg/content/agent_transformer.go`, `agent_transformer_omp_render.go`, `agent_transformer_opencode.go`, `skill_transformer_replace_mcp.go`, `[NEW] templates/shared/auto-reverse-contract.md.tmpl`, `[NEW] templates/gemini/skills/auto-reverse/SKILL.md.tmpl`, `[NEW] templates/gemini/commands/auto/reverse.toml.tmpl`, `templates/shared/omp-agent-pipeline.md.tmpl`, `templates/claude/commands/auto-router.md.tmpl`, Antigravity root router 템플릿.
 - OMP 대체: `[NEW] pkg/config/omp_rea_fallback.go`(+test, `OMPReaAnalysisFallback`), `[NEW] internal/cli/platform_omp_rea_fallback.go`(+test, `platform_omp_profile_preview.go`(276줄)의 blocker loop L94-115에서 호출), `[NEW] pkg/adapter/omp/omp_model_rea_fallback.go`(+test, route compile·활성화 경로 `omp_model_routing_compile.go`·`omp_model_integration_degraded.go:21-37`에서 호출).
 - `internal/cli`: `[NEW] rea_decision.go`, `[NEW] rea_node_probe.go`, `[NEW] init_rea.go`, `[NEW] update_rea.go`, `[NEW] doctor_rea.go`, `[NEW] tui/wizard_rea_step.go`(모두 +test), `init.go`, `init_helpers.go`(`gitignorePatterns`에 `.autopus/reverse/` 1줄), `update.go`(292줄 → 300줄 이하), `update_preview.go`(clone이 `Runtime.ReaMCP`를 옮김), `tui/wizard_steps.go`, `doctor_json.go`, `doctor_text.go`, `quality_compose_groups.go`, `quality_help.go`, `init_help.go`, `update_help.go`, `platform_omp_agent_migration.go`, `quality_compose_form_edit.go`(주석).
+- agy 1.4 수정(2026-10-17): `[NEW] pkg/content/agent_transformer_gemini.go`(Gemini 변환을 `agent_transformer.go`에서 떼어 냄, agy 도구 이름과 `inheritMcp`), `pkg/adapter/antigravity/antigravity_rea_mcp.go`(플러그인 파일 쓰기와 legacy sweep), `antigravity.go`·`antigravity_update.go`·`antigravity_lifecycle_clean.go`·`antigravity_settings.go`(호출 몇 줄), `pkg/reamcp/shape.go`·`file.go`(`TargetRelPath`, `LegacyTargetRelPath`, `RemovesFile`), `internal/cli/rea_decision.go`·`update_preview.go`(플러그인 파일 미리보기), `rea_target.go`(빈 플러그인 파일 삭제), `doctor_rea.go`(텍스트 줄에 파일).
 - 문서: README, CHANGELOG(v0.50.126), help 상수. 증거: `evidence/probe-rea-forward-compat.md`, `evidence/review-rounds.md`(있음), `[NEW] evidence/test-classification.md`, `[NEW] evidence/manual-smoke-rea.txt`. 신규·변경 소스는 300줄 이하이고 `update.go`·`update_workspace.go`(300)·`doctor_json_checks.go`(293)·`wizard_steps.go`(268)에는 호출 몇 줄만 더하거나 손대지 않는다.
 
 ## Related SPECs

@@ -23,23 +23,37 @@ type Platform string
 
 const (
 	Claude      Platform = "claude-code"     // .mcp.json mcpServers.rea
-	Antigravity Platform = "antigravity-cli" // .gemini/settings.json mcpServers.rea
+	Antigravity Platform = "antigravity-cli" // .agents/plugins/autopus/mcp_config.json mcpServers.rea
 	Codex       Platform = "codex"           // .codex/config.toml [mcp_servers.rea]
 )
 
 // TargetRelPath returns the slash-separated project path of p's REA target
-// file, or "" for a platform that has none.
+// file, or "" for a platform that has none. Antigravity CLI reads MCP servers
+// from the user's mcp_config.json and from each plugin's own mcp_config.json,
+// never from a project .gemini/settings.json, so the Antigravity entry lives
+// in the workspace plugin, where agy runs it as autopus_rea.
 func TargetRelPath(p Platform) string {
 	switch p {
 	case Claude:
 		return ".mcp.json"
 	case Antigravity:
-		return ".gemini/settings.json"
+		return ".agents/plugins/autopus/mcp_config.json"
 	case Codex:
 		return ".codex/config.toml"
 	default:
 		return ""
 	}
+}
+
+// LegacyTargetRelPath returns the slash-separated project path an earlier
+// build wrote p's entry to, or "" when there is none. Release candidates of
+// v0.50.126 registered Antigravity REA in .gemini/settings.json, which agy
+// never reads; a run removes a managed entry left there and never adds one.
+func LegacyTargetRelPath(p Platform) string {
+	if p == Antigravity {
+		return ".gemini/settings.json"
+	}
+	return ""
 }
 
 // Platforms returns every REA target platform in a stable order.

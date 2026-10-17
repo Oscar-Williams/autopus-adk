@@ -95,8 +95,9 @@ func readReaTarget(dir string, p reamcp.Platform) ([]byte, error) {
 	return data, nil
 }
 
-// removeReaEntry removes a managed rea entry from p's target file and leaves
-// any other file as it is. A file that cannot be inspected comes back as its
+// removeReaEntry removes a managed rea entry from p's target file, deleting
+// the Antigravity plugin file when the entry was all it held, and leaves any
+// other file as it is. A file that cannot be inspected comes back as its
 // read refusal. A needed removal whose result fails the file's structure
 // check, or whose path crosses a symlink, is a refused change: nothing is
 // written, so a file outside the project is never changed.
@@ -119,6 +120,13 @@ func removeReaEntry(dir string, p reamcp.Platform) error {
 	path, err := adapter.SafeWorkspacePath(dir, filepath.FromSlash(rel))
 	if err != nil {
 		return &reaTargetError{Rel: rel, Reason: reaRefusedSymlink, Changed: true}
+	}
+	if reamcp.RemovesFile(p, out) {
+		// The Antigravity plugin file held the managed entry alone.
+		if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("REA MCP 제거 실패 %s: %w", rel, err)
+		}
+		return nil
 	}
 	info, err := os.Stat(path)
 	if err != nil {

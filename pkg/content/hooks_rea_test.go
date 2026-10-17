@@ -94,13 +94,17 @@ func TestGeneratedSurfaces_PreapproveNoReaMCP(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &settings))
 	assert.Equal(t, []string{sequentialThinkingPermission}, mcpPermissions(settings.Permissions.Allow))
 
-	var gemini struct {
+	// Antigravity registers REA in the workspace plugin's mcp_config.json.
+	var plugin struct {
 		MCPServers map[string]map[string]any `json:"mcpServers"`
 	}
-	data, err = os.ReadFile(filepath.Join(root, ".gemini", "settings.json"))
+	data, err = os.ReadFile(filepath.Join(root, ".agents", "plugins", "autopus", "mcp_config.json"))
 	require.NoError(t, err)
-	require.NoError(t, json.Unmarshal(data, &gemini))
-	assert.NotContains(t, gemini.MCPServers["rea"], "trust", "Gemini trust would skip tool confirmation")
+	require.NoError(t, json.Unmarshal(data, &plugin))
+	require.Contains(t, plugin.MCPServers, "rea")
+	for _, key := range []string{"trust", "enabledTools", "disabledTools"} {
+		assert.NotContains(t, plugin.MCPServers["rea"], key, "the managed entry neither trusts nor filters the server")
+	}
 
 	codexConfig, err := os.ReadFile(filepath.Join(root, ".codex", "config.toml"))
 	require.NoError(t, err)

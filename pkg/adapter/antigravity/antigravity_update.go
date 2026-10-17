@@ -29,8 +29,15 @@ func (a *Adapter) Update(_ context.Context, cfg *config.HarnessConfig) (*adapter
 	if err != nil {
 		return nil, err
 	}
+	reaMCP, reaChanged, err := a.planReaPluginMCP(antigravityReaAction(cfg))
+	if err != nil {
+		return nil, err
+	}
 
 	plan, pf := a.buildUpdateTransactionPlan(oldManifest, newFiles)
+	if reaChanged {
+		addReaPluginMCPToPlan(&plan, reaMCP)
+	}
 	if _, err := adapter.ApplyTransaction(a.root, adapterName, plan); err != nil {
 		return nil, err
 	}

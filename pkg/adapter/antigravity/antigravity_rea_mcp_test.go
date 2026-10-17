@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
@@ -17,6 +18,10 @@ import (
 // antigravityReaG1 is the literal managed entry of the MCP Entry Shape
 // Contract (acceptance S4 row G1).
 const antigravityReaG1 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
+
+// antigravityPluginMCPCreated is the plugin MCP file an add run creates.
+const antigravityPluginMCPCreated = "{\n  \"mcpServers\": {\n    \"rea\": {\n      \"args\": [\n        \"-l\",\n        \"-c\",\n" +
+	"        \"exec npx -y rea-agents@6.5.0 mcp\"\n      ],\n      \"command\": \"/bin/bash\"\n    }\n  }\n}\n"
 
 func reaAntigravityConfig(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg := config.DefaultFullConfig("rea")
@@ -38,70 +43,113 @@ func readAntigravityBytes(t *testing.T, path string) []byte {
 	return data
 }
 
+// antigravityServers returns the mcpServers object of a settings or plugin
+// MCP document.
 func antigravityServers(t *testing.T, data []byte) map[string]any {
 	t.Helper()
-	var settings map[string]any
-	require.NoError(t, json.Unmarshal(data, &settings))
-	servers, _ := settings["mcpServers"].(map[string]any)
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(data, &doc))
+	servers, _ := doc["mcpServers"].(map[string]any)
 	return servers
 }
 
 func writeAntigravitySettings(t *testing.T, root, text string) string {
 	t.Helper()
-	path := filepath.Join(root, ".gemini", "settings.json")
+	return writeAntigravityFile(t, root, filepath.Join(".gemini", "settings.json"), text)
+}
+
+func writeAntigravityPluginMCP(t *testing.T, root, text string) string {
+	t.Helper()
+	return writeAntigravityFile(t, root, filepath.FromSlash(reamcp.TargetRelPath(reamcp.Antigravity)), text)
+}
+
+func writeAntigravityFile(t *testing.T, root, rel, text string) string {
+	t.Helper()
+	path := filepath.Join(root, rel)
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte(text), 0o644))
 	return path
 }
 
-func TestReaMCP_AntigravityGenerateAddWritesManagedEntry(t *testing.T) {
+func antigravityPluginMCPPath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(reamcp.TargetRelPath(reamcp.Antigravity)))
+}
+
+// agy reads plugin MCP servers from the plugin's own mcp_config.json and never
+// from .gemini/settings.json: add creates the plugin file with the managed
+// entry alone, settings get none, and the manifest does not own the file.
+func TestReaMCP_AntigravityAddWritesThePluginMCPFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	a := NewWithRoot(root)
 	_, err := a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
 	require.NoError(t, err)
-	path := filepath.Join(root, ".gemini", "settings.json")
-	added := readAntigravityBytes(t, path)
-	servers := antigravityServers(t, added)
-	assert.Equal(t, decodeAntigravityValue(t, antigravityReaG1), servers["rea"])
-	assert.Contains(t, servers, "context7")
 
-	// A keep run leaves the managed entry an earlier run wrote byte-identical.
+	path := antigravityPluginMCPPath(root)
+	assert.Equal(t, antigravityPluginMCPCreated, string(readAntigravityBytes(t, path)))
+	assert.Equal(t, filepath.Join(root, antigravityPluginDir, "mcp_config.json"), path)
+	settings := antigravityServers(t, readAntigravityBytes(t, filepath.Join(root, ".gemini", "settings.json")))
+	assert.NotContains(t, settings, "rea")
+	assert.Contains(t, settings, "context7")
+	manifest, err := adapter.LoadManifest(root, adapterName)
+	require.NoError(t, err)
+	assert.NotContains(t, manifest.Files, reamcp.TargetRelPath(reamcp.Antigravity))
+
+	// A keep run leaves the file an earlier run wrote byte-identical.
 	_, err = a.Update(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
 	require.NoError(t, err)
-	assert.Equal(t, string(added), string(readAntigravityBytes(t, path)))
+	assert.Equal(t, antigravityPluginMCPCreated, string(readAntigravityBytes(t, path)))
 }
 
-func TestReaMCP_AntigravityAddThenRemoveRestoresBaseMergeBytes(t *testing.T) {
+// Removing the entry an add created deletes the file again, and the settings
+// bytes stay what a keep run writes (REQ-REA-04, REQ-REA-16).
+func TestReaMCP_AntigravityAddThenRemoveRestoresTheBase(t *testing.T) {
 	t.Parallel()
-	user := "{\n    \"mcpServers\": {\n        \"mine\": {\"note\": \"café\", \"command\": \"mine-mcp\"}\n    }\n}\n"
 	keepRoot, reaRoot := t.TempDir(), t.TempDir()
-	writeAntigravitySettings(t, keepRoot, user)
-	path := writeAntigravitySettings(t, reaRoot, user)
-
 	_, err := NewWithRoot(keepRoot).Generate(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
 	require.NoError(t, err)
 	base := readAntigravityBytes(t, filepath.Join(keepRoot, ".gemini", "settings.json"))
-	assert.NotContains(t, string(base), "rea-agents")
+	assert.NoFileExists(t, antigravityPluginMCPPath(keepRoot))
 
 	a := NewWithRoot(reaRoot)
 	_, err = a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
 	require.NoError(t, err)
-	added := readAntigravityBytes(t, path)
-	assert.Equal(t, decodeAntigravityValue(t, `{"note": "café", "command": "mine-mcp"}`), antigravityServers(t, added)["mine"])
-
-	viaFile, changed, err := reamcp.ApplyFile(reamcp.Antigravity, base, config.ReaMCPAdd)
-	require.NoError(t, err)
-	require.True(t, changed)
-	assert.Equal(t, string(added), string(viaFile))
-
-	// The merge alone cannot delete a key; remove deletes mcpServers.rea.
+	require.FileExists(t, antigravityPluginMCPPath(reaRoot))
 	_, err = a.Update(context.Background(), reaAntigravityConfig(config.ReaMCPRemove))
 	require.NoError(t, err)
-	assert.Equal(t, string(base), string(readAntigravityBytes(t, path)))
+
+	assert.NoFileExists(t, antigravityPluginMCPPath(reaRoot))
+	assert.FileExists(t, filepath.Join(reaRoot, antigravityPluginDir, "plugin.json"))
+	assert.Equal(t, string(base), string(readAntigravityBytes(t, filepath.Join(reaRoot, ".gemini", "settings.json"))))
 }
 
-func TestReaMCP_AntigravityMergeLeavesOtherPinAndUserOwnedEntriesValueIdentical(t *testing.T) {
+// Servers a user added to the plugin file stay value-identical through add
+// and remove, and the file stays once it holds anything but the entry.
+func TestReaMCP_AntigravityKeepsServersTheUserAdded(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	user := "{\n    \"mcpServers\": {\n        \"mine\": {\"note\": \"café\", \"command\": \"mine-mcp\"}\n    }\n}\n"
+	path := writeAntigravityPluginMCP(t, root, user)
+	a := NewWithRoot(root)
+
+	_, err := a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
+	require.NoError(t, err)
+	added := readAntigravityBytes(t, path)
+	viaFile, changed, err := reamcp.ApplyFile(reamcp.Antigravity, []byte(user), config.ReaMCPAdd)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.Equal(t, string(viaFile), string(added))
+	assert.Equal(t, decodeAntigravityValue(t, `{"note": "café", "command": "mine-mcp"}`), antigravityServers(t, added)["mine"])
+	assert.Equal(t, decodeAntigravityValue(t, antigravityReaG1), antigravityServers(t, added)["rea"])
+
+	_, err = a.Update(context.Background(), reaAntigravityConfig(config.ReaMCPRemove))
+	require.NoError(t, err)
+	removed := antigravityServers(t, readAntigravityBytes(t, path))
+	assert.Equal(t, map[string]any{"mine": decodeAntigravityValue(t, `{"note": "café", "command": "mine-mcp"}`)}, removed)
+}
+
+// other_pin and user-owned rea entries in the plugin file are never touched.
+func TestReaMCP_AntigravityLeavesOtherPinAndUserOwnedEntries(t *testing.T) {
 	t.Parallel()
 	rows := map[string]string{
 		"G2": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`,
@@ -109,92 +157,65 @@ func TestReaMCP_AntigravityMergeLeavesOtherPinAndUserOwnedEntriesValueIdentical(
 	}
 	for id, value := range rows {
 		root := t.TempDir()
-		writeAntigravitySettings(t, root, `{"mcpServers": {"rea": `+value+`}}`)
+		original := `{"mcpServers": {"rea": ` + value + `}}`
+		path := writeAntigravityPluginMCP(t, root, original)
 		for _, action := range []config.ReaMCPAction{config.ReaMCPAdd, config.ReaMCPRemove} {
-			files, err := NewWithRoot(root).generateSettings(reaAntigravityConfig(action))
+			_, changed, err := NewWithRoot(root).planReaPluginMCP(action)
 			require.NoError(t, err, id)
-			assert.Equal(t, decodeAntigravityValue(t, value), antigravityServers(t, files[0].Content)["rea"], "%s %s", id, action)
+			assert.False(t, changed, "%s %s", id, action)
 		}
+		_, err := NewWithRoot(root).Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
+		require.NoError(t, err, id)
+		assert.Equal(t, original, string(readAntigravityBytes(t, path)), id)
 	}
 }
 
-func TestReaMCP_AntigravityCleanRemovesManagedEntryRegardlessOfRender(t *testing.T) {
+// A plugin file that does not decode (agy also reads comments and trailing
+// commas) is never overwritten: add refuses it with an error naming the file,
+// and remove and keep leave it alone.
+func TestReaMCP_AntigravityRefusesAMalformedPluginFile(t *testing.T) {
+	t.Parallel()
+	const malformed = "{\n  // mine\n  \"mcpServers\": {\"mine\": {\"command\": \"mine-mcp\"},},\n}\n"
+	root := t.TempDir()
+	path := writeAntigravityPluginMCP(t, root, malformed)
+	a := NewWithRoot(root)
+
+	_, err := a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "REA MCP")
+	assert.Contains(t, err.Error(), reamcp.TargetRelPath(reamcp.Antigravity))
+	assert.Equal(t, malformed, string(readAntigravityBytes(t, path)))
+
+	for _, action := range []config.ReaMCPAction{config.ReaMCPKeep, config.ReaMCPRemove} {
+		_, err = a.Generate(context.Background(), reaAntigravityConfig(action))
+		require.NoError(t, err, action)
+		assert.Equal(t, malformed, string(readAntigravityBytes(t, path)), action)
+	}
+	_, err = a.Update(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
+	require.Error(t, err)
+	assert.Equal(t, malformed, string(readAntigravityBytes(t, path)))
+}
+
+// A managed rea entry release candidates left in .gemini/settings.json goes
+// on any run; other_pin and user-owned entries there stay.
+func TestReaMCP_AntigravitySweepsTheLegacySettingsEntry(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	a := NewWithRoot(root)
-	_, err := a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
+	path := writeAntigravitySettings(t, root, `{"mcpServers": {"rea": `+antigravityReaG1+`, "mine": {"command": "mine-mcp"}}}`)
+	_, err := NewWithRoot(root).Update(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
 	require.NoError(t, err)
-	path := filepath.Join(root, ".gemini", "settings.json")
-	var settings map[string]any
-	require.NoError(t, json.Unmarshal(readAntigravityBytes(t, path), &settings))
-	// A user-edited context7 is no longer the current render; rea still goes.
-	settings["mcpServers"].(map[string]any)["context7"] = map[string]any{"command": "user-context-server"}
-	raw, err := json.Marshal(settings)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, raw, 0o644))
-
-	require.NoError(t, a.Clean(context.Background()))
 	servers := antigravityServers(t, readAntigravityBytes(t, path))
 	assert.NotContains(t, servers, "rea")
-	assert.Equal(t, map[string]any{"command": "user-context-server"}, servers["context7"])
+	assert.Equal(t, map[string]any{"command": "mine-mcp"}, servers["mine"])
+	assert.NoFileExists(t, antigravityPluginMCPPath(root), "a keep run adds no entry")
 
-	userRoot := t.TempDir()
-	userAdapter := NewWithRoot(userRoot)
-	_, err = userAdapter.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
-	require.NoError(t, err)
-	userPath := filepath.Join(userRoot, ".gemini", "settings.json")
-	require.NoError(t, json.Unmarshal(readAntigravityBytes(t, userPath), &settings))
 	userRea := `{"command": "npx", "args": ["-y", "rea-agents@6.5.0", "mcp"]}`
-	settings["mcpServers"].(map[string]any)["rea"] = decodeAntigravityValue(t, userRea)
-	raw, err = json.Marshal(settings)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(userPath, raw, 0o644))
-	require.NoError(t, userAdapter.Clean(context.Background()))
-	assert.Equal(t, decodeAntigravityValue(t, userRea), antigravityServers(t, readAntigravityBytes(t, userPath))["rea"])
-}
-
-func TestReaMCP_AntigravityRefusesSymlinkedTargetWhenReaChangesContent(t *testing.T) {
-	t.Parallel()
-	outside := t.TempDir()
-	o1 := filepath.Join(outside, "o1.json")
-	original := []byte("{\"mcpServers\": {}}\n")
-	require.NoError(t, os.WriteFile(o1, original, 0o644))
-
-	// (a) .gemini/settings.json is a symlink: Generate writes settings directly.
-	fileRoot := t.TempDir()
-	require.NoError(t, os.MkdirAll(filepath.Join(fileRoot, ".gemini"), 0o755))
-	if err := os.Symlink(o1, filepath.Join(fileRoot, ".gemini", "settings.json")); err != nil {
-		t.Skipf("symlink unavailable: %v", err)
+	userRoot := t.TempDir()
+	userPath := writeAntigravitySettings(t, userRoot, `{"mcpServers": {"rea": `+userRea+`}}`)
+	for _, action := range []config.ReaMCPAction{config.ReaMCPKeep, config.ReaMCPAdd, config.ReaMCPRemove} {
+		files, err := NewWithRoot(userRoot).generateSettings(reaAntigravityConfig(action))
+		require.NoError(t, err, action)
+		assert.Equal(t, decodeAntigravityValue(t, userRea), antigravityServers(t, files[0].Content)["rea"], action)
 	}
-	_, err := NewWithRoot(fileRoot).Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "REA MCP")
-	assert.Contains(t, err.Error(), ".gemini/settings.json")
-	assert.Equal(t, original, readAntigravityBytes(t, o1))
-
-	// (b) .gemini is a symlinked directory: Update refuses before its transaction.
-	o2 := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(o2, "settings.json"), original, 0o644))
-	dirRoot := t.TempDir()
-	require.NoError(t, os.Symlink(o2, filepath.Join(dirRoot, ".gemini")))
-	_, err = NewWithRoot(dirRoot).Update(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "REA MCP")
-	assert.Equal(t, original, readAntigravityBytes(t, filepath.Join(o2, "settings.json")))
-
-	// Clean through a symlinked settings file that holds a managed entry.
-	cleanRoot := t.TempDir()
-	a := NewWithRoot(cleanRoot)
-	_, err = a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
-	require.NoError(t, err)
-	managed := []byte(`{"mcpServers": {"rea": ` + antigravityReaG1 + `}}`)
-	o3 := filepath.Join(outside, "o3.json")
-	require.NoError(t, os.WriteFile(o3, managed, 0o644))
-	settingsPath := filepath.Join(cleanRoot, ".gemini", "settings.json")
-	require.NoError(t, os.Remove(settingsPath))
-	require.NoError(t, os.Symlink(o3, settingsPath))
-	err = a.Clean(context.Background())
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "REA MCP")
-	assert.Equal(t, managed, readAntigravityBytes(t, o3))
+	assert.Equal(t, decodeAntigravityValue(t, userRea), antigravityServers(t, readAntigravityBytes(t, userPath))["rea"])
 }

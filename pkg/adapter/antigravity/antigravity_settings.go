@@ -28,7 +28,7 @@ func (a *Adapter) generateSettings(cfg *config.HarnessConfig) ([]adapter.FileMap
 			newSettings = mergeSettingsMaps(existing, newSettings)
 		}
 	}
-	if err := a.applyAntigravityReaMCP(newSettings, antigravityReaAction(cfg)); err != nil {
+	if err := a.sweepLegacyReaMCP(newSettings); err != nil {
 		return nil, err
 	}
 

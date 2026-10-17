@@ -131,7 +131,7 @@ func TestInitRea_NonInteractiveDecisions(t *testing.T) {
 	require.NoError(t, err, out)
 	assertReaManagedOnce(t, on)
 	assert.NotRegexp(t, `(?m)^\s+rea:`, reaYAML(t, on))
-	assert.Equal(t, 1, strings.Count(out, "REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml, .gemini/settings.json (rea-agents@6.5.0)"), out)
+	assert.Equal(t, 1, strings.Count(out, "REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml, .agents/plugins/autopus/mcp_config.json (rea-agents@6.5.0)"), out)
 	assert.Zero(t, strings.Count(out, reaTextKo.OldBinary))
 
 	off := t.TempDir()

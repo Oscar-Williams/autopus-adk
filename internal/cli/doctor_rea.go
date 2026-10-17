@@ -111,7 +111,12 @@ func checkReaText(ctx context.Context, out io.Writer, dir string, cfg *config.Ha
 	tui.SectionHeader(out, "REA")
 	tui.Info(out, reaDoctorDecisionLine(text, payload))
 	for _, check := range reaDoctorChecks(payload)[1:] {
-		label := strings.TrimPrefix(strings.TrimPrefix(check.id, "doctor.rea."), "platform.")
+		label := strings.TrimPrefix(check.id, "doctor.rea.")
+		if platform, ok := strings.CutPrefix(label, "platform."); ok {
+			// Name the file the class was read from: the Antigravity entry
+			// lives in the workspace plugin, not in .gemini/settings.json.
+			label = platform + " (" + reamcp.TargetRelPath(reamcp.Platform(platform)) + ")"
+		}
 		switch {
 		case strings.HasPrefix(check.id, "doctor.rea.guidance."):
 		case check.warning:

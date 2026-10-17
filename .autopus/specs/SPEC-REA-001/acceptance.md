@@ -41,9 +41,9 @@ Priority: Must
 | C5 | `.mcp.json` | C1의 `$comment`만 `"mine"` | user_owned | user_owned |
 | C6 | `.mcp.json` | `rea`가 없고 `rea-agents` key에 C1 | absent | managed |
 | C7 | `.mcp.json` | C1에서 args의 pin만 `6.4.0`(`$comment`는 6.5.0) | user_owned | user_owned |
-| G1 | `.gemini/settings.json` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` | managed | managed |
-| G2 | `.gemini/settings.json` | G1 + C1의 `$comment` | user_owned | user_owned |
-| G3 | `.gemini/settings.json` | G1의 셋째 arg가 `exec npx -y rea-agents@latest mcp` | other_pin | other_pin |
+| G1 | `.agents/plugins/autopus/mcp_config.json` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` | managed | managed |
+| G2 | `.agents/plugins/autopus/mcp_config.json` | G1 + C1의 `$comment` | user_owned | user_owned |
+| G3 | `.agents/plugins/autopus/mcp_config.json` | G1의 셋째 arg가 `exec npx -y rea-agents@latest mcp` | other_pin | other_pin |
 | X1 | `.codex/config.toml` | `[mcp_servers.rea]` 아래 `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 30` | managed | managed |
 | X2 | `.codex/config.toml` | X1에서 `startup_timeout_sec` 줄을 뺌 | user_owned | user_owned |
 | X3 | `.codex/config.toml` | X1 + `tool_timeout_sec = 120` | user_owned | user_owned |
@@ -59,10 +59,10 @@ And other_pin·user_owned 행의 `rea`는 `--rea`와 `--no-rea` 뒤 모두 입�
 
 ### S5: 제거의 round trip과 `auto platform remove`
 Priority: Must
-Given B에 사용자 서버 `mine`을 비정규 서식(4칸 들여쓰기, key 순서 `{"note": "café", "command": "mine-mcp"}`)으로 `.mcp.json`·`.gemini/settings.json`에 손으로 넣고 `.codex/config.toml`에 `[mcp_servers.mine]`과 `command = "mine-mcp"  # keep`을 더한 P3m, BASE로 P3m 사본을 `auto update --yes`한 세 파일 bytes R, `.mcp.json`의 rea만 C3인 P3u, N24가 있다
-When P3m에서 (1) `auto update --yes --rea`, (2) `auto update --yes --no-rea`를 실행하고, (1) 상태의 사본에서 (3) `auto platform remove codex`와 `auto platform remove antigravity-cli`, P3u에서 (1)과 (2)를 실행한다
-Then (2) 뒤 세 파일의 bytes는 R과 같다(기준 commit의 정규화만 남는다). `mine` 값은 입력과 deep-equal이고 `[mcp_servers.mine]` 두 줄은 입력과 bytes가 같으며 `.codex/config.toml`에 `mcp_servers.rea`가, `.gemini/settings.json`에 `rea` key가 없다. autopus.yaml은 `enabled: false`를 담는다
-And (3) 뒤 `.codex/config.toml`과 `.gemini/settings.json`에 `rea-agents@6.5.0`이 없고 `.mcp.json`의 managed rea는 남는다. P3u의 각 단계 뒤 `.mcp.json`의 `rea`는 C3와 deep-equal이다
+Given B에 사용자 서버 `mine`을 비정규 서식(4칸 들여쓰기, key 순서 `{"note": "café", "command": "mine-mcp"}`)으로 `.mcp.json`과 Antigravity 플러그인 파일 `.agents/plugins/autopus/mcp_config.json`에 손으로 넣고 `.codex/config.toml`에 `[mcp_servers.mine]`과 `command = "mine-mcp"  # keep`을 더한 P3m, BASE로 P3m 사본을 `auto update --yes`한 `.mcp.json`·`.codex/config.toml`·`.gemini/settings.json` bytes R, `.mcp.json`의 rea만 C3인 P3u, `.gemini/settings.json`에 G1을 넣은 P3g(v0.50.126 RC가 남긴 항목), N24가 있다
+When P3m에서 (1) `auto update --yes --rea`, (2) `auto update --yes --no-rea`를 실행하고, (1) 상태의 사본에서 (3) `auto platform remove codex`와 `auto platform remove antigravity-cli`, P3u에서 (1)과 (2), P3g에서 (4) `auto update --yes`를 실행한다
+Then (2) 뒤 `.mcp.json`·`.codex/config.toml`·`.gemini/settings.json`의 bytes는 R과 같다(기준 commit의 정규화만 남는다). 플러그인 파일은 (1) 뒤 파일에 `reamcp.ApplyFile` remove를 적용한 bytes이고 `mine`만 담는다. `mine` 값은 입력과 deep-equal이고 `[mcp_servers.mine]` 두 줄은 입력과 bytes가 같으며 `.codex/config.toml`에 `mcp_servers.rea`가, 플러그인 파일에 `rea` key가 없다. autopus.yaml은 `enabled: false`를 담는다
+And (3) 뒤 `.codex/config.toml`과 플러그인 파일에 `rea-agents@6.5.0`이 없고 플러그인 파일의 `mine`과 `.mcp.json`의 managed rea는 남는다. P3u의 각 단계 뒤 `.mcp.json`의 `rea`는 C3와 deep-equal이다. (4) 뒤 `.gemini/settings.json`에 `rea` key가 없고 다른 항목은 값이 그대로이며 플러그인 파일은 생기지 않는다(keep 실행). managed 항목만 담던 플러그인 파일은 remove·`auto platform remove antigravity-cli`가 지우고, decode되지 않는 플러그인 파일(주석·끝 쉼표)은 `--rea`가 그 파일을 담은 오류로 끝나며 bytes가 그대로이고 `--no-rea`·keep 실행도 bytes가 그대로다
 
 ### S6: Node gate (exec 경계)
 Priority: Must
@@ -102,14 +102,14 @@ Given P5에서 (a) Q 상태와 N24, (b) (a)를 `auto update --yes --no-rea`한 �
 When 각각 `auto doctor --json`과 `auto doctor`를 실행하고 exec seam이 부른 명령을 기록한다
 Then (a)의 `data.rea` 예상 JSON은 `{"decision":"on","decision_source":"managed_entry","node":{"status":"pass","version":"v24.11.0"},"platforms":{"antigravity-cli":"managed","claude-code":"managed","codex":"managed"},"guidance":["omp","opencode"]}`이다
 And (b)는 `off`·`features.rea`, platforms 세 값 `absent`, guidance `[]`. (c)는 `undecided`·`none`, platforms 세 값 `absent`, guidance `["omp","opencode"]`. (d)는 `on`·`features.rea`, node `{"status":"unsupported","version":"v22.18.0"}`, platforms `{"antigravity-cli":"absent","claude-code":"user_owned","codex":"other_pin"}`이고 `doctor.rea.node`의 severity는 `warning`이다
-And 텍스트 출력은 (a) `REA: 켜짐 (managed 항목)`, (b) `REA: 꺼짐 (autopus.yaml)`, (c) `REA: 미결정`, (d) `REA: 켜짐 (autopus.yaml)`을 담고, 기록된 명령은 실행마다 node probe 1개이며 `npx`와 `rea`는 0개다
+And 텍스트 출력은 (a) `REA: 켜짐 (managed 항목)`, (b) `REA: 꺼짐 (autopus.yaml)`, (c) `REA: 미결정`, (d) `REA: 켜짐 (autopus.yaml)`을 담고, 플랫폼 줄은 읽은 파일을 괄호로 담으며(`antigravity-cli (.agents/plugins/autopus/mcp_config.json): managed`), 기록된 명령은 실행마다 node probe 1개이며 `npx`와 `rea`는 0개다
 
 ### S9: 17개 에이전트 인벤토리와 본문
 Priority: Must
 Given N24로 `auto init --yes --platforms claude-code,codex,antigravity-cli,omp,opencode`한 P5가 있다
 When 플랫폼마다 생성 에이전트 파일의 이름 집합과 reverse-engineer 파일을 읽는다
 Then `.claude/agents/autopus/*.md`, `.codex/agents/*.toml`, `.gemini/agents/autopus/*.md`, `.omp/agents/*.md`, `.opencode/agents/*.md`의 이름 집합(확장자 제외)은 각각 `CanonicalAgentNames()`와 같은 17개이고 `CanonicalAgentNames()[10]`은 `reverse-engineer`다
-And Claude 파일은 `tools: Read, Grep, Glob, ` 뒤에 정적 도구 135개를 `mcp__rea__<tool>`로 하나씩 담은 tools 줄, `permissionMode: default`, `model: claude-opus-5-5`, `effort: high` 줄을 담고 tools 줄에 `Write`, `Edit`, `Bash`, 서버 전체 `mcp__rea`, `reamcp.RuntimeCaptureTools()`·`CallerPathWriteTools()`의 도구가 없다. Antigravity tools는 `read_file`, `grep_search`, `glob`, 그 뒤 정적 도구마다 `mcp_rea_<tool>`(138개)이고 `mcp_rea_*`가 없으며, OMP tools는 `glob`, `grep`, `read`이고 `mcp_`로 시작하는 값이 없고, OpenCode permission은 `"*": deny`와 allow `glob`, `grep`, `question`, `read`, `skill`뿐이다(`task` 없음). Codex 파일은 `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`, `sandbox_mode = "read-only"`다
+And Claude 파일은 `tools: Read, Grep, Glob, ` 뒤에 정적 도구 135개를 `mcp__rea__<tool>`로 하나씩 담은 tools 줄, `permissionMode: default`, `model: claude-opus-5-5`, `effort: high` 줄을 담고 tools 줄에 `Write`, `Edit`, `Bash`, 서버 전체 `mcp__rea`, `reamcp.RuntimeCaptureTools()`·`CallerPathWriteTools()`의 도구가 없다. Antigravity tools는 `read_file`, `grep_search`, `find_by_name` 세 개이고 `mcp_`로 시작하는 값이 없으며 frontmatter가 `inheritMcp: true`를 담고(agy는 MCP 도구를 하나씩 주지 못한다), 모든 에이전트의 Antigravity tools는 agy 1.4.0이 해석하는 `read_file`, `write_file`, `edit_file`, `grep_search`, `find_by_name`, `run_command` 안에 있으며, OMP tools는 `glob`, `grep`, `read`이고 `mcp_`로 시작하는 값이 없고, OpenCode permission은 `"*": deny`와 allow `glob`, `grep`, `question`, `read`, `skill`뿐이다(`task` 없음). Codex 파일은 `model = "gpt-6.1-sol"`, `model_reasoning_effort = "xhigh"`, `sandbox_mode = "read-only"`다
 And 다섯 파일의 본문은 다섯 절 이름(`## Behaviour`, `## Inputs and Outputs`, `## Evidence`, `## Unknowns`, `## Acceptance Items`), ID 형식 `B-1`·`A-1`, `## Runtime Capture Request`(target, tool, arguments, will run, why), `Runtime capture evidence: <tool> on <target>: <evidence_id>`, Form Text의 두 미등록 문장을 담고 `AskUserQuestion`을 담지 않는다
 
 ### S10: 프리셋 표와 분류
@@ -145,20 +145,20 @@ And executor.md·tester.md는 `SPEC: N/A`이고 `Behaviour Spec:` 경로가 있�
 ### S14: 사전 승인 없음
 Priority: Must
 Given S9 project와 `DetectPermissions` 결과가 있다
-When `.claude/settings.json`, `.codex/config.toml`, `.gemini/settings.json`, `.omp/`, `.opencode/` 아래 생성 파일을 읽는다
+When `.claude/settings.json`, `.codex/config.toml`, `.gemini/settings.json`, `.agents/plugins/autopus/mcp_config.json`, `.omp/`, `.opencode/` 아래 생성 파일을 읽는다
 Then `permissions.allow`의 MCP 값은 `mcp__sequential-thinking__sequentialthinking` 하나이고 `mcp__rea`로 시작하는 값이 없으며, 어떤 생성 파일에도 `enableAllProjectMcpServers`, `enabledMcpjsonServers`, `enabled_tools`, `default_tools_approval_mode`가 없다
 
 ### S15: 꺼져 있으면 bytes 그대로
 Priority: Must
 Given platforms 3개인 `config.DefaultFullConfig("p")`(결정 없음), BASE가 같은 cfg로 만든 세 파일, OLD와 그 사본이 있다
 When 이 branch에서 Claude·Codex·Antigravity `Generate`와 `Update`를 돌리고, OLD는 이 branch로, 사본은 BASE로 `auto update --yes`한다
-Then `.mcp.json`, `.codex/config.toml`, `.gemini/settings.json`은 BASE 결과와 bytes가 같고, OLD의 세 파일은 사본의 세 파일과 bytes가 같으며 `rea`가 없다
+Then `.mcp.json`, `.codex/config.toml`, `.gemini/settings.json`은 BASE 결과와 bytes가 같고 `.agents/plugins/autopus/mcp_config.json`은 생기지 않으며, OLD의 세 파일은 사본의 세 파일과 bytes가 같고 `rea`가 없다
 
 ### S16: 사용자 범위 무접촉과 symlink 경계
 Priority: Must
-Given HOME sandbox 두 개와 그 파일 목록·SHA-256, N24, P3 사본 넷: (a) `.gemini/settings.json`이 sandbox 밖 파일 O1을 가리키는 symlink, (b) `.gemini`가 밖 디렉터리 O2를 가리키는 symlink, (c) `.mcp.json`이 O3 symlink, (d) `.codex`가 O4 symlink가 있다
+Given HOME sandbox 두 개와 그 파일 목록·SHA-256, N24, P3 사본 넷: (a) `.agents/plugins/autopus/mcp_config.json`이 sandbox 밖 파일 O1을 가리키는 symlink, (b) `.agents`가 밖 디렉터리 O2를 가리키는 symlink, (c) `.mcp.json`이 O3 symlink, (d) `.codex`가 O4 symlink가 있다
 When 평범한 P3에서 이 branch로 `auto init --yes`, `auto update --yes`, `auto doctor`, `auto platform remove codex`를, 같은 명령을 BASE로 다른 sandbox에서 실행하고, 이 branch로만 `auto update --yes --rea`와 `--no-rea`를 실행한다. (a)–(d)에서 `auto update --yes --rea`, `--no-rea`, (a)·(b)에서 `auto platform remove antigravity-cli`를 실행한다
-Then BASE가 지원하는 네 명령의 sandbox 파일 집합 차이는 두 sandbox에서 같고, `--rea`·`--no-rea` 실행 전후 branch sandbox의 파일 집합과 SHA-256은 같으며 `.claude.json`, `.codex/config.toml`, `.gemini/settings.json`, `.omp/agent/mcp.json`이 sandbox에 생기지 않는다 그리고 (a)–(d)에서 REA 내용을 바꾸는 실행은 그 플랫폼이 symlink 경로를 담은 오류로 끝나고 O1–O4의 bytes는 실행 전과 같다
+Then BASE가 지원하는 네 명령의 sandbox 파일 집합 차이는 두 sandbox에서 같고, `--rea`·`--no-rea` 실행 전후 branch sandbox의 파일 집합과 SHA-256은 같으며 `.claude.json`, `.codex/config.toml`, `.gemini/settings.json`, `.gemini/config/mcp_config.json`, `.omp/agent/mcp.json`이 sandbox에 생기지 않는다 그리고 (a)–(d)에서 REA 내용을 바꾸는 실행은 그 플랫폼이 symlink 경로를 담은 오류로 끝나고 O1–O4의 bytes는 실행 전과 같다
 
 ### S17: 회귀
 Priority: Must
@@ -169,8 +169,8 @@ Then 모든 test가 통과하고 바뀐 기존 test는 T2 목록(`evidence/test-
 ### S18: 실제 터미널 smoke (모델 호출 없음, Codex 먼저)
 Priority: Must
 Given macOS 실제 터미널, 이 branch의 `auto`, Node v24.x, 버전을 기록한 Claude Code·Codex·Antigravity CLI, `git init`한 빈 temp dir, 도구마다 새로 만든 빈 cache 디렉터리 `<scratch>/npm-codex`·`npm-claude`·`npm-agy`, Codex용 새 scratch HOME과 CODEX_HOME, `script -q` 기록이 있다
-When `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter로 넘기고, 다른 도구를 띄우기 전에 `npm_config_cache=<scratch>/npm-codex`와 scratch HOME으로 trusted `codex`를 메시지 없이 열어 rea 도구가 보일 때까지의 시간을 잰 뒤, `npm_config_cache=<scratch>/npm-claude`로 `claude`를 열어 project MCP 승인 질문에서 rea를 승인하고 `/mcp`만 보고, `npm_config_cache=<scratch>/npm-agy`로 Antigravity CLI의 MCP 목록을 본다
-Then Codex 실행 전 `<scratch>/npm-codex`와 scratch HOME의 `.npm`에 rea-agents가 없고 실행 뒤 그중 하나에 `rea-agents@6.5.0`이 생기며(cold 증명), 30초 안에 rea 도구가 보인다(A2 시작 절반 PASS). cold를 증명하지 못하거나 30초를 넘으면 시간과 cache 상태를 적고 FAIL이다. Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며 Antigravity 목록에 rea가 connected다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
+When `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter로 넘기고, 다른 도구를 띄우기 전에 `npm_config_cache=<scratch>/npm-codex`와 scratch HOME으로 trusted `codex`를 메시지 없이 열어 rea 도구가 보일 때까지의 시간을 잰 뒤, `npm_config_cache=<scratch>/npm-claude`로 `claude`를 열어 project MCP 승인 질문에서 rea를 승인하고 `/mcp`만 보고, `npm_config_cache=<scratch>/npm-agy`로 Antigravity CLI(`agy`)를 열어 폴더를 신뢰하고 `/mcp`를 본다(`agy mcp list`는 사용자 범위 서버만 보인다)
+Then Codex 실행 전 `<scratch>/npm-codex`와 scratch HOME의 `.npm`에 rea-agents가 없고 실행 뒤 그중 하나에 `rea-agents@6.5.0`이 생기며(cold 증명), 30초 안에 rea 도구가 보인다(A2 시작 절반 PASS). cold를 증명하지 못하거나 30초를 넘으면 시간과 cache 상태를 적고 FAIL이다. Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며 agy `/mcp`에 `autopus_rea`가 connected이고 도구 수가 보인다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
 
 ### S19: 동의 뒤 live `/auto reverse`
 Priority: Must
@@ -178,7 +178,7 @@ Given S18 project, 사용자의 모델 호출 동의, 외부 디컴파일러가 
 When Claude Code에서 (a) `/auto reverse <대상> <기능>` → 확인, (b) 수정 한 번 뒤 중단, (c) `/auto reverse fixture/hello.js "실행 출력" --runtime` → 동의 질문에서 거절, (e) 같은 명령 → 허용 → 확인, (d) 끈 사본에서 `/auto reverse`를 실행하고, Antigravity와 Codex에서 각각 `/auto reverse`를 gate까지 실행한 뒤 중단한다
 Then (a)에서 reverse-engineer subagent가 `mcp__rea__` 도구를 1번 이상 부르고(A1 Claude PASS), 결과가 다섯 절·`B-`·`A-` ID·evidence_id 1개 이상을 담고 의사코드·assembly가 없다. 새 project 파일은 `.autopus/reverse/<slug>/behaviour-spec.md`와 gate에서 확인한 경로 아래 파일뿐이고 `git status --porcelain`은 `.autopus/reverse/`를 보이지 않으며, 세 dispatch prompt는 `SPEC: N/A`, `Task: reverse/<slug>`, `Behaviour Spec:`, ID, 경로, Phase를 담고 REA 결과 텍스트가 없으며, tester Testing은 `A-`마다 판정을 남긴다
 And (b)의 수정은 분석을 한 번 다시 보내고 중단 뒤에는 파일이 생기지 않고 dispatch가 더 없다. (c)와 (e)의 첫 결과는 `## Runtime Capture Request`이고 그때까지 runtime capture 도구 호출은 0번이다. (c)는 거절 뒤에도 호출이 0번이고 `## Unknowns`에 빈 곳이 적힌다. (e)는 허용 뒤 메인 세션이 요청의 runtime capture 도구를 1번 이상 부르고(subagent transcript의 runtime 도구 호출은 0번), 다시 보낸 dispatch prompt가 `Runtime capture evidence: <tool> on fixture/hello.js: <evidence_id>`를 담는다(REQ-REA-21 허용 경로). (d)는 dispatch가 정확히 1번(reverse-engineer)이고 그 결과가 미등록 문장으로 끝나며 executor·tester dispatch와 새 파일이 0이다
-And Antigravity의 reverse-engineer는 `mcp_rea_<tool>`로 해석된 정적 REA 도구를 1번 이상 부르고(A1 Antigravity PASS), Codex의 reverse-engineer는 REA 도구 호출 1번 이상을 60초 안에 끝낸다(A2 도구 절반 PASS). 결과를 `evidence/manual-smoke-rea.txt`에 남기고, 동의가 없거나 하나라도 FAIL이면 PASS로 닫지 않고 CD-2를 남긴다
+And Antigravity(agy 1.4.0)에서 `agy agents`가 `auto-agent-<이름>` 17개를 보이고 `agy --agent auto-agent-<explorer·executor·reverse-engineer> -p 'Reply with exactly: OK'`가 `failed to construct executor`·`unknown component: tool` 없이 `OK`를 내며(Gemini CLI 도구 이름이 남으면 모델 호출 전에 종료 3), reverse-engineer subagent는 `call_mcp_tool`로 `autopus_rea`의 정적 REA 도구를 1번 이상 부르고(운영자가 agy의 호출별 MCP 권한을 허용, A1 Antigravity PASS), Codex의 reverse-engineer는 REA 도구 호출 1번 이상을 60초 안에 끝낸다(A2 도구 절반 PASS). 결과를 `evidence/manual-smoke-rea.txt`에 남기고, 동의가 없거나 하나라도 FAIL이면 PASS로 닫지 않고 CD-2를 남긴다
 
 ### S20: locale
 Priority: Should

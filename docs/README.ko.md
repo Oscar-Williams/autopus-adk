@@ -1365,15 +1365,15 @@ auto sync verify --spec SPEC-HOOK-001 --strict
 
 ### 🔍 역공학 — `/auto reverse`
 
-`auto init`은 기본으로 Claude Code(`.mcp.json`), Codex(`.codex/config.toml`), Antigravity(`.gemini/settings.json`)에 프로젝트 범위 REA 역공학 MCP(`npx -y rea-agents@6.5.0 mcp`)를 등록합니다(SPEC-REA-001). 대화형 wizard는 한 번 묻고(기본 Yes), `--rea`·`--no-rea`는 묻지 않고 정하며 init과 update는 둘을 함께 받지 않습니다. 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace 실행은 아무것도 더하지 않고 `auto update --rea`를 알리는 hint 한 줄만 씁니다. `--rea`·`--no-rea`는 `--workspace`와 함께 쓸 수 없으니 repo마다 `--local`로 실행하세요.
+`auto init`은 기본으로 Claude Code(`.mcp.json`), Codex(`.codex/config.toml`), Antigravity(워크스페이스 플러그인의 `.agents/plugins/autopus/mcp_config.json`. `agy`는 이 서버를 `autopus_rea`로 띄우고 `.gemini/settings.json`에서는 MCP 서버를 읽지 않습니다)에 프로젝트 범위 REA 역공학 MCP(`npx -y rea-agents@6.5.0 mcp`)를 등록합니다(SPEC-REA-001). 대화형 wizard는 한 번 묻고(기본 Yes), `--rea`·`--no-rea`는 묻지 않고 정하며 init과 update는 둘을 함께 받지 않습니다. 기존 프로젝트는 대화형 `auto update`에서 한 번만 묻고, 비대화형·`--yes`·`--auto`·CI·workspace 실행은 아무것도 더하지 않고 `auto update --rea`를 알리는 hint 한 줄만 씁니다. `--rea`·`--no-rea`는 `--workspace`와 함께 쓸 수 없으니 repo마다 `--local`로 실행하세요.
 
 - **Node**: `node`가 `^22.19.0 || ^24.11.0 || >=26.0.0`일 때만 항목을 씁니다. 서버가 시작하는 방식(`/bin/bash -l -c 'node --version'`, Windows는 PATH의 `node`)으로 실행당 한 번, 5초 안에 확인합니다. 아니면 항목을 더하지 않고 Node 안내 한 줄을 쓰며 기존 항목과 결정은 그대로 둡니다.
 - **결정이 사는 곳**: managed `rea` 항목이 결정을 담습니다. 항목이 담지 못할 때만(끔, Node 미충족, 대상 파일이 모두 사용자 소유) `features.rea.enabled`를 쓰고, 처음 쓰는 실행은 `features.rea는 v0.50.126보다 오래된 auto가 읽지 못합니다`를 한 번 씁니다. v0.50.113–v0.50.125의 strict loader가 이 key를 거부하기 때문입니다. 사용자가 소유하거나 다른 버전에 pin한 `rea` 항목은 값이 그대로입니다. 끄면 선택되지 않은 플랫폼의 대상 파일에서도 managed 항목을 지우고, `auto platform remove <platform>`은 그 플랫폼의 managed 항목을 지웁니다.
 - **Windows**: Claude Code·Antigravity 서버는 기존 서버처럼 `/bin/bash -l -c`로 시작하므로 Windows에서는 시작되지 않습니다.
 - **OMP·OpenCode**에는 REA MCP 항목을 쓰지 않고, `npx -y rea-agents@6.5.0 setup`이 REA를 사용자 범위의 메인 세션에만 등록한다고 안내합니다.
-- **17번째 에이전트**: `reverse-engineer`는 결정과 무관하게 모든 플랫폼에 생성됩니다. REA 도구와 읽기 도구만 쓰고(Write·Edit·Bash 없음) 항목 ID, evidence_id 참조, unknowns가 담긴 행동 명세만 돌려주며 디컴파일된 의사코드는 넣지 않습니다. balanced는 opus에 둡니다(Claude `claude-opus-5-5` · `high`, Codex `gpt-6.1-sol` · `xhigh`). OMP나 Codex catalog에 그 model이 없으면 reverse-engineer만 세션 모델을 쓰고 안내 한 줄을 내며, 다른 rung의 blocker는 그대로입니다. 이 버전이 쓴 17개 프리셋은 v0.50.125가 사용자 수정으로 읽습니다.
+- **17번째 에이전트**: `reverse-engineer`는 결정과 무관하게 모든 플랫폼에 생성됩니다. REA 도구와 읽기 도구만 쓰고(Write·Edit·Bash 없음), `tools:`가 MCP 도구를 하나씩 주지도 막지도 못하는 Antigravity에서는 executor를 비롯한 모든 Autopus 에이전트처럼 `call_mcp_tool`로 REA 도구가 모두 보이므로, 에이전트 지시와 호출마다 묻는 agy MCP 권한이 runtime capture를 막습니다. 항목 ID, evidence_id 참조, unknowns가 담긴 행동 명세만 돌려주며 디컴파일된 의사코드는 넣지 않습니다. balanced는 opus에 둡니다(Claude `claude-opus-5-5` · `high`, Codex `gpt-6.1-sol` · `xhigh`). OMP나 Codex catalog에 그 model이 없으면 reverse-engineer만 세션 모델을 쓰고 안내 한 줄을 내며, 다른 rung의 blocker는 그대로입니다. 이 버전이 쓴 17개 프리셋은 v0.50.125가 사용자 수정으로 읽습니다.
 - **clean-room 흐름**: `/auto reverse <대상> <기능> [--runtime]`은 reverse-engineer를 보내고, 대상을 실행하거나 붙는 runtime capture 전에 메인 세션이 동의를 묻습니다(`허용 / 거절`, `--auto`도 묻습니다). 명세와 제안한 소유 경로·테스트 경로를 보이고 `확인 / 수정 / 중단`을 물은 뒤, 확인한 명세만 생성 `.gitignore`가 무시하는 `.autopus/reverse/<slug>/behaviour-spec.md`에 쓰고 tester → executor → tester를 잇습니다. dispatch prompt에는 REA 결과, evidence bundle, 디컴파일 텍스트를 넣지 않습니다. OMP에서 `/auto reverse`는 대화형 command이고 headless managed OMP RPC backend(`/autopus-pipeline`)는 이 route를 돌리지 않습니다.
-- **doctor**는 결정과 출처, Node 판정, 선택된 플랫폼마다 `rea` 항목 분류(`managed`, `absent`, `other_pin`, `user_owned`), OMP·OpenCode 안내를 텍스트와 `--json`(`data.rea`)으로 보고하며, REA 서버를 띄우거나 네트워크를 쓰지 않습니다.
+- **doctor**는 결정과 출처, Node 판정, 선택된 플랫폼마다 읽은 파일과 `rea` 항목 분류(`managed`, `absent`, `other_pin`, `user_owned`), OMP·OpenCode 안내를 텍스트와 `--json`(`data.rea`)으로 보고하며, REA 서버를 띄우거나 네트워크를 쓰지 않습니다.
 
 ---
 

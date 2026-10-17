@@ -173,8 +173,13 @@ func TestPlatformTargets(t *testing.T) {
 	assert.Equal(t, []Platform{Claude, Codex, Antigravity}, Platforms())
 	assert.Equal(t, ".mcp.json", TargetRelPath(Claude))
 	assert.Equal(t, ".codex/config.toml", TargetRelPath(Codex))
-	assert.Equal(t, ".gemini/settings.json", TargetRelPath(Antigravity))
+	// agy reads plugin MCP servers from <plugin>/mcp_config.json, never from a
+	// project .gemini/settings.json, which release candidates wrote.
+	assert.Equal(t, ".agents/plugins/autopus/mcp_config.json", TargetRelPath(Antigravity))
 	assert.Equal(t, "", TargetRelPath(Platform("omp")))
+	assert.Equal(t, ".gemini/settings.json", LegacyTargetRelPath(Antigravity))
+	assert.Equal(t, "", LegacyTargetRelPath(Claude))
+	assert.Equal(t, "", LegacyTargetRelPath(Codex))
 	assert.Equal(t, Platform("claude-code"), Claude)
 	assert.Equal(t, Platform("antigravity-cli"), Antigravity)
 	assert.Equal(t, Platform("codex"), Codex)

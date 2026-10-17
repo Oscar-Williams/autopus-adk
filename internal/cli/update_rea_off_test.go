@@ -94,7 +94,8 @@ func TestUpdateRea_PlanShowsTheOffSweep(t *testing.T) {
 	assert.Equal(t, before, reaSums(t, dir))
 	const sweep = " — REA off would remove the managed rea entry of this unselected platform"
 	assert.Contains(t, out, "update .codex/config.toml (codex)"+sweep)
-	assert.Contains(t, out, "update .gemini/settings.json (antigravity-cli)"+sweep)
+	// The plugin MCP file held the managed entry alone, so the sweep deletes it.
+	assert.Contains(t, out, "remove .agents/plugins/autopus/mcp_config.json (antigravity-cli)"+sweep)
 	assert.NotContains(t, out, "(claude-code)"+sweep, "the selected file is the adapter's to plan")
 
 	plain, err := reaUpdate(t, strings.NewReader(""), dir, "--plan")

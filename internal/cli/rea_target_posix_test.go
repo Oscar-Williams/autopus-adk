@@ -70,7 +70,7 @@ func TestReadReaTarget_RefusesUnsafeFiles(t *testing.T) {
 			data, err := readReaTarget(dir, reamcp.Antigravity)
 			var refused *reaTargetError
 			require.ErrorAs(t, err, &refused, kind)
-			assert.Equal(t, &reaTargetError{Rel: ".gemini/settings.json", Reason: reason}, refused, kind)
+			assert.Equal(t, &reaTargetError{Rel: ".agents/plugins/autopus/mcp_config.json", Reason: reason}, refused, kind)
 			assert.Nil(t, data, kind)
 			assert.Equal(t, reamcp.ClassUserOwned, reaFileClass(dir, reamcp.Antigravity), kind)
 		})
@@ -93,7 +93,7 @@ func TestReaRun_SnapshotLeavesUnselectedTargetsUnread(t *testing.T) {
 		require.NoError(t, run.finish(&out, dir, cfg))
 	})
 
-	assert.NotContains(t, out.String(), ".gemini/settings.json")
+	assert.NotContains(t, out.String(), ".agents/plugins/autopus/mcp_config.json")
 	assert.Contains(t, out.String(), "REA 역공학 MCP를 등록했습니다: .mcp.json (rea-agents@6.5.0)")
 }
 
@@ -114,7 +114,7 @@ func TestReaRunFinish_SweepSkipsUninspectableTargets(t *testing.T) {
 	})
 
 	assert.Equal(t, 1, strings.Count(out.String(), "  REA MCP 대상 파일을 건너뜁니다: .codex/config.toml (symlink를 따라가지 않습니다)\n"), out.String())
-	assert.Equal(t, 1, strings.Count(out.String(), "  REA MCP 대상 파일을 건너뜁니다: .gemini/settings.json (일반 파일이 아닙니다)\n"), out.String())
+	assert.Equal(t, 1, strings.Count(out.String(), "  REA MCP 대상 파일을 건너뜁니다: .agents/plugins/autopus/mcp_config.json (일반 파일이 아닙니다)\n"), out.String())
 	reloaded, err := config.Load(dir)
 	require.NoError(t, err)
 	assert.Equal(t, reaBool(false), reloaded.Features.Rea.Enabled)

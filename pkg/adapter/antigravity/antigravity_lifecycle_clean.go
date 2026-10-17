@@ -28,6 +28,15 @@ func (a *Adapter) Clean(_ context.Context) error {
 			return err
 		}
 	}
+	// The plugin MCP file is not a manifest mapping, so the prune below never
+	// deletes it; only the managed rea entry leaves (REQ-REA-04).
+	if change, changed, err := a.planReaPluginMCP(config.ReaMCPRemove); err != nil {
+		return err
+	} else if changed {
+		if err := a.writeReaPluginMCP(change); err != nil {
+			return err
+		}
+	}
 	if _, owned := manifest.Files[antigravityHooksTarget]; owned {
 		if err := a.removeAntigravityHooksJSON(); err != nil {
 			return err
@@ -96,9 +105,9 @@ func (a *Adapter) removeManagedSettingsKeys() error {
 			delete(currentServers, name)
 		}
 	}
-	// The managed rea entry goes whatever the current render holds; other_pin
-	// and user-owned rea entries stay.
-	if err := a.applyAntigravityReaMCP(settings, config.ReaMCPRemove); err != nil {
+	// A managed rea entry an earlier build left goes whatever the current
+	// render holds; other_pin and user-owned rea entries stay.
+	if err := a.sweepLegacyReaMCP(settings); err != nil {
 		return err
 	}
 	if currentServers, _ = settings["mcpServers"].(map[string]any); len(currentServers) == 0 {

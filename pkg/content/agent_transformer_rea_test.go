@@ -47,17 +47,21 @@ func TestReverseEngineerSource_FrontmatterFollowsTheContract(t *testing.T) {
 	}
 }
 
-// S9 and M2: Antigravity grants the read tools and each static REA tool as
-// mcp_rea_<tool>, in source order, and never the mcp_rea_* wildcard.
-func TestReverseEngineerGemini_ToolsAreReadToolsAndStaticREATools(t *testing.T) {
+// S9: Antigravity lists the read tools only and declares inheritMcp. agy 1.4
+// rejects an mcp_rea_<tool> entry as an unknown tool and has no per-tool MCP
+// grant, so the M2 restriction cannot be expressed there: the agent reaches
+// REA through call_mcp_tool, one agy permission per call.
+func TestReverseEngineerGemini_ToolsAreReadToolsAndInheritMCP(t *testing.T) {
 	t.Parallel()
-	frontmatter, _ := decodeGeminiAgent(t, content.TransformAgentForGemini(ompAgentSource(t, "reverse-engineer")))
-	want := []string{"read_file", "grep_search", "glob"}
-	for _, tool := range reamcp.StaticAnalysisTools() {
-		want = append(want, "mcp_rea_"+tool)
+	rendered := content.TransformAgentForGemini(ompAgentSource(t, "reverse-engineer"))
+	frontmatter, _ := decodeGeminiAgent(t, rendered)
+	assert.Equal(t, []string{"read_file", "grep_search", "find_by_name"}, frontmatter.Tools)
+	assert.True(t, frontmatter.InheritMCP)
+	assert.Contains(t, rendered, "  - find_by_name\ninheritMcp: true\n---\n")
+	for _, tool := range frontmatter.Tools {
+		assert.NotContains(t, tool, "mcp_", "agy refuses to construct an agent listing %s", tool)
 	}
-	assert.Equal(t, want, frontmatter.Tools)
-	assert.NotContains(t, frontmatter.Tools, "mcp_rea_*")
+	assert.NotContains(t, rendered, "enable_mcp_tools", "define_subagent's flag is not a Markdown agent field")
 	assert.Empty(t, frontmatter.Skills)
 }
 
@@ -114,7 +118,11 @@ func TestREAToolGate_LeavesOtherMCPToolsUntouched(t *testing.T) {
 	assert.Contains(t, openCode, `"mcp__reader": allow`)
 	assert.NotContains(t, openCode, "mcp__rea__inspect")
 	frontmatter, _ := decodeGeminiAgent(t, content.TransformAgentForGemini(source))
-	assert.Equal(t, []string{"read_file", "mcp_rea_inspect"}, frontmatter.Tools)
+	assert.Equal(t, []string{"read_file"}, frontmatter.Tools)
+	assert.True(t, frontmatter.InheritMCP, "the REA grant opts into the session's MCP servers")
+	other := content.AgentSource{Meta: content.AgentSourceMeta{Name: "mcp-other", Tools: "Read, mcp__context7, mcp__reader"}}
+	frontmatter, _ = decodeGeminiAgent(t, content.TransformAgentForGemini(other))
+	assert.False(t, frontmatter.InheritMCP, "mcp__reader is not the REA server")
 }
 
 // S9: every platform's body demands the five-section behaviour specification,
