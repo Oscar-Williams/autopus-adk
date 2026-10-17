@@ -35,6 +35,9 @@ type TransactionWrite struct {
 	Path    string
 	Content []byte
 	Perm    os.FileMode
+	// ExactPerm gives the file exactly Perm, as an owner-only record whose mode
+	// is its provenance needs; other rewrites keep the file's mode.
+	ExactPerm bool
 }
 
 type TransactionRemove struct {
@@ -177,7 +180,7 @@ func (tx *transaction) writeFile(write TransactionWrite) error {
 	} else if statErr != nil && !os.IsNotExist(statErr) {
 		return fmt.Errorf("transaction stat %s: %w", rel, statErr)
 	}
-	perm := transactionWriteMode(info, write.Perm)
+	perm := transactionWriteMode(info, write.Perm, write.ExactPerm)
 	if err := os.MkdirAll(filepath.Dir(abs), 0755); err != nil {
 		return fmt.Errorf("transaction mkdir %s: %w", rel, err)
 	}

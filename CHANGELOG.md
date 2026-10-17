@@ -39,6 +39,25 @@ All notable changes to this project will be documented in this file.
   - 그대로: `task` 스키마 검사, 다섯 RPC frame, bootstrap model `openai-codex/gpt-5.6-sol`(OMP가 내장 catalog에서 찾고
     없으면 종료한다. 17.2.7에는 gpt-6.x가 없다). omp/17.2.7은 `dumpTools`에 parameters가 없어
     `rpc.dump_tools_pre_intent`가 전과 같이 unsupported다.
+- **v0.50.126: Claude permission ledger가 clone과 Windows의 두 번째 `auto update`를 막지 않고 `.gitignore` 대상이 된다**
+  (2026-10-17): v0.50.124부터 transaction rewrite가 파일의 기존 mode를 지켜서, git이 0644로 꺼낸
+  `.autopus/claude-code-permissions.json`을 claim한 update가 그 파일을 0600으로 줄이지 않았다. 그래서 다음 update가
+  `permission ledger must be an owner-only regular file`로 끝났다(v0.50.124·v0.50.125, ledger를 커밋한 모든 저장소의 새 clone).
+  - ledger 쓰기는 이제 늘 정확히 0600으로 끝난다(임시 파일·chmod·rename, symlink 거부는 그대로). 처음 claim하는 update는
+    checkout된 ledger 내용을 믿지 않고 자기 ledger를 새로 쓴다. 다른 생성 파일의 rewrite는 계속 기존 mode를 지킨다.
+  - 이미 claim된 ledger가 0600이 아니면 계속 거부한다. git으로 들어온 위조 ledger가 사용자 permission 항목을 지우지
+    못하게 하는 확인이다. 오류는 파일과 mode를 적는다. v0.50.124·v0.50.125가 clone에서 claim한 ledger라면 allow·deny
+    목록을 확인한 뒤 `chmod 600 .autopus/claude-code-permissions.json`으로 푼다.
+  - `.gitignore`: ledger는 그 기계의 update가 자기 `.claude/settings.json`에 더한 항목의 기록이라 init·update가 관리
+    패턴에 `.autopus/claude-code-permissions.json`을 더한다. 이미 커밋한 저장소에서 update는 `git rm --cached`를 대신
+    실행하지 않고 git이 그 파일을 추적하는 동안 `참고: … 추적만 멈추려면 git rm --cached …` 한 줄을 쓴다.
+  - claim된 ledger가 없으면(다른 clone이 untrack한 commit을 pull하면 git이 지운다) 오류 대신 다음 update가 새 0600 ledger를
+    쓴다. 이미 `.claude/settings.json`에 있던 항목은 기록하지 않으므로 clean은 그 항목을 지우지 않는다.
+  - Windows: Go가 Windows 파일 mode를 0666·0444로만 보여 주므로 claim된 ledger는 0600 확인을 통과할 수 없었다(v0.50.109부터
+    두 번째 update 실패). Windows에서는 mode 확인만 건너뛰고 regular file, symlink 거부, manifest checksum, committed
+    transaction 확인은 그대로 둔다. 그래서 Windows에서는 저장소가 위조 ledger·manifest·journal을 함께 커밋하면 막지 못한다
+    (unix는 계속 0600으로 막는다). Windows 동작은 platform을 주입한 unit test와 `GOOS=windows GOARCH=amd64 go build ./...`로만
+    확인했고 Windows 기계에서는 돌려 보지 않았다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
   폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
   - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인

@@ -66,6 +66,18 @@ func (a *Adapter) Update(_ context.Context, cfg *config.HarnessConfig) (*adapter
 	return pf, nil
 }
 
+// ResolveUpdateAction is adapter.ResolveAction as this adapter's update applies
+// it: a permission ledger git deleted (another clone untracked it) is written
+// again instead of skipped, since it is the adapter's own record and not a
+// file the user opted out of. The update preview reads it too, so they agree.
+func ResolveUpdateAction(root string, file adapter.FileMapping, old *adapter.Manifest) adapter.UpdateAction {
+	action := adapter.ResolveAction(root, file.TargetPath, file.OverwritePolicy, old)
+	if action == adapter.ActionSkip && filepath.ToSlash(file.TargetPath) == claudePermissionLedgerPath {
+		return adapter.ActionCreate
+	}
+	return action
+}
+
 func (a *Adapter) buildUpdateTransactionPlan(
 	oldManifest *adapter.Manifest,
 	newFiles []adapter.FileMapping,
@@ -74,7 +86,7 @@ func (a *Adapter) buildUpdateTransactionPlan(
 	skippedPaths := make([]string, 0)
 
 	for _, file := range newFiles {
-		action := adapter.ResolveAction(a.root, file.TargetPath, file.OverwritePolicy, oldManifest)
+		action := ResolveUpdateAction(a.root, file, oldManifest)
 		if action == adapter.ActionSkip {
 			skippedPaths = append(skippedPaths, file.TargetPath)
 			continue
@@ -96,6 +108,7 @@ func (a *Adapter) buildUpdateTransactionPlan(
 	}
 	diff := adapter.BuildManifestDiff(oldManifest, newFiles, PruneRoots())
 	writes := adapter.TransactionWritesFromFiles(finalFiles, claudeFileMode)
+	markPermissionLedgerExact(writes)
 	removes, err := a.buildUpdateTransactionRemoves(diff, writes)
 	if err != nil {
 		return adapter.TransactionPlan{}, nil, err
