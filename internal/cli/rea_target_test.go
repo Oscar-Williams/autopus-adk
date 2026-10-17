@@ -38,7 +38,7 @@ func TestReadReaTarget_ReadsRegularFilesUpToTheCap(t *testing.T) {
 func TestReaRunFinish_SweepReportsARefusedRemoval(t *testing.T) {
 	t.Parallel()
 	dir, cfg := reaFixture(t, "claude-code")
-	codex := "approval_policy\n\n[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\nstartup_timeout_sec = 30\n"
+	codex := "approval_policy\n\n[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\nstartup_timeout_sec = 120\n"
 	writeReaTarget(t, dir, reamcp.Codex, []byte(codex))
 	require.Equal(t, reamcp.ClassManaged, reaFileClass(dir, reamcp.Codex))
 	run, _ := testReaRun(t, dir, cfg, "v24.11.0\n")

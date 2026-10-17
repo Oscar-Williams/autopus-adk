@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: REA의 Codex 시작 제한을 120초로 올리고 깨진 npx cache 복구법을 적는다** (2026-10-17): 실제 터미널 S18을
+  새 HOME으로 다시 재니 rea-agents 첫 다운로드가 한가할 때 26초였고, 부하 중에는 Codex가 30초 시간 초과(`timed out after 30 seconds`)로
+  rea 시작을 끊었다. 끊긴 설치는 `~/.npm/_npx/<hash>`를 깨진 채 남겨, 같은 HOME의 이후 시작이 `connection closed`로
+  계속 실패했다.
+  - Codex managed 항목의 `startup_timeout_sec`를 30에서 120으로 올렸다. REA는 이번 릴리즈에서 처음 나가므로 30초 항목을 가진
+    프로젝트는 없다.
+  - README에 `npm cache npx ls`·`npm cache npx rm <key>` 복구 절차를 적었다.
 - **v0.50.126: auto-go가 `Agent Team:` 판단 줄을 바꿔 쓰지 않고 그대로 한 줄로 출력하게 한다** (2026-10-17): 실제 터미널
   S15에서 lead가 판단 JSON의 `line`을 "분류기가 subagent를 골랐습니다" 같은 문장으로 풀어 쓰고, 완료 보고의 `topology:`
   줄에도 `Agent Team:`을 한 번 더 적었다. 경로 판단은 맞았다. 생성 auto-go에 "출력"은 JSON 문자열을 번역·요약 없이 그대로

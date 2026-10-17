@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-17 (v0.50.126 smoke: agy 1.4 — Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고 Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침; update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-17 (S18 Codex cold 시작이 부하 중 30초를 넘어 `startup_timeout_sec`를 120으로 올리고 깨진 npx cache 복구 안내를 더함; v0.50.126 smoke: agy 1.4 — Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고 Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침; update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -194,7 +194,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 |---|---|---|
 | Claude Code | `.mcp.json` `mcpServers.rea` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
 | Antigravity | `.agents/plugins/autopus/mcp_config.json` `mcpServers.rea`(agy가 `autopus_rea`로 띄운다) | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
-| Codex | `.codex/config.toml` 끝 | 빈 줄 하나, `[mcp_servers.rea]`, `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 30` |
+| Codex | `.codex/config.toml` 끝 | 빈 줄 하나, `[mcp_servers.rea]`, `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` |
 
 | 분류 | 조건 | add | remove | doctor |
 |---|---|---|---|---|

@@ -32,7 +32,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 |---|---|---|
 | Q1 | `features.rea.enabled`(*bool)는 managed 항목이 결정을 담지 못할 때만 쓴다. M은 쓰기 뒤 다시 읽는다 | A3: key는 옛 auto의 모든 명령을 막고 managed 항목은 옛 update 뒤에도 남는다. `ActionSkip`(J-17) |
 | Q2 | balanced에 opus rung `balancedRungAnalysis`. OMP catalog에 그 model이 없으면 reverse-engineer만 세션 model, 기존 rung은 blocker | matrix 불변식, 도구 간 같은 model. J-01은 Gate 1에서 사용자가 "세션 모델로 대체"를 골랐다 |
-| Q3 | Codex는 `startup_timeout_sec = 30`만, `tool_timeout_sec`는 기본 60초 | Codex 문서 기본 10초·60초, A2 not-run |
+| Q3 | Codex는 `startup_timeout_sec = 120`만, `tool_timeout_sec`는 기본 60초 | Codex 문서 기본 10초·60초. 처음 30초였으나 S18 cold 측정(26초, 부하 중 실패)으로 120초 |
 | Q4 | `tools: Read, Grep, Glob, mcp__rea`(보안 감사 M2로 `mcp__rea__<정적 도구>` 135개로 좁힘, `evidence/rea-tool-catalog-6.5.0.md`), 실행 모드에 기대지 않음, 동의·확인은 메인 세션 | Claude 문서의 server-level 이름, subagent에 AskUserQuestion 없음과 fork mode(J-05, J-06) |
 | Q5 | CLI가 실행당 1회 exec probe(POSIX login shell, Windows PATH, 5초), 127은 absent | 서버 실행 형식과 같은 shell(J-19) |
 | Q6 | `--auto`도 동의 질문과 확인 gate에서 멈춘다 | PRD Anti-goal "자동 승인으로 끝까지", 사용자 결정 2 |
@@ -112,7 +112,7 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 ## Completion Debt
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 30초 시작, Claude `/mcp`의 rea connected와 도구 목록, agy `/mcp`의 `autopus_rea` connected와 도구 수 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
+| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 120초 시작, Claude `/mcp`의 rea connected와 도구 목록, agy `/mcp`의 `autopus_rea` connected와 도구 수 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
 | CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), agy 에이전트 시작(`--agent` 3개 `OK`)과 reverse-engineer의 `call_mcp_tool` 정적 도구 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
 
 ## agy 1.4 Smoke
@@ -157,7 +157,7 @@ These are optional improvements and do not block sync completion.
 
 ## Open Risks
 - R1 opt-out과 gate에 막힌 opt-in 프로젝트는 v0.50.113–v0.50.125가 읽지 못한다(REQ-REA-17 줄). v0.50.125는 17개 preset을 customized로 본다(J-28, REQ-REA-19 문서). R2 login shell PATH와 Codex 프로세스 PATH가 다를 수 있다. doctor가 버전을 보이고 gate는 지우지 않는다. R3 runtime capture는 사용자 권한으로 대상을 실행한다. 메인 세션 동의 뒤에만 부른다(REQ-REA-21).
-- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. 보안 감사 M1(2026-10-16)로 reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`(Codex 0.162.0 역할 파일 field 표에서 확인)를 더해 shell 쓰기는 막지만, MCP 호출은 sandbox 밖이라 runtime REA 도구 금지는 여전히 instruction과 메인 세션 동의 질문의 권고 수준이다. R5 npx 첫 실행이 30초를 넘을 수 있다(A2). R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
+- R4 Codex 에이전트는 도구를 제한할 수 없어 clean-room이 instruction, 메인 세션 gate, handoff 입력 제한에 기댄다. 보안 감사 M1(2026-10-16)로 reverse-engineer 역할 파일에 `sandbox_mode = "read-only"`(Codex 0.162.0 역할 파일 field 표에서 확인)를 더해 shell 쓰기는 막지만, MCP 호출은 sandbox 밖이라 runtime REA 도구 금지는 여전히 instruction과 메인 세션 동의 질문의 권고 수준이다. R5 npx 첫 실행이 30초를 넘었다(2026-10-17 S18: 한가할 때 26초, 부하 중 시간 초과). 시간 초과로 설치가 끊기면 `~/.npm/_npx/<hash>`가 깨진 채 남아 REA가 계속 실패하므로 120초로 올리고, 복구 명령(`npm cache npx ls`, `npm cache npx rm <key>`)을 README에 적었다. R6 catalog에 Opus 5.5·Sol이 없는 OMP balanced 프로젝트에서 reverse-engineer는 세션 model로 돈다(사용자 결정). 품질이 세션 model에 달리지만 실행은 막히지 않고 대체 줄이 알린다.
 - R7 명세 문자열은 대상 유래 비신뢰 데이터다(Trust Model, 확인 gate). R8 OpenCode reverse-engineer는 `task` permission이 없어 다른 에이전트를 보내지 못하고(보안 M1) REA 도구가 없어 증거를 만들지 못한다. R9 runtime capture 도구는 rea-agents@6.5.0 `toolEffects.js`의 효과 감사로 이름이 정해졌다(정적 135, runtime 68, 호출자 경로 쓰기 4, `evidence/rea-tool-catalog-6.5.0.md`). Claude Code subagent는 정적 도구만 이름으로 받는다(보안 M2). R10 Antigravity에서는 agy가 Markdown 에이전트에 MCP 도구를 하나씩 주지 못하고 `tools:`가 MCP를 막지 못해, REA가 등록된 project의 모든 Autopus 에이전트(reverse-engineer, executor, tester 등)에 REA runtime 도구까지 보인다(`## agy 1.4 Smoke`). always-on 플러그인 rule `rea-mcp-guard.md`가 `autopus_rea` 호출을 reverse-engineer와 `/auto reverse` 흐름으로 제한하지만, runtime 도구 금지는 R4의 Codex처럼 rule·본문과 메인 세션 동의, agy가 호출마다 묻는 MCP 권한의 권고 수준이다. 그 권한 질문의 허용은 runtime capture 동의가 아니고, 운영자가 "항상 허용"을 고르면 모든 subagent에 적용되므로 호출마다 답한다.
 
 ## Self-Verify Summary

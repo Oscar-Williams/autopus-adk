@@ -321,7 +321,7 @@ Autopus 사용자는 기존 앱·바이너리의 기능을 증거와 함께 분�
 | R7 16→17 파급. 많은 test·계약이 16을 고정하고, 기존 16개 프리셋이 `customized`로 분류된다 | Medium | High | Historical row 추가, 기존 test 변경 규칙(Q10) |
 | R8 MCP 참조 변환이 `mcp__rea__*`를 Context7 문구로 바꾼다 | High | High(대응 없으면 확실) | FR-12와 golden |
 | R9 공급망. npx가 transitive 의존성을 고정하지 않고 첫 실행 때 내려받는다 | Medium | Low | 정확한 pin, 사전 승인 없음, 문서 |
-| R10 Codex 기본 startup timeout 안에 npx 첫 실행이 끝나지 않는다 | Medium | Medium | REA `rea setup`처럼 `startup_timeout_sec = 30`(Q3, probe) |
+| R10 Codex 기본 startup timeout 안에 npx 첫 실행이 끝나지 않는다 | Medium | Medium | REA `rea setup`처럼 `startup_timeout_sec = 120`(Q3, probe) |
 | R11 OMP가 frontmatter의 모르는 도구 이름(`mcp__rea__*`)에 오류를 낸다 | Medium | Unknown | omp 18.6.1 probe, OMP·OpenCode 본문은 중립 이름(Q11) |
 
 ### Open Questions (모두 assumed 또는 deferred, Outcome Lock을 막지 않는다)
@@ -330,7 +330,7 @@ Autopus 사용자는 기존 앱·바이너리의 기능을 증거와 함께 분�
 |---|----------|-------|----------|--------|
 | Q1 | `features.rea` 모양 | spec-writer | 2026-10-16 | assumed: `features.rea.enabled`(*bool 또는 omitempty 없는 struct). absent = 미결정, false도 저장된다 |
 | Q2 | balanced의 `opus`. 표준 배치는 top=fable, 나머지=sonnet이다(`role_model_policy_balanced.go:21-69`, `native_balanced.go:37-52`) | spec-writer | 2026-10-16 | assumed: 새 balanced rung(anthropic Opus 5.5, openai `gpt-6.1-sol` xhigh, `CodexModelForTier("opus")`와 같다)으로 "모든 정규 에이전트가 matrix에 한 번" 불변식을 지킨다. 아니면 matrix 밖 명시 tier로 둔다. 이 경우 OMP는 deep_reasoning capability route(fable)를 타 도구마다 다르다 |
-| Q3 | Codex timeout key 값 | spec-writer | probe | assumed: `startup_timeout_sec = 30`. `tool_timeout_sec`는 REA 6.5.0 `rea setup` 출력으로 정한다(unverified) |
+| Q3 | Codex timeout key 값 | spec-writer | probe | assumed: `startup_timeout_sec = 120`. `tool_timeout_sec`는 REA 6.5.0 `rea setup` 출력으로 정한다(unverified) |
 | Q4 | Claude subagent `tools:`가 `mcp__rea` 또는 `mcp__rea__*` wildcard를 받는가, plan mode와 background에서 MCP 호출은 어떻게 되는가 | spec-writer | probe | assumed: 안 되면 pin된 6.5.0의 `tools/list`로 이름을 나열한다. `permissionMode`는 기본(질문함), foreground만 |
 | Q5 | Node probe 방법 | spec-writer | 2026-10-16 | assumed: CLI가 실행당 1회 확인해 `cfg.Runtime`(yaml `-`)에 넘긴다. POSIX는 서버와 같은 login shell로, Windows는 PATH로 확인한다. adapter는 순수하게 남는다 |
 | Q6 | `--auto`에서 확인 gate | spec-writer | 2026-10-16 | assumed: 건너뛰지 않는다(gate에서 멈춤) |

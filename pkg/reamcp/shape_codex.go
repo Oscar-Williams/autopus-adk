@@ -11,7 +11,7 @@ const (
 	codexCommandLine = `command = "npx"`
 	codexArgsPrefix  = `args = ["-y", "rea-agents@`
 	codexArgsSuffix  = `", "mcp"]`
-	codexTimeoutLine = "startup_timeout_sec = 30"
+	codexTimeoutLine = "startup_timeout_sec = 120"
 )
 
 func codexTableLines(pin string) []string {

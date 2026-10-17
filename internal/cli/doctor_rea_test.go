@@ -20,7 +20,7 @@ import (
 var reaP5 = []string{"claude-code", "codex", "antigravity-cli", "omp", "opencode"}
 
 // reaX5 is acceptance S4 row X5: an other-pin Codex rea table.
-const reaX5 = reaCodexBase + "\n[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.4.0\", \"mcp\"]\nstartup_timeout_sec = 30\n"
+const reaX5 = reaCodexBase + "\n[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.4.0\", \"mcp\"]\nstartup_timeout_sec = 120\n"
 
 // reaDoctorJSON runs `auto doctor --json` and returns data.rea, the
 // doctor.rea.* checks by ID, and the envelope status. The envelope writes

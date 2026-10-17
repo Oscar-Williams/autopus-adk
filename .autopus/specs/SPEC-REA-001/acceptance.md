@@ -44,7 +44,7 @@ Priority: Must
 | G1 | `.agents/plugins/autopus/mcp_config.json` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` | managed | managed |
 | G2 | `.agents/plugins/autopus/mcp_config.json` | G1 + C1의 `$comment` | user_owned | user_owned |
 | G3 | `.agents/plugins/autopus/mcp_config.json` | G1의 셋째 arg가 `exec npx -y rea-agents@latest mcp` | other_pin | other_pin |
-| X1 | `.codex/config.toml` | `[mcp_servers.rea]` 아래 `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 30` | managed | managed |
+| X1 | `.codex/config.toml` | `[mcp_servers.rea]` 아래 `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` | managed | managed |
 | X2 | `.codex/config.toml` | X1에서 `startup_timeout_sec` 줄을 뺌 | user_owned | user_owned |
 | X3 | `.codex/config.toml` | X1 + `tool_timeout_sec = 120` | user_owned | user_owned |
 | X4 | `.codex/config.toml` | X1의 둘째 줄 앞에 `# mine` 주석 줄 | user_owned | user_owned |
@@ -171,7 +171,7 @@ Then 모든 test가 통과하고 바뀐 기존 test는 T2 목록(`evidence/test-
 Priority: Must
 Given macOS 실제 터미널, 이 branch의 `auto`, Node v24.x, 버전을 기록한 Claude Code·Codex·Antigravity CLI, `git init`한 빈 temp dir, 도구마다 새로 만든 빈 cache 디렉터리 `<scratch>/npm-codex`·`npm-claude`·`npm-agy`, Codex용 새 scratch HOME과 CODEX_HOME, `script -q` 기록이 있다
 When `auto init --platforms claude-code,codex,antigravity-cli`에서 REA 단계를 Enter로 넘기고, 다른 도구를 띄우기 전에 `npm_config_cache=<scratch>/npm-codex`와 scratch HOME으로 trusted `codex`를 메시지 없이 열어 rea 도구가 보일 때까지의 시간을 잰 뒤, `npm_config_cache=<scratch>/npm-claude`로 `claude`를 열어 project MCP 승인 질문에서 rea를 승인하고 `/mcp`만 보고, `npm_config_cache=<scratch>/npm-agy`로 Antigravity CLI(`agy`)를 열어 폴더를 신뢰하고 `/mcp`를 본다(`agy mcp list`는 사용자 범위 서버만 보인다)
-Then Codex 실행 전 `<scratch>/npm-codex`와 scratch HOME의 `.npm`에 rea-agents가 없고 실행 뒤 그중 하나에 `rea-agents@6.5.0`이 생기며(cold 증명), 30초 안에 rea 도구가 보인다(A2 시작 절반 PASS). cold를 증명하지 못하거나 30초를 넘으면 시간과 cache 상태를 적고 FAIL이다. Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며 agy `/mcp`에 `autopus_rea`가 connected이고 도구 수가 보인다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
+Then Codex 실행 전 `<scratch>/npm-codex`와 scratch HOME의 `.npm`에 rea-agents가 없고 실행 뒤 그중 하나에 `rea-agents@6.5.0`이 생기며(cold 증명), 120초 안에 rea 도구가 보인다(A2 시작 절반 PASS). cold를 증명하지 못하거나 120초를 넘으면 시간과 cache 상태를 적고 FAIL이다. Claude `/mcp`에 rea가 connected이고 도구 목록이 보이며 agy `/mcp`에 `autopus_rea`가 connected이고 도구 수가 보인다 그리고 transcript를 `$HOME`, scratch 경로, 사용자 이름을 치환해 `evidence/manual-smoke-rea.txt`에 남긴다. 하나라도 다르면 CD-1이 남는다
 
 ### S19: 동의 뒤 live `/auto reverse`
 Priority: Must

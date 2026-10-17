@@ -19,7 +19,7 @@ import (
 const codexReaX1 = "[mcp_servers.rea]\n" +
 	"command = \"npx\"\n" +
 	"args = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\n" +
-	"startup_timeout_sec = 30\n"
+	"startup_timeout_sec = 120\n"
 
 func reaCodexConfig(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg := config.DefaultFullConfig("rea")
@@ -177,7 +177,7 @@ func TestReaMCP_CodexMergeLeavesOtherPinAndUserOwnedTablesByteIdentical(t *testi
 	rows := map[string]string{
 		"X2": "[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\n",
 		"X3": codexReaX1 + "tool_timeout_sec = 120\n",
-		"X4": "[mcp_servers.rea]\n# mine\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\nstartup_timeout_sec = 30\n",
+		"X4": "[mcp_servers.rea]\n# mine\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\nstartup_timeout_sec = 120\n",
 		"X5": strings.Replace(codexReaX1, "6.5.0", "6.4.0", 1),
 		"X7": codexReaX1 + "\n[mcp_servers.rea.env]\nA = \"1\"\n",
 	}
