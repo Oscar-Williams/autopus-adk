@@ -120,7 +120,10 @@ func TestAutoTeamSnippetWithTheBranchBinary(t *testing.T) {
 	// of a new file can spend that waiting on macOS first-run assessment, so
 	// run it once before the measured runs.
 	require.NoError(t, exec.Command(probe, "--version").Run())
-	capOK := []string{"CLAUDECODE=1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1", "CLAUDE_CODE_ENTRYPOINT=cli", "CLAUDE_CODE_SESSION_ATTENDED=1", "CLAUDE_CODE_EXECPATH=" + probe}
+	// CAP-OK is what a top-level interactive session's Bash tool sees, including
+	// the CLAUDE_CODE_CHILD_SESSION=1 marker Claude Code sets for every process
+	// a session spawns.
+	capOK := []string{"CLAUDECODE=1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1", "CLAUDE_CODE_ENTRYPOINT=cli", "CLAUDE_CODE_SESSION_ATTENDED=1", "CLAUDE_CODE_CHILD_SESSION=1", "CLAUDE_CODE_EXECPATH=" + probe}
 
 	project := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(project, "autopus.yaml"), []byte(snippetConfigKO), 0o644))

@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`)
+**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`), 2026-10-17 (S15 실제 터미널 smoke가 A2의 `CLAUDE_CODE_CHILD_SESSION` 가정을 반증해 규칙 8 `not_top_level`을 뺐다. `evidence/probe-teamauto-childsession.md`)
 **Domain**: TEAMAUTO
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, PR #199와 함께). 작업 branch는 `feat/teamauto-001`이고 기준은 origin/main `33b5bb55`다. PATH의 기준 바이너리는 `auto 0.50.125`다.
@@ -58,7 +58,7 @@ WHEN the decision route is `subagent`, THEN THE SYSTEM SHALL run Phase 2 exactly
 ### REQ-TA-04 판단 함수
 Priority: Must · EARS: Ubiquitous
 
-THE SYSTEM SHALL compute the Auto-Team Decision with two pure functions over one input value (topology flags, config value, declared units, observed capability snapshot, locale): `NeedsVersionProbe` reports whether rules 1–8 all pass, and `DecideTeam` applies the rules of the Auto-Team Decision Contract in order and returns the first match, so identical inputs always yield the identical route, reason code, and line.
+THE SYSTEM SHALL compute the Auto-Team Decision with two pure functions over one input value (topology flags, config value, declared units, observed capability snapshot, locale): `NeedsVersionProbe` reports whether rules 1–7 all pass, and `DecideTeam` applies the rules of the Auto-Team Decision Contract in order and returns the first match, so identical inputs always yield the identical route, reason code, and line.
 
 ### REQ-TA-05 준비된 독립 slice
 Priority: Must · EARS: Ubiquitous
@@ -129,10 +129,10 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | flags | facts `flags`. CLI 단독 호출용이다. 생성 skill은 `TOPOLOGY_FLAG_COUNT == 0`일 때만 부르므로 늘 false다 | boolean 셋. 둘 이상 true면 invalid facts `topology_conflict` |
 | units | Phase 1 배정 표(Unit, Execution, Owned paths, Depends on) → facts `units` | `id`, `execution`, `owned_paths`, `depends_on`, `done` |
 | auto_team | CLI가 `config.LoadPreview`로 읽은 `workflow.auto_team` | 없음 / true / false |
-| capability | CLI가 만든 snapshot(Capability Observation Contract) | env 값 다섯, EXECPATH basename, 버전 문자열(probe를 안 했거나 실패면 빈 값) |
+| capability | CLI가 만든 snapshot(Capability Observation Contract) | env 값 넷, EXECPATH basename, 버전 문자열(probe를 안 했거나 실패면 빈 값) |
 | locale | CLI가 읽은 `language.ai_responses` | `ko`면 ko, 그 밖(파일 없음 포함)은 en |
 
-규칙(위에서부터, 처음 맞는 규칙이 결과다). ready는 REQ-TA-05의 정의다. `NeedsVersionProbe`는 규칙 1–8이 모두 통과했는지만 돌려준다:
+규칙(위에서부터, 처음 맞는 규칙이 결과다). ready는 REQ-TA-05의 정의다. `NeedsVersionProbe`는 규칙 1–7이 모두 통과했는지만 돌려준다:
 
 | # | 조건 | route | reason |
 |---|---|---|---|
@@ -143,12 +143,12 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | 5 | `CLAUDECODE` ≠ `1` | subagent | `not_claude_code` |
 | 6 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` ≠ `1` | subagent | `teams_env_missing` |
 | 7 | `CLAUDE_CODE_ENTRYPOINT` ≠ `cli` 또는 `CLAUDE_CODE_SESSION_ATTENDED` ≠ `1` | subagent | `not_interactive` |
-| 8 | `CLAUDE_CODE_CHILD_SESSION`이 비어 있지 않음 | subagent | `not_top_level` |
-| 9 | 버전 문자열이 비었거나 해석 불가 | subagent | `claude_version_unknown` |
-| 10 | 버전 < 2.1.246 | subagent | `claude_version_old` |
-| 11 | 그 밖 | team | `independent_disjoint_slices` |
+| 8 | 버전 문자열이 비었거나 해석 불가 | subagent | `claude_version_unknown` |
+| 9 | 버전 < 2.1.246 | subagent | `claude_version_old` |
+| 10 | 그 밖 | team | `independent_disjoint_slices` |
 
 - 설정과 plan 사실을 능력보다 먼저 본다. 어차피 팀을 쓸 수 없는 run이 실험 환경 변수를 매번 권하지 않게 하고, 유일한 실행(버전 probe)은 나머지가 다 통과할 때만 일어난다.
+- 최상위 세션인지는 규칙이 아니다. 환경으로는 최상위 세션과 subagent를 가를 수 없다(Capability Observation Contract). subagent에서 판단이 `team`을 내도 팀 도구가 없는 세션은 REQ-TA-07의 `tools_fallback_line`을 출력하고 subagent로 남는다. 2026-10-17까지 있던 규칙 8(`CLAUDE_CODE_CHILD_SESSION`이 비어 있지 않으면 `not_top_level`)은 실제 최상위 세션도 막아 지웠다.
 - owned path는 literal path나 끝의 `/**` 하나만 받는다(`content/skills/references/agent-pipeline/delegation.md:111`과 같다). `/**`를 떼고 기존 `cleanPath`를 적용한다. `pkg/a/**`는 `pkg/a`다.
 - 겹침 판정식은 기존 `ownershipOverlap`(`pkg/taskroute/decide.go`)과 같다. path가 같거나 한쪽이 다른 쪽 + `/`로 시작한다. `pkg/a`와 `pkg/ab`는 겹치지 않는다. 단 비교 값은 cleaned path를 NFC로 정규화하고 Unicode case folding(`golang.org/x/text/cases` `Fold`)한 뒤 다시 NFC로 정규화한 것이다. 기본 macOS·Windows 파일 시스템에서는 대소문자나 정규화만 다른 표기(`pkg/Foo.go`와 `pkg/foo.go`, NFC와 NFD, `ς`와 `σ`, `ß`와 `ss`)가 같은 파일이기 때문이다. 거짓 겹침은 subagent로 남을 뿐이고 `cleanPath`가 거부하는 path는 모두와 겹친다고 본다. 접기는 겹침 판정에만 쓰고 검증과 출력은 바꾸지 않는다. 첫 겹침 쌍(facts 순서의 unit 쌍)은 `[NEW] firstOverlapPair`가 낸다. 기존 `decide.go`는 바꾸지 않는다.
 - 버전 비교는 (major, minor, patch) 정수 비교다. `2.10.0` > `2.1.246`이다.
@@ -177,13 +177,14 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | Claude Code 세션 | `CLAUDECODE` | `1` | `1` |
 | 팀 기능 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `1` | `1` |
 | 대화형 | `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SESSION_ATTENDED` | `cli`, `1` | `cli`, `1` |
-| 최상위 lead | `CLAUDE_CODE_CHILD_SESSION` | 없음 | `1`(probe가 subagent에서 돌았다) |
+| 최상위 lead | 없음. CLI는 `CLAUDE_CODE_CHILD_SESSION`을 읽지 않는다 | — | `1`(probe가 subagent에서 돌았다). 2026-10-17 최상위 대화형 세션도 `1`이다(아래 "최상위 여부") |
 | 버전 | `"$CLAUDE_CODE_EXECPATH" --version` 첫 줄 | `^(\d+)\.(\d+)\.(\d+) \(Claude Code\)$` 이고 ≥ 2.1.246 | `2.1.288 (Claude Code)`. PATH `claude`는 `2.1.299` |
 | 도구 schema | 세션의 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet` | 로드됨 | CLI 밖. REQ-TA-07 |
 
 - 버전 probe guard: 값이 절대 경로이고, `os.Stat`(symlink는 따라간 결과)이 regular file이며, basename이 `claude` 또는 `claude.exe`일 때만 shell 없이 인자 `--version` 하나로 실행한다. 5초 timeout, 출력은 기존 `processprobe.OutputLimited`로 4096 bytes까지다.
 - Windows에서는 drive 문자 경로(`C:\…`, `C:/…`)이고 basename이 `claude.exe`일 때만 실행한다. 확장자 없는 `claude`는 os/exec가 PATHEXT로 옆의 `claude.cmd`·`claude.bat`을 찾아 cmd.exe로 돌릴 수 있기 때문이다. UNC(`\\server\share`), `\\?\`·`\\.\` device 경로, `:`가 든 대체 데이터 스트림은 거부한다. 판정은 `[NEW] claudeVersionProbePathAllowed(goos, path)`의 경로 문자열 규칙이라 모든 host의 test가 두 플랫폼 규칙을 판정한다.
 - TTY는 신호가 아니다. Bash tool 안에서 stdin·stdout 모두 TTY가 아니었다(A1).
+- 최상위 여부도 신호가 아니다. Claude Code(2.1.288, 2.1.301)는 세션이 띄우는 모든 process에 `CLAUDE_CODE_CHILD_SESSION=1`을 넣는다. 최상위 대화형 세션의 Bash tool, subagent, teammate의 환경이 이 값으로 갈리지 않고, 판단이 읽는 나머지 값도 같다(`evidence/probe-teamauto-childsession.md` H1·T·S). 그래서 snapshot은 env 값 넷만 담고, subagent는 세션 쪽 schema 확인(REQ-TA-07)으로 subagent에 남는다.
 - test seam: CLI의 env 조회(`func(string) (string, bool)`)와 probe 실행(`func(path string) (string, error)`)은 package 변수로 바꿀 수 있다. 순수 함수 test는 snapshot 값만 쓴다.
 
 ### Reason Line Contract
@@ -199,7 +200,6 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | `not_claude_code` | `Agent Team: 유지 — Claude Code 세션이 아니라 subagent로 실행한다` | `Agent Team: off — not a Claude Code session; running subagents` |
 | `teams_env_missing` | `Agent Team: 유지 — 세션 환경에 CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1이 없어 subagent로 실행한다` | `Agent Team: off — CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 is not in the session environment; running subagents` |
 | `not_interactive` | `Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint={e}, attended={t}) subagent로 실행한다` | `Agent Team: off — not an interactive CLI session (entrypoint={e}, attended={t}); running subagents` |
-| `not_top_level` | `Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다` | `Agent Team: off — a child session cannot lead a team; running subagents` |
 | `claude_version_unknown` | `Agent Team: 유지 — 실행 중인 Claude Code 버전을 읽지 못해(execpath={x}) subagent로 실행한다` | `Agent Team: off — the running Claude Code version could not be read (execpath={x}); running subagents` |
 | `claude_version_old` | `Agent Team: 유지 — Claude Code {v} 버전은 2.1.246보다 낮아 subagent로 실행한다` | `Agent Team: off — Claude Code {v} is older than 2.1.246; running subagents` |
 | `team_tools_unavailable` | `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` | `Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents` |
@@ -352,7 +352,7 @@ These are optional improvements and do not block sync completion.
 
 ## Open Issues
 
-- 없음. 가정 AS-1(비 Claude 플랫폼 무변경)과 A2(not-run)는 `research.md`와 `plan.md`에 있다.
+- 없음. 가정 AS-1(비 Claude 플랫폼 무변경)은 `research.md`에 있다. A2는 2026-10-17 FAIL이다. 최상위 세션에도 `CLAUDE_CODE_CHILD_SESSION=1`이 있어 규칙 8을 뺐다. print mode·npm 부분은 S15(e)로 남는다(`plan.md`).
 
 ## Traceability Matrix
 

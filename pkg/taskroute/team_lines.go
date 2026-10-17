@@ -56,9 +56,6 @@ var teamLineText = map[string][2]string{
 	reasonNotInteractive: {
 		"Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint={e}, attended={t}) subagent로 실행한다",
 		"Agent Team: off — not an interactive CLI session (entrypoint={e}, attended={t}); running subagents"},
-	reasonNotTopLevel: {
-		"Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다",
-		"Agent Team: off — a child session cannot lead a team; running subagents"},
 	reasonClaudeVersionUnknown: {
 		"Agent Team: 유지 — 실행 중인 Claude Code 버전을 읽지 못해(execpath={x}) subagent로 실행한다",
 		"Agent Team: off — the running Claude Code version could not be read (execpath={x}); running subagents"},

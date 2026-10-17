@@ -46,8 +46,6 @@ func TestDecideTeamLinesFollowReasonLineContract(t *testing.T) {
 			"Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint=cli, attended=unset) subagent로 실행한다", "Agent Team: off — not an interactive CLI session (entrypoint=cli, attended=unset); running subagents"},
 		{"entrypoint injection", TeamInput{Units: shapeU3(), Capability: withCap(func(c *Capability) { c.Entrypoint = "cli; rm -rf /" })},
 			"Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint=unknown, attended=1) subagent로 실행한다", "Agent Team: off — not an interactive CLI session (entrypoint=unknown, attended=1); running subagents"},
-		{"child session", TeamInput{Units: shapeU3(), Capability: withCap(func(c *Capability) { c.ChildSession = "1" })},
-			"Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다", "Agent Team: off — a child session cannot lead a team; running subagents"},
 		{"version unknown node", TeamInput{Units: shapeU3(), Capability: withCap(func(c *Capability) { c.ExecPathBase, c.Version = "node", "" })},
 			"Agent Team: 유지 — 실행 중인 Claude Code 버전을 읽지 못해(execpath=node) subagent로 실행한다", "Agent Team: off — the running Claude Code version could not be read (execpath=node); running subagents"},
 		{"version unknown unset", TeamInput{Units: shapeU3(), Capability: withCap(func(c *Capability) { c.ExecPathBase, c.Version = "", "" })},
@@ -104,8 +102,12 @@ func TestTeamLineTokensAreNormalized(t *testing.T) {
 }
 
 func TestEveryReasonLineIsOneTaggedLine(t *testing.T) {
-	if len(teamLineText) != 13 {
-		t.Fatalf("contract has 13 reasons, table has %d", len(teamLineText))
+	if len(teamLineText) != 12 {
+		t.Fatalf("contract has 12 reasons, table has %d", len(teamLineText))
+	}
+	// A child-session marker cannot tell the top-level session from a subagent.
+	if _, ok := teamLineText["not_top_level"]; ok {
+		t.Fatal("not_top_level is no longer a reason")
 	}
 	for reason := range teamLineText {
 		for _, locale := range []string{"ko", "en"} {

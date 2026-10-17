@@ -1244,7 +1244,10 @@ rm -f "$FACTS"
    and named teammates `builder-1` … `builder-n` in `team_units` order, each
    prompt carrying the Phase 2 prompt items (requirement, owned and forbidden
    paths, acceptance, gate decisions, minimality ladder) and the Route B
-   receipt fields. Launch no `tester` or `guardian` teammate.
+   receipt fields. Launch no `tester` or `guardian` teammate. The CLI cannot
+   tell a subagent from the top-level session, whose environments Claude Code
+   marks alike, so this schema check is what keeps a session without the team
+   tools, such as a subagent, on subagents.
 
 A run prints exactly one `Agent Team:` line: `decision.line`,
 `decision.tools_fallback_line`, or the snippet's failure line.

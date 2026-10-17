@@ -1655,11 +1655,11 @@ orchestra:
 
 In Claude Code, an `/auto go` run without `--team`, `--workflow`, or `--solo`
 decides once, when it enters Phase 2, whether the first ready wave runs as a
-native Agent Team. It switches only for an interactive top-level session that
-already has `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and runs Claude Code
-2.1.246 or newer, when the plan holds at least two ready worker units with
-disjoint owned paths. Every such run prints one `Agent Team:` line that says
-why it switched or stayed.
+native Agent Team. It switches only for an interactive session that already
+has `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, runs Claude Code 2.1.246 or
+newer, and can load the team tools, when the plan holds at least two ready
+worker units with disjoint owned paths. Every such run prints one `Agent Team:`
+line that says why it switched or stayed.
 
 - Each teammate is a separate Claude session, so a team run uses more tokens.
   The feature is experimental.
@@ -1671,6 +1671,11 @@ why it switched or stayed.
 - The version is read from the running binary that `CLAUDE_CODE_EXECPATH` names
   (`claude` or `claude.exe`), never from `PATH`. Other installs stay on
   subagents with the `claude_version_unknown` line.
+- The session environment cannot tell a subagent from the top-level session:
+  Claude Code sets `CLAUDE_CODE_CHILD_SESSION=1` for every process a session
+  starts. A session that cannot load the `SendMessage` and task tools, such as
+  a subagent, prints the `SendMessage/task tool schemas could not be loaded`
+  line and stays on subagents.
 - `auto workflow triage --topology --facts-json <file>` prints the decision
   without launching an agent or writing a file. Facts it rejects come back as
   an `invalid_facts` decision whose line names the rejected field.

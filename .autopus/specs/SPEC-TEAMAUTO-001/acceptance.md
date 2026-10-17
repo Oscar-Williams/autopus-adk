@@ -4,7 +4,7 @@
 
 - 디렉터리: `<tmp>/proj`는 명령을 돌리는 project(autopus.yaml), `<tmp>/probe`는 fake EXECPATH script와 counter, `<tmp>/facts`는 facts 파일이다. 파일 무변경 단정은 `<tmp>/proj`만 본다.
 - 바이너리: branch `go build -o <tmp>/bin/auto-branch ./cmd/auto`, 기준 `33b5bb55`를 `git worktree add`로 꺼내 같은 방식으로 빌드한 `<tmp>/bin/auto-base`, PATH의 `auto 0.50.125`. stderr·종료 코드 단정은 빌드한 바이너리 기준이다. root는 오류를 `Error: <msg>\n`으로 쓰고 일반 오류의 종료 코드는 1이다(`internal/cli/root.go:203-211`, `:173-179`, evidence R1). in-process `NewRootCmd` test는 같은 `<msg>`를 반환 error로 단정한다.
-- CAP-OK: `CLAUDECODE=1`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `CLAUDE_CODE_ENTRYPOINT=cli`, `CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_CHILD_SESSION` 없음, `CLAUDE_CODE_EXECPATH=<tmp>/probe/claude`. 그 파일은 `2.1.288 (Claude Code)`를 출력하고 `<tmp>/probe/probe.count`에 한 줄을 더하는 실행 script다. PATH 맨 앞 `<tmp>/probe/other/claude`는 `9.9.9 (Claude Code)`를 출력하고 `<tmp>/probe/path.touched`를 만든다. CAP-NOENV: CAP-OK에서 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`만 뺀 것.
+- CAP-OK: `CLAUDECODE=1`, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, `CLAUDE_CODE_ENTRYPOINT=cli`, `CLAUDE_CODE_SESSION_ATTENDED=1`, `CLAUDE_CODE_CHILD_SESSION=1`(실제 대화형 최상위 세션의 Bash tool이 보는 값이고 판단은 읽지 않는다. `evidence/probe-teamauto-childsession.md`), `CLAUDE_CODE_EXECPATH=<tmp>/probe/claude`. 그 파일은 `2.1.288 (Claude Code)`를 출력하고 `<tmp>/probe/probe.count`에 한 줄을 더하는 실행 script다. PATH 맨 앞 `<tmp>/probe/other/claude`는 `9.9.9 (Claude Code)`를 출력하고 `<tmp>/probe/path.touched`를 만든다. CAP-NOENV: CAP-OK에서 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`만 뺀 것.
 - U3: T1 worker `[pkg/alpha]`, T2 worker `[internal/beta]`, T3 worker `[docs/gamma.md]`, 의존·done 없음. U1: T1 worker `[pkg/alpha]`, T2 worker `[pkg/beta]` depends_on `[T1]`, T3 inline `[README.md]`. UOV: T1 worker `[pkg/alpha]`, T2 worker `[pkg/alpha/b.go]`. UDJ: T1 worker `[pkg/a]`, T2 worker `[pkg/ab]`, T3 worker `[pkg/c]` depends_on `[T1]`, T4 worker `[pkg/d]` done. UGL: T1 worker `[pkg/a/**]`, T2 worker `[pkg/ab/**]`. UFU: T4 worker `[pkg/d]` done, T5 worker `[pkg/e]`, T6 worker `[pkg/f]`, T7 worker `[pkg/g]` depends_on `[T5]`, T8 inline `[docs/h.md]`. UGO: T1 worker `[pkg/alpha/**]`, T2 worker `[pkg/alpha/b.go]`.
 - CFG-KO: `platforms: [claude-code]`, `language.ai_responses: ko`, `workflow.auto_team` 없음. CFG-EN·CFG-JA: 언어만 `en`·`ja`. CFG-OFF: CFG-KO + `workflow.auto_team: false`. CFG-LEG: CFG-KO인데 `platforms: [claude]`(옛 이름, `Load`라면 다시 쓰는 입력).
 - 따로 적지 않으면 flag는 모두 false, config는 CFG-KO, 명령은 `<tmp>/proj`에서 `auto-branch workflow triage --topology --facts-json <tmp>/facts/f.json --format json`이다.
@@ -64,7 +64,7 @@ And Windows 경로 규칙은 `C:\x\claude.exe`, `C:/x/claude.exe`만 받고 `C:\
 | `CLAUDE_CODE_ENTRYPOINT=sdk-cli` | `not_interactive` | `Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint=sdk-cli, attended=1) subagent로 실행한다` |
 | `CLAUDE_CODE_SESSION_ATTENDED` 없음 | `not_interactive` | `Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint=cli, attended=unset) subagent로 실행한다` |
 | `CLAUDE_CODE_ENTRYPOINT=cli; rm -rf /` | `not_interactive` | `Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint=unknown, attended=1) subagent로 실행한다` |
-| `CLAUDE_CODE_CHILD_SESSION=1` | `not_top_level` | `Agent Team: 유지 — 하위 세션은 팀 lead가 될 수 없어 subagent로 실행한다` |
+| `CLAUDE_CODE_CHILD_SESSION` 없음 | `independent_disjoint_slices` | `route: team`, `ready_units: 3`, probe.count 1줄. CAP-OK의 `1`과 결과가 같다(이 변수는 결과를 바꾸지 않는다) |
 | `CLAUDECODE` 없음 | `not_claude_code` | `Agent Team: 유지 — Claude Code 세션이 아니라 subagent로 실행한다` |
 | script가 `2.1.245 (Claude Code)` 출력 | `claude_version_old` | `Agent Team: 유지 — Claude Code 2.1.245 버전은 2.1.246보다 낮아 subagent로 실행한다` |
 | script가 `2.1.246 (Claude Code)` 출력 | `independent_disjoint_slices` | `route: team`, `ready_units: 3` |
@@ -165,7 +165,7 @@ When (a) SPEC-A, (b) SPEC-B로 `/auto go SPEC-ID --auto`를, (c) `claude --disal
 Then (a) transcript의 `Agent Team:` 줄은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다` 하나이고, runtime이 teammate로 보고한 `builder-1`·`builder-2`, shutdown ack, `followup_units`인 T3의 파일 변경(T1·T2는 다시 돌지 않음), Gate 2 시작이 이 순서로 나온다(CD-1)
 And (b)는 `Agent Team: 유지 — 함께 실행할 준비된 slice가 1개라 subagent로 실행한다` 한 줄뿐이고 named teammate가 없다(CD-2)
 And (c)는 `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` 한 줄뿐이고 named teammate가 없으며, (d)의 `Agent Team:` 줄은 0개다(CD-3)
-And (e)의 최상위 세션은 `cli`, `1`, CHILD 없음이고 `claude -p`는 (`cli`, `1`) 쌍이 아니다. 쌍이 같으면 A2는 FAIL이고 규칙 7을 고친 뒤에만 릴리스한다. 기록은 `<home>`·scratch 경로를 바꿔 `evidence/manual-smoke-teamauto.txt`에 있다
+And (e)의 최상위 세션은 `cli`, `1`이고 `claude -p`는 (`cli`, `1`) 쌍이 아니다. `CLAUDE_CODE_CHILD_SESSION`은 값만 기록한다(2026-10-17 최상위 세션도 `1`이었고 판단은 읽지 않는다). 쌍이 같으면 A2의 print mode 부분도 FAIL이고 규칙 7을 고친 뒤에만 릴리스한다. 기록은 `<home>`·scratch 경로를 바꿔 `evidence/manual-smoke-teamauto.txt`에 있다
 
 ### S16: 문서
 Priority: Should

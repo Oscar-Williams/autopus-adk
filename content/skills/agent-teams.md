@@ -117,7 +117,7 @@ runtime task directories manually.
 A Claude Code `/auto go` run without `--team`, `--workflow`, or `--solo` can
 enter this lifecycle on its own; the selection is on by default. When Route A
 reaches Phase 2, the decision the `auto-go` skill runs selects a team only for
-an interactive top-level session that already has
+an interactive session that already has
 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, runs Claude Code 2.1.246 or newer,
 and has at least two ready worker units whose owned paths do not overlap.
 Otherwise the run stays on subagents and says why in one line.
@@ -129,7 +129,9 @@ Otherwise the run stays on subagents and says why in one line.
   `guardian` teammate is launched, and every other phase stays on Route A.
 - Schema failure: when the `SendMessage` or shared task-list schemas cannot be
   loaded, print the decision's fallback line and continue on Route A. This is
-  a fallback, not a stop.
+  a fallback, not a stop. The decision cannot tell a subagent from the
+  top-level session, so this check is what keeps a session without the team
+  tools, such as a subagent, on subagents.
 - Handoff: after every teammate acknowledged its shutdown, the lead implements
   the remaining Phase 2 units under Route A, never re-runs a finished unit, and
   only then enters Gate 2.

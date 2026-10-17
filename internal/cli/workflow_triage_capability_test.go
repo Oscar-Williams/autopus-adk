@@ -43,18 +43,20 @@ func stubVersionProbe(t *testing.T, output string, err error) *[]string {
 	return &ran
 }
 
-func TestObserveTeamCapabilityReadsOnlyTheSixSessionVariables(t *testing.T) {
+func TestObserveTeamCapabilityReadsOnlyTheFiveSessionVariables(t *testing.T) {
 	asked := stubTeamEnv(t, map[string]string{
 		"CLAUDECODE": "1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1", "CLAUDE_CODE_ENTRYPOINT": "cli",
 		"CLAUDE_CODE_SESSION_ATTENDED": "1", "CLAUDE_CODE_EXECPATH": "/opt/claude/bin/claude.exe",
-		"CLAUDE_CODE_MESSAGING_TOKEN": "secret-token",
+		"CLAUDE_CODE_MESSAGING_TOKEN": "secret-token", "CLAUDE_CODE_CHILD_SESSION": "1",
 	})
 	snapshot, execPath := observeTeamCapability()
 	want := taskroute.Capability{ClaudeCode: "1", AgentTeams: "1", Entrypoint: "cli", SessionAttended: "1", ExecPathBase: "claude.exe"}
 	if snapshot != want || execPath != "/opt/claude/bin/claude.exe" {
 		t.Fatalf("%+v %q", snapshot, execPath)
 	}
-	allowed := []string{"CLAUDECODE", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_CHILD_SESSION", "CLAUDE_CODE_EXECPATH"}
+	// CLAUDE_CODE_CHILD_SESSION is 1 in the top-level session's Bash tool too,
+	// so it cannot mark a subagent and is never read.
+	allowed := []string{"CLAUDECODE", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ATTENDED", "CLAUDE_CODE_EXECPATH"}
 	for _, name := range *asked {
 		if !slices.Contains(allowed, name) {
 			t.Fatalf("snapshot read %s", name)
@@ -66,9 +68,9 @@ func TestObserveTeamCapabilityReadsOnlyTheSixSessionVariables(t *testing.T) {
 }
 
 func TestObserveTeamCapabilityLeavesUnsetValuesEmpty(t *testing.T) {
-	stubTeamEnv(t, map[string]string{"CLAUDE_CODE_CHILD_SESSION": "1"})
+	stubTeamEnv(t, map[string]string{"CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_CHILD_SESSION": "1"})
 	snapshot, execPath := observeTeamCapability()
-	if snapshot != (taskroute.Capability{ChildSession: "1"}) || execPath != "" {
+	if snapshot != (taskroute.Capability{Entrypoint: "cli"}) || execPath != "" {
 		t.Fatalf("%+v %q", snapshot, execPath)
 	}
 }

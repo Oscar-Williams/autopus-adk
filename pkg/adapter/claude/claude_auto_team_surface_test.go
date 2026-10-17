@@ -93,7 +93,7 @@ func TestAutoTeamSurfaceAddsOnlyTheNewSections(t *testing.T) {
 	assert.Equal(t, baseAgentTeamsSkillSHA256, digest(strings.Replace(agentTeams, entry, "", 1)), "agent-teams changed outside the new section")
 	assert.NotContains(t, agentTeams, "--topology")
 	assert.NotContains(t, agentTeams, "auto workflow triage")
-	for _, item := range []string{"one ready wave of Phase 2", "No `tester` or\n  `guardian` teammate", "a fallback, not a stop", "separate Claude session", "experimental", "`workflow.auto_team: false`", "`--solo`", "auto 0.50.113 through 0.50.125 refuse", "auto 0.50.112 and older ignore it", "`CLAUDE_CODE_EXECPATH`"} {
+	for _, item := range []string{"one ready wave of Phase 2", "No `tester` or\n  `guardian` teammate", "a fallback, not a stop", "separate Claude session", "experimental", "`workflow.auto_team: false`", "`--solo`", "auto 0.50.113 through 0.50.125 refuse", "auto 0.50.112 and older ignore it", "`CLAUDE_CODE_EXECPATH`", "such as a subagent, on subagents."} {
 		assert.Contains(t, entry, item)
 	}
 }
@@ -120,6 +120,9 @@ func TestAutoTeamSurfaceSectionOrder(t *testing.T) {
 		"If `TEAM_JSON` is empty, the snippet already printed the fixed failure line.",
 		"`select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`",
 		"print `decision.tools_fallback_line` instead of `decision.line`",
+		// The CLI cannot tell a subagent apart, so the schema check keeps one on subagents.
+		"tell a subagent from the top-level session",
+		"such as a subagent, on subagents.",
 		"send every teammate a shutdown request and wait for every\nacknowledgement.",
 		"implement exactly the `decision.followup_units`",
 		"Only after that, enter Gate 2",

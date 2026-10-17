@@ -25,9 +25,11 @@ const (
 	cfgLEG  = "mode: full\nproject_name: proj\nplatforms: [claude]\nlanguage:\n  ai_responses: ko\n"
 )
 
-// capOKEnv is CAP-OK without the EXECPATH, which each test points at its own probe.
+// capOKEnv is CAP-OK without the EXECPATH, which each test points at its own
+// probe. Like a real top-level session's Bash tool, it has the child-session
+// marker Claude Code sets for every process a session spawns.
 func capOKEnv(execPath string) map[string]string {
-	env := map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ATTENDED": "1"}
+	env := map[string]string{"CLAUDECODE": "1", "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1", "CLAUDE_CODE_ENTRYPOINT": "cli", "CLAUDE_CODE_SESSION_ATTENDED": "1", "CLAUDE_CODE_CHILD_SESSION": "1"}
 	if execPath != "" {
 		env["CLAUDE_CODE_EXECPATH"] = execPath
 	}

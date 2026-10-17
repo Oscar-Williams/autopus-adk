@@ -22,7 +22,6 @@ const (
 	reasonNotClaudeCode             = "not_claude_code"
 	reasonTeamsEnvMissing           = "teams_env_missing"
 	reasonNotInteractive            = "not_interactive"
-	reasonNotTopLevel               = "not_top_level"
 	reasonClaudeVersionUnknown      = "claude_version_unknown"
 	reasonClaudeVersionOld          = "claude_version_old"
 	reasonIndependentDisjointSlices = "independent_disjoint_slices"
@@ -51,12 +50,15 @@ type TeamUnit struct {
 
 // Capability is the session snapshot the CLI observed. The decision only reads
 // it; reading the environment and running the version probe are the caller's.
+// It has no top-level signal: Claude Code sets CLAUDE_CODE_CHILD_SESSION=1 for
+// every process a session spawns, so the top-level session's Bash tool and a
+// subagent's see the same value. A session without the team tools, such as a
+// subagent, stays on subagents through ToolsFallbackLine instead.
 type Capability struct {
 	ClaudeCode      string // CLAUDECODE
 	AgentTeams      string // CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS
 	Entrypoint      string // CLAUDE_CODE_ENTRYPOINT
 	SessionAttended string // CLAUDE_CODE_SESSION_ATTENDED
-	ChildSession    string // CLAUDE_CODE_CHILD_SESSION
 	ExecPathBase    string // basename of CLAUDE_CODE_EXECPATH, empty when unset
 	Version         string // first probe output line, empty when the probe did not run or failed
 }
@@ -86,7 +88,7 @@ type TeamDecision struct {
 	ToolsFallbackLine string    `json:"tools_fallback_line,omitempty"`
 }
 
-// NeedsVersionProbe reports whether rules 1-8 of the Auto-Team Decision all
+// NeedsVersionProbe reports whether rules 1-7 of the Auto-Team Decision all
 // pass. Only then may the caller run the version probe and record its output
 // in the snapshot, so a run that cannot use a team never executes anything.
 func NeedsVersionProbe(in TeamInput) bool {
@@ -127,7 +129,7 @@ func DecideTeam(in TeamInput) TeamDecision {
 		ToolsFallbackLine: renderTeamLine(in.Locale, reasonTeamToolsUnavailable, lineValues{})}
 }
 
-// decideBeforeVersion applies rules 1-8: flags, then config, then the plan,
+// decideBeforeVersion applies rules 1-7: flags, then config, then the plan,
 // then the environment, so a run the plan already keeps on subagents is not
 // told to set experimental variables.
 func decideBeforeVersion(in TeamInput, ready []TeamUnit) (TeamDecision, bool) {
@@ -157,8 +159,6 @@ func decideBeforeVersion(in TeamInput, ready []TeamUnit) (TeamDecision, bool) {
 		return stay(reasonTeamsEnvMissing, lineValues{})
 	case c.Entrypoint != "cli" || c.SessionAttended != "1":
 		return stay(reasonNotInteractive, lineValues{entrypoint: c.Entrypoint, attended: c.SessionAttended})
-	case c.ChildSession != "":
-		return stay(reasonNotTopLevel, lineValues{})
 	}
 	return TeamDecision{}, false
 }

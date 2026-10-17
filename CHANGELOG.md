@@ -177,7 +177,7 @@ All notable changes to this project will be documented in this file.
   - 알려진 동작: 폼 시작 때의 OSC 11 배경색 query(SPEC-MODELUX-002 항목)는 그대로다.
 - **v0.50.126: `/auto go`가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행** (2026-10-15,
   SPEC-TEAMAUTO-001): 지금까지 native Agent Team은 `--team`을 줘야만 썼다. 이제 Claude Code에서 topology flag
-  없이 돌린 `/auto go`가 Phase 2에 들어갈 때 한 번 판단해, 대화형 최상위 세션에
+  없이 돌린 `/auto go`가 Phase 2에 들어갈 때 한 번 판단해, 대화형 세션에
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`이 있고 실행 중인 Claude Code가 2.1.246 이상이며 plan에 owned paths가
   겹치지 않는 준비된 worker unit이 2개 이상이면 그 wave를 named teammate(`builder-1` …)로 돌린다. 기본으로 켜져 있다.
   - 이유 한 줄: 전환할 때도 안 할 때도 `Agent Team: 전환 — …`이나 `Agent Team: 유지 — …` 한 줄이 나온다
@@ -194,6 +194,12 @@ All notable changes to this project will be documented in this file.
   - 버전 확인: 버전은 `CLAUDE_CODE_EXECPATH`가 가리키는 실행 중인 바이너리의 `--version`으로만 읽고 PATH의
     `claude`는 보지 않는다. 그 실행 파일 이름이 `claude`나 `claude.exe`가 아닌 설치는 `claude_version_unknown` 줄과
     함께 subagent로 남는다.
+  - 하위 세션(2026-10-17): 환경 변수로는 최상위 세션과 subagent를 가를 수 없다. Claude Code(2.1.288, 2.1.301)는
+    세션이 띄우는 모든 process에 `CLAUDE_CODE_CHILD_SESSION=1`을 넣어 대화형 최상위 세션의 Bash tool도 같은 값을
+    본다. 실제 터미널 smoke에서 이 값을 하위 세션 표시로 읽은 첫 구현은 팀이 켜질 plan도 subagent로 남겼다. 이제
+    판단은 이 변수를 읽지 않는다. 팀 도구가 없는 subagent 안의 run은 도구 schema를 불러오지 못해
+    `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` 줄과 함께 subagent로
+    남는다.
   - CLI: `auto workflow triage --topology --facts-json <file> [--format json|human]`이 판단을 보고하고 agent를
     띄우거나 파일을 쓰지 않는다. facts가 계약을 어기면 오류 대신 `invalid_facts` 결정(종료 0)을 내고 이유 줄이 원인
     code를 보인다(예: `Agent Team: off — the topology facts are invalid (owned_paths); running subagents`).
