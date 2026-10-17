@@ -24,7 +24,7 @@ T1 결과(2026-10-16, b08ea644 기준. 이 구현의 branch 기준은 8ec13935�
 - acceptance 기대 정정(코드 사실, Oracle Acceptance Notes 규칙): S11 (c)의 `quality.default =`는 프리셋 쓰기 줄로, S14 (c)의 `*` 칸은 `Claude Code (개별 설정: claude-custom)` 열 머리와 칸 값으로, S15 (f)는 리뷰 탭 자신의 CI 규칙이 지우는 리뷰 요약 줄 하나를 빼고 같다로, S21의 frame에 `Lang: "ko"`를 더했다(기대한 footer가 한국어라서).
 - `runInitComposeStepCancellable`을 부르는 test는 없다(호출은 `init.go:136` 하나). T9은 이 함수를 `runInitComposeStage`로 바꿔도 test를 고치지 않는다.
 - 폼 helper(`useAccessibleComposeForms`·`abortComposeFormAt`·`useComposeFormRunner`)를 쓰는 기존 test 파일은 18개다(새 `tuiux_noninteractive_golden_test.go` 제외).
-- base golden은 `evidence/base-goldens/`의 `<흐름>.stdout`·`<흐름>.npd` 일곱 쌍이다: `init-yes`(S15 a), `update-yes`(b), `update-ci`(c), `quality-line-b`(d), `quality-no-tty`(e), `init-pipe`(g), `init-in`(S6 IN, NPD만 비교). `internal/cli/tuiux_noninteractive_golden_test.go`가 읽고, `TUIUX_WRITE_GOLDENS=1`이면 흐름마다 두 번 돌려 같을 때만 다시 쓴다.
+- base golden은 `evidence/base-goldens/`의 `<흐름>.stdout`·`<흐름>.npd` 일곱 쌍이다: `init-yes`(S15 a), `update-yes`(b), `update-ci`(c), `quality-line-b`(d), `quality-no-tty`(e), `init-pipe`(g), `init-in`(S6 IN, NPD만 비교). `internal/cli/tuiux_noninteractive_golden_test.go`가 읽고, `TUIUX_WRITE_GOLDENS=1`이면 흐름마다 두 번 돌려 같을 때만 다시 쓴다. 2026-10-17 재기록: v0.50.126 RC에서 SPEC-TEAMAUTO-001이 `agent-teams`·`auto-go` 생성 skill을 바꿔 NPD 다섯 개가 깨졌다(TUIUX tip 78191e1a는 통과, TEAMAUTO merge 9b6a839e부터 실패). NPD는 RC에서 TUIUX를 뺀 tree에서 다시 기록했고 stdout은 그대로다(`evidence/base-goldens-recapture.md`).
 
 작성 시점(SPEC)에 확인한 것: 다섯 파일 모두 `package cli`이고 `internal/cli/tui` import가 없다(import 한 줄씩 필요). `composeRunForm` 값 넣기 4곳(`quality_compose_form_helpers_test.go:44`, `quality_compose_form_failure_test.go:29`, `quality_compose_line_golden_test.go:25`, `quality_compose_review_gate_test.go:28`)과 기본 runner 직접 호출 1곳(`quality_compose_form_test.go:94`, accessible form, 입력 `2\n`, 단언 `value == "b"`·`2. b`), 폼 helper를 쓰는 test 파일 17개, init form path test 3파일(입력에 빈 줄이 남는 경우가 있어 분류 2(b) 예상), 기존 입력의 `b`·`back`·`뒤로` 줄 0건, init test의 폼 횟수 단언 0건(grep), 제목 단언(`wizard_rea_step_test.go:44,104,106,130`, `wizard_test.go:20,35`)은 제목 불변이라 그대로다.
 
@@ -109,7 +109,7 @@ planning context의 표다(2026-10-16). 셀은 근거로만 요약했고 지시�
 | INV-TUX-03 | "어떤 스테이지에 있는지" | formula: wizard `n/N` = 같은 폼 제목의 `[n/N]`, 구성 경로 = 단계 › 메뉴 › 탭 › 방식 순서, locale 규칙 | header·footer 줄 | S4, S9 |
 | INV-TUX-04 | scope_boundary "no change to what gets written" | paired matching: 뒤로·다시 답하기를 거친 run의 NPD = 같은 마지막 답을 바로 준 대조 run의 NPD | NPD, autopus.yaml key | S6, S7, S10, S11, S12, S14 |
 | INV-TUX-05 | 확인 화면 "취소" | cancel·Ctrl+C 뒤 경로 집합과 bytes·mtime 불변, 옛 플랫폼 이름 포함 | 경로 목록, SHA-256, mtime | S8, S16 |
-| INV-TUX-06 | "non-TTY/--yes/CI behaviour" 불변 | paired matching with base golden: 폼이 열리지 않는 자리의 stdout과 NPD가 b08ea644(8ec13935에 SPEC-REVMODEL-001 구현을 합친 구현 기준)와 같다. gate별 CI 규칙 그대로 | stdout, NPD, 폼 실행 수, 기존 test diff | S15, S17 |
+| INV-TUX-06 | "non-TTY/--yes/CI behaviour" 불변 | paired matching with base golden: 폼이 열리지 않는 자리의 stdout과 NPD가 같은 tree에서 TUIUX 소스 변경만 뺀 출력과 같다(T1 기록은 b08ea644, 즉 8ec13935에 SPEC-REVMODEL-001 구현을 합친 구현 기준이고, v0.50.126 RC 기록은 `evidence/base-goldens-recapture.md`). gate별 CI 규칙 그대로 | stdout, NPD, 폼 실행 수, 기존 test diff | S15, S17 |
 | INV-TUX-07 | huh "esc distinguished from abort" | parser: Esc → 뒤로(filter 입력 중이면 filter), Ctrl+C → abort, 첫 폼 Esc → 머묾, 한 번에 온 화살표 → 이동 | 오류 값, 값, view 줄 | S3, S4, S18 |
 | INV-TUX-08 | "accessible mode can express back" | parser: `b`·`back`·`뒤로` 한 줄만 token, 다음 줄은 남고 다른 줄은 그대로, `TERM=dumb`도 같다, 줄 driver에는 token이 없다 | 결과, 출력 줄, 줄 driver stdout | S1, S2, S3, S15, S21 |
 | INV-TUX-09 | 리뷰 탭 의미 불변 | OMP(native·autopus)·리뷰 탭의 뒤로는 도구 탭으로, 쓰기·활성화·경고 0, `ompPins` 경로 포함 | SHA-256, activate 수, 경고 줄 | S13 |
@@ -156,7 +156,7 @@ These are optional improvements and do not block sync completion.
 |-----------|------|--------------|
 | `internal/cli/tui/wizard_steps.go`, `wizard_rea_step.go`, `wizard_profile.go`, `wizard.go`, `locale.go`, `export_test.go`, `wizard_rea_step_test.go`; `internal/cli/quality_compose_form.go`, `quality_compose_form_driver.go`, `quality_compose_form_edit.go`, `quality_compose_form_effort.go`, `quality_compose_form_text.go`, `quality_compose_form_test.go`, `quality_compose_groups.go`, `quality_compose_text.go`, `quality_compose_omp.go`, `quality_compose_omp_autopus.go`, `quality_compose_review.go`, `quality_compose_review_check.go`, `quality_compose_review_menu.go`, `quality_compose_review_text.go`, `quality_compose_form_helpers_test.go`, `init.go`, `init_compose.go`, `init_rea.go`, `rea_run.go`, `rea_decision.go`, `update_compose.go`, `quality_compose_entry.go`, `quality_compose_driver_gate.go`, `update_preview.go`, `statusline_mode.go`, `prompts.go`; `pkg/config/loader.go`, `migrate.go`, `defaults.go`, `schema.go`, `schema_spec.go`, `runtime.go`, `quality_tier.go`; `pkg/adapter/manifest.go` | existing | Read, grep, `wc -l`(2026-10-16) |
 | huh v1.0.0 `keymap.go`, `form.go`, `field_select.go`, `field_confirm.go`, `field_note.go`, `internal/accessibility`; bubbletea v1.3.6 `standard_renderer.go` | existing (module cache) | Read, probe |
-| `evidence/probe-nav-a1.md`, `evidence/review-rounds.md` | existing (evidence) | probe 실행, review round 1 |
+| `evidence/probe-nav-a1.md`, `evidence/review-rounds.md`, `evidence/base-goldens-recapture.md` | existing (evidence) | probe 실행, review round 1, base golden 재기록 run |
 | `NavFrame`, `NavFrame.Accessible`, `ErrNavBack`, `NavAccessible`, `RunNav`, `RunNavAccessible`, `NavHistory`, `WizardAnswerLines`, `InitWizardOpts.Runner`, `InitWizardOpts.Resume`, `nav.go`, `nav_accessible.go`, `nav_history.go`, `wizard_nav.go`, `quality_compose_nav.go`, `quality_compose_nav_helpers_test.go`, `quality_compose_form_preset.go`, `init_interactive.go`, `init_review.go`, `init_review_diff.go`, `runInitComposeStage`, `composeFormOptions.BackOut`, `useNavComposeForms`, `tuiux_noninteractive_golden_test.go`, `evidence/base-goldens/`, `evidence/manual-smoke-tuiux.txt` | [NEW] planned addition | 부재 확인(grep, 2026-10-16) |
 
 ## Reviewer Brief
@@ -171,6 +171,7 @@ These are optional improvements and do not block sync completion.
 - R3: init 재진입의 state(A3)는 실행 전이다. 구성 단계 진입마다 Codex catalog를 다시 읽는다.
 - R4: S10·S11은 Claude Code 탭에서 effort 폼이 나오고 `low`가 자동이 아니라고 본다(SPEC-MODELUX-003). 다르면 기대를 고친다.
 - R5: NPD 정규화 목록 밖의 시간 field가 있으면 T1이 찾는다. 못 찾으면 base golden이 깨지므로 T1의 두 번 실행이 그 검사다.
+- R6: base golden은 TUIUX 밖의 생성 내용 변경에도 깨진다(v0.50.126 RC의 SPEC-TEAMAUTO-001). 그때는 RC에서 TUIUX를 뺀 tree에서도 실패하는지로 TUIUX 탓인지 가르고, 그 tree에서 다시 기록한다(`evidence/base-goldens-recapture.md`).
 
 ## Self-Verify Summary
 - Q-CORR-01 | status: PASS | attempt: 2 | files: spec.md, plan.md, research.md | reason: 기존 경로·줄 번호·심볼은 Read와 grep으로 확인했다(호출 27곳, `ompFailed`, `Load`·`LoadPreview`, REA 수명주기, manifest 시간)

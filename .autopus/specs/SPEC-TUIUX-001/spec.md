@@ -286,6 +286,7 @@ THE SYSTEM SHALL fit every TUI navigation form into the terminal height by the H
 ### Height Contract
 
 - H는 마지막 `tea.WindowSizeMsg`의 높이, 받기 전에는 24다. `RunNav`는 form에 높이 H−2의 `WindowSizeMsg`를 넘겨 form이 header·footer를 뺀 높이 안에서 그리게 한다(huh가 넘치는 선택지를 scroll 한다).
+- Select는 첫 key 전의 모든 frame에서 기본값의 커서 줄을 보인다. form이 필요한 줄을 받으면 첫 선택지부터 모두, 받지 못하면 huh가 커서 줄로 scroll 한 줄들을 보인다. huh는 선택지를 넣는 순간의 field 값으로 scroll 위치를 정하므로 구성 단계의 Select는 `tui.NavSelect`로 만든다(v0.50.126 RC smoke: `true`를 먼저 둔 bool Select가 커서 줄 없이 둘째 선택지와 빈 줄로 열렸다).
 - h는 그린 form의 줄 수(`lipgloss.Height(form.View())`), avail = H − 2 − h다. 요약 블록(머리 줄 1 + 답 n줄)이 avail 안이면 다 보인다. 아니고 avail ≥ 3이면 머리 줄, `  … 외 <k>개`(en `  … <k> more`), 마지막 avail − 2개 답을 보이고 k = n − (avail − 2)다. avail < 3이면 요약 블록을 보이지 않는다.
 - header와 footer(또는 그 자리의 안내)는 늘 보인다. 그래서 그린 줄 수는 H 이하다. bubbletea v1.3.6이 높이를 넘는 위쪽 줄을 버리는 일(`standard_renderer.go:182-187`)이 생기지 않는다.
 
@@ -306,6 +307,7 @@ THE SYSTEM SHALL fit every TUI navigation form into the terminal height by the H
 
 - `[NEW] internal/cli/tui/nav.go`(+test): `NavFrame{Header, Summary, First, Lang, Accessible}`, `ErrNavBack`, `NavAccessible`, `RunNav`(accessible이면 `RunNavAccessible`로, 아니면 wrapper tea model: frame 그리기, Height Contract, Esc·filter·첫 폼 처리, Ctrl+C·완료 판정, help 숨김), frame 문구 ko·en.
 - `[NEW] internal/cli/tui/nav_accessible.go`(+test): `RunNavAccessible`, 줄 단위 token reader(1 byte씩 읽어 다음 줄을 남긴다).
+- `[NEW] internal/cli/tui/nav_select.go`(+test): `NavSelect`(첫 frame은 첫 선택지부터, 커서는 기본값). `composeSelect`가 쓴다(v0.50.126 RC smoke).
 - `[NEW] internal/cli/tui/nav_history.go`(+test): `NavHistory[S]`(폼마다 보이기 직전 state와 답 라벨, 뒤로 pop, 요약 줄).
 - `[NEW] internal/cli/tui/wizard_nav.go`(+test): wizard 단계 loop(history, 단계 이름, 요약 값, resume, mode별 stream), `WizardAnswerLines`. `wizard_steps.go`(275줄)는 loop를 이 파일로 옮기고 `InitWizardOpts`에 `Runner`·`Resume` 두 줄만 더한다.
 - `[NEW] internal/cli/quality_compose_nav.go`(+test): 구성 단계 위치 상태(경로, 첫 폼, 요약), command context 싣기·읽기, header 문자열.

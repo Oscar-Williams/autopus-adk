@@ -9,7 +9,7 @@ fixture는 모두 temp 부모 디렉터리 아래 이름이 `p`인 project 안�
 - CAT-A, CAT-B: SPEC-MODELUX-001 `acceptance.md`와 같다(CAT-B는 CAT-A에서 `gpt-6.1-sol`을 빼고 `gpt-6-sol`을 넣었다). 따로 적지 않으면 CAT-A다. "첫 진입 CAT-A, 둘째 진입 CAT-B"는 Codex catalog probe seam이 첫 호출에 CAT-A, 둘째 호출에 CAT-B를 돌려준다는 뜻이다.
 - IN: 빈 project `p`에서 `auto init --dir <DIR> --platforms claude-code,codex`, `composeTTYProbe` true, PATH에 provider CLI 없음, HOME·XDG는 temp. `runInitWizard` seam은 호출과 opts를 기록하고 W를 돌려준다. W = {UsageProfile developer, CommentsLang en, CommitsLang ko, AILang ko, Quality balanced, ReviewGate false, Rea true, Methodology tdd}. W_rg는 W의 Quality가 `role-groups`, W_none은 Methodology가 `none`인 값이다. IR은 seam이 W_rg를 돌려주는 IN이다.
 - NPD(normalized project digest): project 아래 모든 파일의 경로와 SHA-256 목록이다. 계산 전에 adapter manifest(`pkg/adapter/manifest.go:75`, `:103`)의 `generated_at` 값을 `<T>`로, `.autopus/backup/<timestamp>/` 경로의 timestamp를 `<TS>`로 바꾼다. T1이 기준을 두 번 돌려 더 찾은 시간 field가 있으면 research `### NPD 정규화`에 적힌 대로 함께 바꾼다. 그 밖의 bytes는 그대로 비교한다.
-- 대조 run: 같은 fixture에 마지막 답만 바로 준 run이다(뒤로와 다시 답하기를 뺀 입력). "대조와 같다"는 NPD가 같다는 뜻이다. base golden은 T1이 b08ea644에서 만든 `evidence/base-goldens/`(stdout은 `<DIR>` 치환, NPD)다.
+- 대조 run: 같은 fixture에 마지막 답만 바로 준 run이다(뒤로와 다시 답하기를 뺀 입력). "대조와 같다"는 NPD가 같다는 뜻이다. base golden은 `evidence/base-goldens/`(stdout은 `<DIR>` 치환, NPD)이고 같은 release tree에서 TUIUX 소스 변경만 뺀 tree의 출력이다. T1이 b08ea644에서 만들었고, v0.50.126 RC에서는 SPEC-TEAMAUTO-001이 생성 skill 두 개를 바꿔 NPD를 RC에서 TUIUX를 뺀 tree에서 다시 기록했다(`evidence/base-goldens-recapture.md`).
 
 ### S1: wizard 뒤로, 미리 선택, 값
 Priority: Must
@@ -52,7 +52,7 @@ And (b)는 `init · 5/6 REA 역공학 MCP` 뒤 `init · 6/6 방법론`을 다시
 
 ### S6: init 확인 화면의 내용과 적용
 Priority: Must
-Given IN, ko, `useNavComposeForms`, 확인 폼이 돌 때 `DESIGN.md`와 `autopus.yaml`의 존재를 기록하는 runner hook, 같은 IN 흐름을 b08ea644에서 기록한 base golden
+Given IN, ko, `useNavComposeForms`, 확인 폼이 돌 때 `DESIGN.md`와 `autopus.yaml`의 존재를 기록하는 runner hook, 같은 IN 흐름의 base golden
 When init을 입력 Enter 하나로 돌린다
 Then 출력에 다음 줄이 이 순서로 붙어 있다: `적용할 설정`, ` 답한 값`, `  사용 프로필: Developer`, `  언어 설정: 주석 en · 커밋 ko · AI 응답 ko`, `  품질 모드: Balanced`, `  리뷰 게이트: 끔`, `  REA 역공학 MCP: 켬`, `  방법론: TDD`, ` 바뀌는 설정`, `  language: ai_responses=ko, comments=en, commits=ko`, `  spec.review_gate: enabled=false`, `  usage_profile: developer`, ` REA`, `  REA MCP: 켬 · 등록`, `init · 확인`, `답을 입력하고 Enter를 누르세요 · 뒤로: b`
 And 그 뒤는 huh accessible Select의 제목 줄(`이대로 진행할까요?`와 공백 하나), `1. 적용`, `2. 뒤로`, `3. 취소`이고, 확인 폼이 돌 때 두 파일은 없었으며 확인 블록은 `Design Context` 단계 줄보다 앞이다
@@ -175,6 +175,7 @@ When `RunNav`를 `tea.WindowSizeMsg{Width: 80, Height: 24}`로 3개짜리 폼에
 Then 높이 24 view는 24줄 이하이고 첫 줄 `h`, 마지막 줄이 footer다. test가 잰 form 높이 h로 avail = 22 − h일 때 요약은 머리 줄, ko `  … 외 <k>개`(en `  … <k> more`, k = 30 − (avail − 2)), 마지막 avail − 2개 답이고 마지막 답 줄은 `  a30: v`다
 And 높이 10 view는 10줄 이하이고 첫 줄 `h`, 마지막 줄이 footer이며 요약 머리 줄이 없다(avail < 3). form은 8줄 이하다
 And accessible 출력에는 답 30줄이 모두 있고 `외`·`more` 줄이 없다
+And `tui.NavSelect` 폼 둘(`그대로 — 켜짐` true·`끄기` false에 값 true, 선택지 셋에 값 셋째)을 `120x40`·`120x60`·크기 전·`120x4`로 돌리면 첫 key 전의 모든 frame에 header, footer, 커서 줄이 있고, 크기를 받은 frame은 선택지를 모두 보인다(`120x4`는 커서 줄만, 4줄 이하). `composeSelect`를 실제 `tea.Program`으로 돌린 첫 frame도 `> 그대로 — 켜짐`, `  끄기` 두 줄이다
 
 ### S21: TERM=dumb의 accessible 경로
 Priority: Must
@@ -187,7 +188,7 @@ And wizard 기본 stream은 accessible이면 (os.Stdin, os.Stdout), 아니면 (o
 ## Oracle Acceptance Notes
 
 - 모든 Must 시나리오는 concrete expected output을 갖는다. header·footer·안내·요약·확인 블록 줄의 정확한 문자열과 순서, 결과 struct field 값, 오류 값(`tui.ErrNavBack`, `huh.ErrUserAborted`), 폼 제목 개수, seam 호출 수와 `Resume` 값, autopus.yaml key 값, view 줄 수와 `외 k개`의 k, NPD, 경로별 SHA-256·mtime이다. 파일 존재, heading, 종료 상태만으로 닫는 Must 시나리오는 없다.
-- 이동이 값을 바꾸지 않는다는 oracle은 대조 run의 NPD다(S1, S7, S10–S12, S14). 대조는 같은 test binary에서 뒤로와 다시 답하기만 뺀 입력으로 돈다. 폼이 열리지 않는 자리의 oracle은 b08ea644 base golden이다(S6, S15). NPD는 시간 field만 정규화하므로 다른 차이는 모두 드러난다(F-004).
+- 이동이 값을 바꾸지 않는다는 oracle은 대조 run의 NPD다(S1, S7, S10–S12, S14). 대조는 같은 test binary에서 뒤로와 다시 답하기만 뺀 입력으로 돈다. 폼이 열리지 않는 자리의 oracle은 base golden(TUIUX 소스 변경만 뺀 tree의 출력)이다(S6, S15). NPD는 시간 field만 정규화하므로 다른 차이는 모두 드러난다(F-004).
 - 구성 상태의 보존과 폐기는 따로 판정한다. 보존(S7 (b))은 확인 화면에서 구성 메뉴로 돌아가 이어 한 run이 effort `low`를 남기는지, 폐기(S14 (c))는 구성 단계를 지나 wizard로 나간 run이 `low`와 `claude-custom`을 남기지 않는지다. 둘 다 시작값과 다른 값(`opus`, `low`)을 실제로 적용한 뒤 판정한다.
 - 마지막 snapshot oracle(S7 (b), S14 (c))은 CAT-A에만 있는 `gpt-6.1-sol`이 생성 파일에 없는지와 CAT-B 대조의 NPD다. 같은 입력을 CAT-A로만 돈 음성 대조((b′), (c′))가 `gpt-6.1-sol`을 보여 oracle이 두 snapshot을 구별함을 확인한다. 첫 snapshot을 다시 쓰는 구현은 두 단언에서 모두 실패한다.
 - 기대 값은 2026-10-16에 코드를 읽고 정했다(`wizard_steps.go`, `wizard_rea_step.go`, `quality_compose_form*.go`, `quality_compose_groups.go`, `init.go`, `init_rea.go`, `rea_run.go`, `pkg/config/defaults.go`, `schema.go`, `schema_spec.go`). 실행으로 확인한 것은 probe A1·A2(`evidence/probe-nav-a1.md`)뿐이다. Claude Code·Codex 탭에서 등급 뒤 effort 폼이 나오고 `low`가 자동 단계가 아니라는 S7·S10·S11·S14의 전제는 SPEC-MODELUX-003 REQ-MUX3-03에서 온다. balanced의 설계·판단 넷은 `fable`이므로(`role_model_policy_balanced.go:24-31`) 그 그룹의 `fable` 답만으로는 바뀌는 값이 없다. 코드 사실과 다르면 test가 아니라 이 SPEC의 기대를 고친다.

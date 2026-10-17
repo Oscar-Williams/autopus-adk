@@ -2,12 +2,15 @@ package cli
 
 // SPEC-TUIUX-001 T1 (REQ-TUX-07, REQ-TUX-15; acceptance S6, S15): where no
 // form opens, the stdout and the normalized project digest stay those of the
-// base commit. The goldens under evidence/base-goldens were written at
-// b08ea644, the branch base of the implementation (8ec13935 with the merged
-// SPEC-REVMODEL-001 implementation), before any TUIUX source change.
-// TUIUX_WRITE_GOLDENS=1 writes them again: every flow then runs twice more
-// than a second apart, and any difference between the two runs, such as a
-// time field outside the NPD normalization, fails the write.
+// base, the same tree without any TUIUX source change. The goldens under
+// evidence/base-goldens were written at b08ea644, the branch base of the
+// implementation (8ec13935 with the merged SPEC-REVMODEL-001 implementation);
+// on the v0.50.126 RC the NPD files were written again on the RC without
+// TUIUX (evidence/base-goldens-recapture.md). TUIUX_WRITE_GOLDENS=1 writes
+// them again: every flow then runs twice more than a second apart, and any
+// difference between the two runs, such as a time field outside the NPD
+// normalization, fails the write. It runs on a tree without TUIUX, never on
+// the tree under test.
 
 import (
 	"os"

@@ -2,7 +2,7 @@
 .agents/plugins/
 .agents/plugins/marketplace.json 7bac9f0f7c15eecf46023308f334e2122d112d03aa7b498f9e01adabd48ac03c
 .autopus/
-.autopus/claude-code-manifest.json a826d0c1ffa044ce7e7549f7271a752249493687eb6fd742570b0711d12bdc8c
+.autopus/claude-code-manifest.json 1c4803003e3bf4130b459501cbf2dadc8e5839ebdadff847128caf9d5c0e2a0e
 .autopus/claude-code-permissions.json b9fd4dd0824fb98d4ff3403c011a56b0b66f398788f2dfb24220c1aed87df4e8
 .autopus/codex-manifest.json a8dc7fcefd355434ac425aa974448bc7a54a279f305800195e62993713be8849
 .autopus/context/
@@ -16,7 +16,7 @@
 .autopus/plugins/auto/skills/auto/SKILL.md 5404914d8ab7f5a0e4560439b365b85e60813e14304d4565dd8893830b165595
 .autopus/txns/
 .autopus/txns/<TX>-claude-code/
-.autopus/txns/<TX>-claude-code/journal.json 3b415140d17035c015c34f4766dffaffb463e9ef28181877420c60284c44ae22
+.autopus/txns/<TX>-claude-code/journal.json cb061990b970f0badd091e00a80705eacf1d55ba2f48ccbaa0c804050da84d36
 .autopus/txns/<TX>-codex/
 .autopus/txns/<TX>-codex/journal.json 50035cd9417b8cf84c9c63c70c511396ad860048060135c53883568ccb4bbbdb
 .claude/
@@ -79,7 +79,7 @@
 .claude/skills/agent-pipeline/references/review.md 5533d90da008d280c6265f32c918f99f24047eefd8c221cce97ead57946fdc04
 .claude/skills/agent-pipeline/references/verification.md 40e01780bce46da99c11fea1ffed336999f247af678b441e096224d4587bb5e1
 .claude/skills/agent-teams/
-.claude/skills/agent-teams/SKILL.md 124a1fdfb5f6a8b3102c799cfc17a5c266ef509d492bd56c1cde98937c7bd05d
+.claude/skills/agent-teams/SKILL.md 6ce8b7e94377750e70db05051a74bbd18431913287dbf74cdb4eb14c7e287e75
 .claude/skills/auto-canary/
 .claude/skills/auto-canary/SKILL.md 1d3f0c0d5448b024ad9aa95f242943ad2b8ae28de8d0684359604930372c08ea
 .claude/skills/auto-dev/
@@ -89,7 +89,7 @@
 .claude/skills/auto-fix/
 .claude/skills/auto-fix/SKILL.md 37fce77edf77937f4b2d2afd581fcecc3d069cec7d93d083ce02499b7849eca5
 .claude/skills/auto-go/
-.claude/skills/auto-go/SKILL.md fd9c9ec251d4c31c512e6c03b615cd39df826b9802643b17991ff3537e87703d
+.claude/skills/auto-go/SKILL.md f05a89fcd4624a20e19ad675fff400e58c9a392cf513ebf679463b4a39f52e01
 .claude/skills/auto-goal/
 .claude/skills/auto-goal/SKILL.md 0dd992f5eb6c27cd5f9f16b678344c5c7f7224a1e42cb95dd26ba221f5ce1ec8
 .claude/skills/auto-idea/
