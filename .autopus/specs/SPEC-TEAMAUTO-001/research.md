@@ -119,9 +119,9 @@ direct `/auto plan`의 pre-plan 대화에서 온 ledger다(BS 파일 없음). �
 
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널 자동 전환 run(남은 unit 포함) | REQ-TA-02, 15 | T11이 S15(a)를 기록 |
-| CD-2 실제 터미널 유지 run과 A2 환경 값(npm 포함) | REQ-TA-03, 06, 15 | T11이 S15(b)(e)를 기록, A2를 PASS/FAIL로 |
-| CD-3 실제 터미널 fallback·resume | REQ-TA-01, 07, 15 | T11이 S15(c)(d)를 기록 |
+| CD-1 실제 터미널 자동 전환 run(남은 unit 포함) | REQ-TA-02, 15 | T11이 S15(a)를 기록. **closed** 2026-10-17: S15(a) PASS(31j), `evidence/manual-smoke-teamauto.txt` |
+| CD-2 실제 터미널 유지 run과 A2 환경 값(npm 포함) | REQ-TA-03, 06, 15 | T11이 S15(b)(e)를 기록, A2를 PASS/FAIL로. **closed** 2026-10-17: S15(b) PASS(31k, `0개` 편차 기록), S15(e) A2 print mode PASS(`cli`/`1` 대 `sdk-cli`/`0`, EXECPATH 미기록), `evidence/manual-smoke-teamauto.txt` |
+| CD-3 실제 터미널 fallback·resume | REQ-TA-01, 07, 15 | T11이 S15(c)(d)를 기록. **closed** 2026-10-17: S15(c) PASS(31i), S15(d) PASS(31f), `evidence/manual-smoke-teamauto.txt` |
 
 ## Evolution Ideas
 

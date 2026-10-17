@@ -112,8 +112,8 @@ branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤)에서 20
 ## Completion Debt
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 120초 시작, Claude `/mcp`의 rea connected와 도구 목록, agy `/mcp`의 `autopus_rea` connected와 도구 수 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시 |
-| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), agy 에이전트 시작(`--agent` 3개 `OK`)과 reverse-engineer의 `call_mcp_tool` 정적 도구 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다 |
+| CD-1 실제 터미널(모델 호출 없음): Codex를 먼저, 도구마다 빈 `npm_config_cache`로 열어 cold를 cache 상태로 증명한 120초 시작, Claude `/mcp`의 rea connected와 도구 목록, agy `/mcp`의 `autopus_rea` connected와 도구 수 | REQ-REA-03의 런타임 증거, A2 시작 절반 | S18 PASS 기록과 A2 시작 절반 PASS. FAIL이면 고친 뒤 다시. **closed** 2026-10-17: S18 PASS, Codex cold 시작 21.4초(120초 항목, dd2df735 뒤 재기록), `evidence/manual-smoke-rea.txt` |
+| CD-2 동의 뒤 live: Claude 경로(확인, 수정·중단, `--runtime` 거절, `--runtime` 허용 뒤 재-dispatch와 capture 호출, 미등록 1회 dispatch), agy 에이전트 시작(`--agent` 3개 `OK`)과 reverse-engineer의 `call_mcp_tool` 정적 도구 호출, Codex 도구 호출 60초 | REQ-REA-10, 14, 21의 런타임 증거, A1, A2 도구 절반 | S19 PASS 기록과 A1·A2 PASS. 기록만으로는 닫히지 않는다. **closed** 2026-10-17: S19 PASS, A1 Claude·Antigravity PASS, A2 도구 절반 PASS(첫 REA 호출 2.53초), `evidence/manual-smoke-rea.txt` |
 
 ## agy 1.4 Smoke
 2026-10-17 실제 터미널 smoke와 probe(Antigravity CLI 1.4.0, `strings`로 본 바이너리 struct tag·내장 changelog·도구 설명, scratch 프로젝트의 local echo MCP 서버).
