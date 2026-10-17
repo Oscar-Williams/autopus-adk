@@ -95,6 +95,7 @@ Then 예상 값은 아래 표와 같다
 
 And TTY가 아닌 실행의 stdin Read는 0이다. (9)는 `--rea와 --no-rea는 함께 쓸 수 없습니다`, (10)은 `--rea·--no-rea는 --workspace와 함께 쓸 수 없습니다`를 담은 오류로 끝난다
 And 쓰기가 있는 모든 실행 뒤 `.claude/agents/autopus/reverse-engineer.md`의 tools 줄은 `tools: Read, Grep, Glob, ` 뒤에 `reamcp.StaticAnalysisTools()`의 `mcp__rea__<tool>` 135개이고 `.claude/skills/auto-reverse/SKILL.md`는 `확인 / 수정 / 중단`을 담는다
+And OLD의 autopus.yaml을 손으로 쓴 꼴(주석 줄, 줄 끝 주석, 2칸 들여쓰기, `features` 없음)로 바꾼 사본 H에서 (1) 첫째 뒤 autopus.yaml은 H와 bytes가 같고, (2) 첫째 뒤는 H 끝에 `features:`, `  rea:`, `    enabled: false` 세 줄만 더한 bytes이며, N20으로 (1) 첫째를 하면 같은 세 줄의 값이 `true`다. H 끝에 `features:`, `  rea:`, `    enabled: false  # chosen in review`를 더한 사본의 `--rea`는 그 값 token만 `true`로 바꾼다. `features`를 flow mapping으로 바꾼 Q 사본의 `--yes --no-rea`는 세 MCP 파일의 managed 항목을 지우고 autopus.yaml bytes를 그대로 둔 채 `refuse to edit features.rea.enabled in autopus.yaml`과 `set features.rea.enabled: false by hand`를 담은 오류로 끝나며 옛 바이너리 줄은 0번이다
 
 ### S8: doctor
 Priority: Must

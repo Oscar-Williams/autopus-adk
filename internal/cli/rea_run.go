@@ -24,6 +24,9 @@ type reaRun struct {
 	action  config.ReaMCPAction
 	active  bool // a REA target platform is selected; otherwise only the OMP·OpenCode line remains
 	heldKey bool // autopus.yaml held features.rea before the run
+	// wholeSave marks init, which writes autopus.yaml whole from cfg: its key
+	// write saves cfg again. Update edits only the key (saveReaKey).
+	wholeSave bool
 	// before holds each target file the run's platform writes may change as
 	// the run found it (nil when missing), so finish can name the files this
 	// run registered.
@@ -144,8 +147,9 @@ func (r *reaRun) nodeNotice(gate reamcp.NodeGate) string {
 // the managed entry out of the unselected target files: a file the sweep
 // cannot inspect gets one skip line, and a needed removal it refuses gets one
 // line and fails the run, which still records the decision. M is then read
-// back from the selected target files, autopus.yaml is written by the write
-// table, and the registration, old-binary, and OMP·OpenCode lines follow.
+// back from the selected target files, the write table's features.rea.enabled
+// is stored (saveKey; a key it cannot edit safely fails the run and writes
+// nothing), and the registration, old-binary, and OMP·OpenCode lines follow.
 func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) error {
 	var sweepErr error
 	if r.active {
@@ -159,9 +163,8 @@ func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) er
 			r.line(out, fmt.Sprintf(r.text.Registered, strings.Join(files, ", ")))
 		}
 		next := reaKeyAfterRun(r.state, cfg.Features.Rea.Enabled, reaManaged(dir, cfg.Platforms))
-		if !reaSameKey(cfg.Features.Rea.Enabled, next) {
-			cfg.Features.Rea.Enabled = next
-			if err := config.Save(dir, cfg); err != nil {
+		if next != nil && !reaSameKey(cfg.Features.Rea.Enabled, next) {
+			if err := r.saveKey(dir, cfg, *next); err != nil {
 				return errors.Join(sweepErr, fmt.Errorf("features.rea 저장 실패: %w", err))
 			}
 		}

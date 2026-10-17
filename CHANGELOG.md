@@ -89,6 +89,12 @@ All notable changes to this project will be documented in this file.
     못합니다`를 한 번 쓴다. v0.50.113–v0.50.125의 strict loader는 이 key가 든 파일을 거부한다. 사용자 소유·다른 pin의
     `rea` 항목은 값이 그대로이고, 끄면 선택되지 않은 대상 파일의 managed 항목까지 지우며, `auto platform remove`도
     그 플랫폼의 managed 항목을 지운다. 결정이 없거나 꺼져 있으면 세 MCP 파일은 이전과 같은 bytes로 생성된다.
+  - key 줄만 쓰기(2026-10-17): update(대화형 답, `--rea`·`--no-rea`)는 autopus.yaml을 다시 encode하지 않고
+    `features.rea.enabled` 값만 고치거나, 없으면 `features`·`rea`·`enabled` 줄을 그 mapping 끝(`features`도 없으면 마지막
+    root key 뒤)에 파일의 들여쓰기로 더한다. 다른 key의 순서·주석·빈 줄·따옴표·빈 값은 bytes 그대로다. flow mapping,
+    anchor·alias·merge key, YAML 전용 줄바꿈처럼 안전하게 고칠 수 없는 파일은 아무것도 쓰지 않고 update가
+    `refuse to edit features.rea.enabled in autopus.yaml`과 손으로 쓸 값을 담은 오류로 끝난다. init은 설정 전체를 새로
+    쓰므로 그대로다.
   - Windows: Claude Code·Antigravity 서버는 기존 서버처럼 POSIX `/bin/bash -l -c "exec npx …"`로 시작하므로 Windows에서는
     시작되지 않는다. OMP·OpenCode에는 등록하지 않고 `npx -y rea-agents@6.5.0 setup`이 메인 세션(사용자 범위)에만
     등록한다는 안내 한 줄을 쓴다.
