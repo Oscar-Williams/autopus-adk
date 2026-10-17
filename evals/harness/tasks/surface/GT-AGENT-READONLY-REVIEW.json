@@ -4,7 +4,7 @@
   "kind": "surface",
   "category": "agent_skill_exposure",
   "intent": "Review and validation agents are projected read-only on every platform, while the executor keeps write access.",
-  "outcome": "Claude reviewer and validator get plan mode without Write/Edit, OpenCode denies every tool but read-only ones and grants no edit, Antigravity lists no write_file/replace, and the Codex reviewer is told not to edit; the executor keeps Write/Edit, edit, and write_file/replace.",
+  "outcome": "Claude reviewer and validator get plan mode without Write/Edit, OpenCode denies every tool but read-only ones and grants no edit, Antigravity lists no write_file/edit_file, and the Codex reviewer is told not to edit; the executor keeps Write/Edit, edit, and write_file/edit_file.",
   "variants": [],
   "assertions": [
     {
@@ -59,37 +59,37 @@
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".gemini/agents/autopus/reviewer.md",
-      "needle": "tools:\n  - read_file\n  - grep_search\n  - glob\n  - run_shell_command\nskills:\n"
+      "needle": "tools:\n  - read_file\n  - grep_search\n  - find_by_name\n  - run_command\nskills:\n"
     },
     {
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".gemini/agents/autopus/validator.md",
-      "needle": "tools:\n  - read_file\n  - grep_search\n  - glob\n  - run_shell_command\nskills:\n"
+      "needle": "tools:\n  - read_file\n  - grep_search\n  - find_by_name\n  - run_command\nskills:\n"
     },
     {
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".agents/plugins/autopus/agents/reviewer.md",
-      "needle": "tools:\n  - read_file\n  - grep_search\n  - glob\n  - run_shell_command\nskills:\n"
+      "needle": "tools:\n  - read_file\n  - grep_search\n  - find_by_name\n  - run_command\nskills:\n"
     },
     {
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".agents/plugins/autopus/agents/validator.md",
-      "needle": "tools:\n  - read_file\n  - grep_search\n  - glob\n  - run_shell_command\nskills:\n"
+      "needle": "tools:\n  - read_file\n  - grep_search\n  - find_by_name\n  - run_command\nskills:\n"
     },
     {
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".gemini/agents/autopus/executor.md",
-      "needle": "  - write_file\n  - replace\n"
+      "needle": "  - write_file\n  - edit_file\n"
     },
     {
       "kind": "contains",
       "platform": "antigravity-cli",
       "path": ".agents/plugins/autopus/agents/executor.md",
-      "needle": "  - write_file\n  - replace\n"
+      "needle": "  - write_file\n  - edit_file\n"
     },
     {
       "kind": "contains",

@@ -1,7 +1,7 @@
 {
   "schema_version": "harness_eval_baseline.v1",
   "set_version": "1",
-  "set_digest": "9c9b4c195a50fb638415358bdf3ad738e364d40d5f3a5991795df9cdeec5ae12",
+  "set_digest": "d42052fbc2367851d952e1efff0345b4e65456a83bd67127ba857faf6ec161a5",
   "rows": [
     {
       "id": "GT-AGENT-A01",
@@ -99,7 +99,7 @@
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "3707dde3f292276dfa595381ea231f0d473fed4ec83a3385db8501bfd59c54c5"
+      "expectation_digest": "968360b647fedfbcb7bdc6dbfbb88935908266be8d045876d9436f634f238007"
     },
     {
       "id": "GT-HOOK-ARCH-GATE-ON",

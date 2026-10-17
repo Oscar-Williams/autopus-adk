@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: Antigravity CLI(agy) 1.4에서 Autopus 에이전트가 시작되지 않던 도구 이름을 고친다** (2026-10-17): Antigravity
+  에이전트 파일의 `tools:`가 Gemini CLI 도구 이름(`glob`, `replace`, `run_shell_command`)을 담아, agy 1.4.0은
+  `agy --agent auto-agent-<이름>`과 subagent 호출 모두 `failed to construct executor: failed to resolve components: unknown
+  component: tool "glob" not found in registry`로 끝났고 17개 에이전트 중 시작되는 것이 없었다.
+  - 도구: Read는 `read_file`, Write는 `write_file`, Edit는 `edit_file`(정확한 Target·Replacement, 여러 곳이면
+    AllowMultiple), Grep은 `grep_search`, Glob은 `find_by_name`(fd의 glob 패턴), Bash는 `run_command`로 쓴다.
+    `grep_search`·`find_by_name`은 agy 1.2.7부터 기본 도구에서 빠졌지만 `tools:`에 적은 에이전트는 계속 쓴다. 이 이름으로
+    생성한 explorer·executor·reverse-engineer가 agy 1.4.0에서 시작되고 답한다.
+  - reverse-engineer: agy가 모르는 도구로 거부하는 `mcp_rea_<도구>` 135개를 빼고 agy Markdown 에이전트의 `inheritMcp:
+    true`를 쓴다. agy에는 Markdown 에이전트에 MCP 도구를 하나씩 주는 방법이 없고 subagent는 `call_mcp_tool`로 세션의
+    MCP 서버 전체에 닿으므로, Antigravity reverse-engineer에는 REA runtime 도구도 보인다. 정적 도구로 제한하는 것은
+    에이전트 본문의 금지와 호출마다 묻는 agy MCP 권한이다(Codex와 같은 권고 수준).
+  - 같은 내용을 쓰는 `.gemini/agents/autopus/*.md`는 agy도 Gemini CLI 0.52(`.gemini/agents/*.md`만 읽는다)도 읽지 않는
+    사본이다. agy가 읽는 것은 `.agents/plugins/autopus/agents/*.md`다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
   폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
   - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인
