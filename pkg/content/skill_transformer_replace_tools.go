@@ -73,8 +73,8 @@ var ompWorkflowToolReplacer = strings.NewReplacer(
 	"TaskList", "todo view operation",
 	"TaskGet", "todo view operation",
 	"TeamCreate", "task batch",
-	"TeamDelete", "hub cancellation",
-	"SendMessage", "hub message",
+	"TeamDelete", "job cancellation",
+	"SendMessage", "agent message",
 	"ToolSearch", "available tool discovery",
 )
 

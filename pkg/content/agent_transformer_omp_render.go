@@ -17,13 +17,17 @@ var ompAgentToolMap = map[string]string{
 }
 
 // ompAgentNativeTools are the OMP-native capabilities a role needs on top of
-// its portable tools.
+// its portable tools. The browser roles name both OMP generations: omp/17.2.7
+// ships browser and inspect_image as tools, while 18.x drives the browser from
+// the eval prelude and reads images with read. OMP drops a frontmatter tool
+// the running release lacks when it spawns the agent, so each release keeps
+// only its own names.
 var ompAgentNativeTools = map[string][]string{
 	"debugger":            {"lsp"},
 	"executor":            {"lsp"},
-	"frontend-specialist": {"browser", "inspect_image", "lsp"},
+	"frontend-specialist": {"browser", "eval", "inspect_image", "lsp"},
 	"reviewer":            {"lsp"},
-	"ux-validator":        {"browser", "inspect_image"},
+	"ux-validator":        {"browser", "eval", "inspect_image"},
 	"validator":           {"lsp"},
 }
 

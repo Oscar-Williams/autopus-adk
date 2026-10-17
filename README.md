@@ -1375,7 +1375,7 @@ Before it writes any file, an interactive `auto init` on the form path shows `Se
 | `--auto --loop` | Full autonomy | RALF self-healing, no human gates |
 | `--multi` | Provider diversity | Provider-diverse planning/review; not execution topology |
 
-OMP keeps these axes separate: `--team` selects the owner-`omp` native `task`/`hub`/`todo` topology, while `--multi` adds provider-diverse planning and review. `--team --multi` composes both.
+OMP keeps these axes separate: `--team` selects the owner-`omp` native `task`/`todo` topology, coordinating through `wait` and `proc://`/`agent://` URLs on OMP 18.3+ or `hub` on older OMP, while `--multi` adds provider-diverse planning and review. `--team --multi` composes both.
 
 ---
 

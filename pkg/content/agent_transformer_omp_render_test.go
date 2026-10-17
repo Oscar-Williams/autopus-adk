@@ -64,8 +64,9 @@ func TestRenderOMPAgentDefinition_FrontmatterFollowsTheContract(t *testing.T) {
 	frontend := ompAgentSource(t, "frontend-specialist")
 	rendered, err = content.RenderOMPAgentDefinition(frontend, content.OMPAgentDefinitionOptions{})
 	require.NoError(t, err)
-	assert.Equal(t, []any{"bash", "browser", "edit", "glob", "grep", "inspect_image", "lsp", "read", "write"},
-		ompDefinitionFrontmatter(t, rendered)["tools"])
+	assert.Equal(t, []any{"bash", "browser", "edit", "eval", "glob", "grep", "inspect_image", "lsp", "read", "write"},
+		ompDefinitionFrontmatter(t, rendered)["tools"],
+		"omp/17.2.7 browser tools plus the eval prelude OMP 18 drives the browser from")
 }
 
 // An agent with a route gets its thinking from the override, so its file must

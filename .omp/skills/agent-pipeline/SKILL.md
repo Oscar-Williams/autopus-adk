@@ -39,9 +39,11 @@ Choose exactly one DAG owner before any dispatch: `--execution-owner omp|orca`.
 Omission selects `omp`. Reject duplicate, aliased, or conflicting owner flags;
 never retry a failed explicitly selected owner as another owner.
 
-- Owner `omp`: this session owns progress through native `task`, `hub`, and
-  `todo`. `--solo` keeps work in this session; `--team` requests a native batch
-  with explicit responsibilities. The two flags conflict.
+- Owner `omp`: this session owns progress through native `task` and `todo`,
+  coordinating jobs with `wait`, `read proc://`, `write proc://<id>/kill`, and
+  `write agent://<id>` (OMP 18.3+) or `hub` (older OMP). `--solo` keeps work in
+  this session; `--team` requests a native batch with explicit
+  responsibilities. The two flags conflict.
 - Owner `orca`: only an explicit `--execution-owner orca` selects it. First run
   and read `orca skills get orchestration --full`; the Orca Run owns the DAG.
   Do not create a competing OMP task or progress DAG. `--team` and `--solo`
@@ -83,16 +85,17 @@ needed context. Request the five-field result contract: `owned_paths`,
 `changed_files`, `verification`, `blockers`, `next_required_step`. Use native
 schema validation where supported; worker assertions are not execution proof.
 Record actual dispatch count and the native agents used. Follow up with the
-same revivable worker through `hub`; an isolated worker whose workspace has
-been released needs a new assignment. Only the parent owns `todo`.
+same revivable worker through `write agent://<id>` (OMP 18.3+) or `hub` (older
+OMP); an isolated worker whose workspace has been released needs a new
+assignment. Only the parent owns `todo`.
 
 A worker that stops at its turn limit returns a partial result; the turn-budget
 rule every assignment carries (`references/delegation.md`, Worker hygiene)
 keeps that rare. Never treat a partial result as a completed phase or feed it to
 the next phase. Follow up once with a narrowed instruction (finish and write the
-artifact, minimal further exploration), through `hub` or as a new assignment as
-above; if that run is partial again, stop and hand the phase to the user with
-what was produced.
+artifact, minimal further exploration), through that follow-up path or as a new
+assignment as above; if that run is partial again, stop and hand the phase to
+the user with what was produced.
 
 ## Context and Models
 
@@ -130,4 +133,5 @@ Finish only after the changed path has run, required acceptance is satisfied,
 and blocking findings are closed. Use `references/completion.md` for the sync
 receipt. Status combines project/SPEC state with the selected owner's native
 job state; external commands must not inspect user-owned OMP session roots or
-claim they replace native `hub` observations.
+claim they replace native job observations (`read proc://` on OMP 18.3+, `hub`
+on older OMP).
