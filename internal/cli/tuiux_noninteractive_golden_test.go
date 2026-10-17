@@ -4,7 +4,11 @@ package cli
 // form opens, the stdout and the normalized project digest stay those of the
 // base commit. The goldens under evidence/base-goldens were written at
 // b08ea644, the branch base of the implementation (8ec13935 with the merged
-// SPEC-REVMODEL-001 implementation), before any TUIUX source change.
+// SPEC-REVMODEL-001 implementation), before any TUIUX source change. On
+// 2026-10-17 the NPDs were written again because SPEC-TEAMAUTO-001 changed
+// the generated auto-go and agent-teams skills and the deferred-tools rule on
+// purpose; only those files and the manifest, journal, and backup digests that
+// follow from them changed (SPEC-TUIUX-001 research.md).
 // TUIUX_WRITE_GOLDENS=1 writes them again: every flow then runs twice more
 // than a second apart, and any difference between the two runs, such as a
 // time field outside the NPD normalization, fails the write.

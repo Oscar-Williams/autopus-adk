@@ -9,7 +9,7 @@
 .autopus/backup/<TS>/transaction/
 .autopus/backup/<TS>/transaction/claude-code/
 .autopus/backup/<TS>/transaction/claude-code/.autopus/
-.autopus/backup/<TS>/transaction/claude-code/.autopus/claude-code-manifest.json a826d0c1ffa044ce7e7549f7271a752249493687eb6fd742570b0711d12bdc8c
+.autopus/backup/<TS>/transaction/claude-code/.autopus/claude-code-manifest.json b1f471705a6b5cd249aa35a61cacf045a16d406ba768c606ae52927c7a3d1fdc
 .autopus/backup/<TS>/transaction/claude-code/.autopus/claude-code-permissions.json b9fd4dd0824fb98d4ff3403c011a56b0b66f398788f2dfb24220c1aed87df4e8
 .autopus/backup/<TS>/transaction/claude-code/.claude/
 .autopus/backup/<TS>/transaction/claude-code/.claude/agents/
@@ -51,7 +51,7 @@
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/branding.md 1978feb42dda31899896e57b56aa8922e905c9fcd7e84d9f2defa9d2a37a1ac9
-.autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/deferred-tools.md 772b766bf76bff142b7c4456b7d31e434fa08599cf07cd1a2086a6e3aafac49a
+.autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/deferred-tools.md 59bd5ed0ec64046191784b1eeda7ca4aee11bdaa7190e392ea8c22b4d75f4382
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/file-size-limit.md c4250d144ef919d17b6edb7ee3f28b9bfa4902bfb5e5fdf0c0e13f0c9a29751c
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/language-policy.md 7da1d2d97e862b6250d06bbbdba503cccb2faa38b6fc59585a25ea91c5e593c3
 .autopus/backup/<TS>/transaction/claude-code/.claude/rules/autopus/objective-reasoning.md e160be9561effe74f0dd27f84a2b0004a12e1ff6513e8af521ffc4b30eb1f316
@@ -71,7 +71,7 @@
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/agent-pipeline/references/review.md 5533d90da008d280c6265f32c918f99f24047eefd8c221cce97ead57946fdc04
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/agent-pipeline/references/verification.md 40e01780bce46da99c11fea1ffed336999f247af678b441e096224d4587bb5e1
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/agent-teams/
-.autopus/backup/<TS>/transaction/claude-code/.claude/skills/agent-teams/SKILL.md 124a1fdfb5f6a8b3102c799cfc17a5c266ef509d492bd56c1cde98937c7bd05d
+.autopus/backup/<TS>/transaction/claude-code/.claude/skills/agent-teams/SKILL.md cf6aa97c8bbdde752baaabfec7022be3c5f8a74b591f8151b3d122858f1ae04d
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-canary/
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-canary/SKILL.md 1d3f0c0d5448b024ad9aa95f242943ad2b8ae28de8d0684359604930372c08ea
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-dev/
@@ -81,7 +81,7 @@
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-fix/
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-fix/SKILL.md 37fce77edf77937f4b2d2afd581fcecc3d069cec7d93d083ce02499b7849eca5
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-go/
-.autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-go/SKILL.md fd9c9ec251d4c31c512e6c03b615cd39df826b9802643b17991ff3537e87703d
+.autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-go/SKILL.md 5f047628824718adf39db7e0d77cb037acc51a4985b0400336ee77d074d8ca0d
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-goal/
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-goal/SKILL.md 0dd992f5eb6c27cd5f9f16b678344c5c7f7224a1e42cb95dd26ba221f5ce1ec8
 .autopus/backup/<TS>/transaction/claude-code/.claude/skills/auto-idea/
@@ -279,7 +279,7 @@
 .autopus/backup/<TS>/transaction/codex/.codex/skills/codex-worktree-isolation/
 .autopus/backup/<TS>/transaction/codex/.codex/skills/codex-worktree-isolation/SKILL.md 93ea5dfcf410f5e8b7d83d54a4a8fed152e3a8ca1356bf83af164f06fbbd8104
 .autopus/backup/<TS>/transaction/codex/AGENTS.md 5d951f63f21ebb2e4bbb7209b1b44e917e7bcc4cb90b26a03a5760476f091a71
-.autopus/claude-code-manifest.json a826d0c1ffa044ce7e7549f7271a752249493687eb6fd742570b0711d12bdc8c
+.autopus/claude-code-manifest.json b1f471705a6b5cd249aa35a61cacf045a16d406ba768c606ae52927c7a3d1fdc
 .autopus/claude-code-permissions.json b9fd4dd0824fb98d4ff3403c011a56b0b66f398788f2dfb24220c1aed87df4e8
 .autopus/codex-manifest.json 017dc9d70c964f9589bbb26eb9be44155a9fd204068f8a290fb56c12ef51b57e
 .autopus/context/
@@ -294,8 +294,8 @@
 .autopus/txns/
 .autopus/txns/<TX>-claude-code/
 .autopus/txns/<TX>-claude-code/
-.autopus/txns/<TX>-claude-code/journal.json 04c0beadc7d6f64b70aeda4916fecba6b4142d3947a4ad8ee0a7b5e21ec71c85
-.autopus/txns/<TX>-claude-code/journal.json 3b415140d17035c015c34f4766dffaffb463e9ef28181877420c60284c44ae22
+.autopus/txns/<TX>-claude-code/journal.json da79070d5669b6434287d83dc415226c23f73d6f5094a01f8238e52a9178a3fe
+.autopus/txns/<TX>-claude-code/journal.json ede2367f321455ae2a7445ca4efc7357e1ecc9a0dcbc59c557d7a2836a862983
 .autopus/txns/<TX>-codex/
 .autopus/txns/<TX>-codex/
 .autopus/txns/<TX>-codex/journal.json 50035cd9417b8cf84c9c63c70c511396ad860048060135c53883568ccb4bbbdb
@@ -340,7 +340,7 @@
 .claude/rules/
 .claude/rules/autopus/
 .claude/rules/autopus/branding.md 1978feb42dda31899896e57b56aa8922e905c9fcd7e84d9f2defa9d2a37a1ac9
-.claude/rules/autopus/deferred-tools.md 772b766bf76bff142b7c4456b7d31e434fa08599cf07cd1a2086a6e3aafac49a
+.claude/rules/autopus/deferred-tools.md 59bd5ed0ec64046191784b1eeda7ca4aee11bdaa7190e392ea8c22b4d75f4382
 .claude/rules/autopus/file-size-limit.md c4250d144ef919d17b6edb7ee3f28b9bfa4902bfb5e5fdf0c0e13f0c9a29751c
 .claude/rules/autopus/language-policy.md 7da1d2d97e862b6250d06bbbdba503cccb2faa38b6fc59585a25ea91c5e593c3
 .claude/rules/autopus/objective-reasoning.md e160be9561effe74f0dd27f84a2b0004a12e1ff6513e8af521ffc4b30eb1f316
@@ -360,7 +360,7 @@
 .claude/skills/agent-pipeline/references/review.md 5533d90da008d280c6265f32c918f99f24047eefd8c221cce97ead57946fdc04
 .claude/skills/agent-pipeline/references/verification.md 40e01780bce46da99c11fea1ffed336999f247af678b441e096224d4587bb5e1
 .claude/skills/agent-teams/
-.claude/skills/agent-teams/SKILL.md 124a1fdfb5f6a8b3102c799cfc17a5c266ef509d492bd56c1cde98937c7bd05d
+.claude/skills/agent-teams/SKILL.md cf6aa97c8bbdde752baaabfec7022be3c5f8a74b591f8151b3d122858f1ae04d
 .claude/skills/auto-canary/
 .claude/skills/auto-canary/SKILL.md 1d3f0c0d5448b024ad9aa95f242943ad2b8ae28de8d0684359604930372c08ea
 .claude/skills/auto-dev/
@@ -370,7 +370,7 @@
 .claude/skills/auto-fix/
 .claude/skills/auto-fix/SKILL.md 37fce77edf77937f4b2d2afd581fcecc3d069cec7d93d083ce02499b7849eca5
 .claude/skills/auto-go/
-.claude/skills/auto-go/SKILL.md fd9c9ec251d4c31c512e6c03b615cd39df826b9802643b17991ff3537e87703d
+.claude/skills/auto-go/SKILL.md 5f047628824718adf39db7e0d77cb037acc51a4985b0400336ee77d074d8ca0d
 .claude/skills/auto-goal/
 .claude/skills/auto-goal/SKILL.md 0dd992f5eb6c27cd5f9f16b678344c5c7f7224a1e42cb95dd26ba221f5ce1ec8
 .claude/skills/auto-idea/
