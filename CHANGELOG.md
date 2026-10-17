@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **v0.50.126: clone한 저장소의 두 번째 `auto update`가 permission ledger 권한에 막히지 않는다** (2026-10-17): v0.50.124부터
+  transaction rewrite가 파일의 기존 mode를 지켜서, git이 0644로 꺼낸 `.autopus/claude-code-permissions.json`을 claim한
+  update가 그 파일을 0600으로 줄이지 않았다. 그래서 다음 update가 `permission ledger must be an owner-only regular file`로
+  끝났다(v0.50.124·v0.50.125, ledger를 커밋한 모든 저장소의 새 clone).
+  - ledger 쓰기는 이제 늘 정확히 0600으로 끝난다(임시 파일·chmod·rename, symlink 거부는 그대로). 처음 claim하는 update는
+    checkout된 ledger 내용을 믿지 않고 자기 ledger를 새로 쓴다. 다른 생성 파일의 rewrite는 계속 기존 mode를 지킨다.
+  - 이미 claim된 ledger가 0600이 아니면 계속 거부한다. git으로 들어온 위조 ledger가 사용자 permission 항목을 지우지
+    못하게 하는 확인이다. 오류는 파일과 mode를 적는다. v0.50.124·v0.50.125가 clone에서 claim한 ledger라면 allow·deny
+    목록을 확인한 뒤 `chmod 600 .autopus/claude-code-permissions.json`으로 푼다.
 - **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
   폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
   - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인

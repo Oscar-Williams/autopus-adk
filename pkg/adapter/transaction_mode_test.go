@@ -3,6 +3,8 @@ package adapter
 // A transaction rewrite keeps the mode of the file it replaces, so a private
 // file (an opencode.json or settings file holding credentials at 0600) is
 // never widened to the generated default; a new file takes the requested mode.
+// An exact write, which an owner-only record such as the Claude permission
+// ledger asks for, ends with the requested mode whatever the file had.
 
 import (
 	"os"
@@ -19,6 +21,7 @@ func TestApplyTransaction_RewriteKeepsTheExistingFileMode(t *testing.T) {
 		name      string
 		existing  os.FileMode // 0 means the file does not exist yet
 		requested os.FileMode
+		exact     bool
 		want      os.FileMode
 	}{
 		{name: "private file is not widened", existing: 0o600, requested: 0o644, want: 0o600},
@@ -27,6 +30,10 @@ func TestApplyTransaction_RewriteKeepsTheExistingFileMode(t *testing.T) {
 		{name: "private script gains only the owner exec bit", existing: 0o600, requested: 0o755, want: 0o700},
 		{name: "new file takes the requested mode", requested: 0o755, want: 0o755},
 		{name: "new file defaults to 0644", requested: 0, want: 0o644},
+		{name: "exact write tightens a checked-out file", existing: 0o644, requested: 0o600, exact: true, want: 0o600},
+		{name: "exact write tightens a group-writable file", existing: 0o664, requested: 0o600, exact: true, want: 0o600},
+		{name: "exact write keeps an owner-only file", existing: 0o600, requested: 0o600, exact: true, want: 0o600},
+		{name: "exact new file takes the requested mode", requested: 0o600, exact: true, want: 0o600},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -38,7 +45,7 @@ func TestApplyTransaction_RewriteKeepsTheExistingFileMode(t *testing.T) {
 			}
 
 			_, err := ApplyTransaction(root, "opencode", TransactionPlan{Writes: []TransactionWrite{
-				{Path: "opencode.json", Content: []byte(`{"apiKey":"sk-x","plugin":[]}`), Perm: tc.requested},
+				{Path: "opencode.json", Content: []byte(`{"apiKey":"sk-x","plugin":[]}`), Perm: tc.requested, ExactPerm: tc.exact},
 			}})
 			require.NoError(t, err)
 

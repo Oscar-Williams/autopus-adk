@@ -96,6 +96,7 @@ func (a *Adapter) buildUpdateTransactionPlan(
 	}
 	diff := adapter.BuildManifestDiff(oldManifest, newFiles, PruneRoots())
 	writes := adapter.TransactionWritesFromFiles(finalFiles, claudeFileMode)
+	markPermissionLedgerExact(writes)
 	removes, err := a.buildUpdateTransactionRemoves(diff, writes)
 	if err != nil {
 		return adapter.TransactionPlan{}, nil, err
