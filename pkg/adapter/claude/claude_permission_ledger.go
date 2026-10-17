@@ -5,12 +5,16 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
 )
 
 const (
-	claudePermissionLedgerPath    = ".autopus/claude-code-permissions.json"
+	// PermissionLedgerPath is the project-relative path of the ledger, which
+	// the managed .gitignore ignores: it records this machine's writes only.
+	PermissionLedgerPath          = ".autopus/claude-code-permissions.json"
+	claudePermissionLedgerPath    = PermissionLedgerPath
 	claudePermissionLedgerVersion = 1
 )
 
@@ -70,6 +74,15 @@ func loadClaudePermissionLedger(
 	root string,
 	manifest *adapter.Manifest,
 ) (*claudePermissionLedger, bool, error) {
+	return loadClaudePermissionLedgerOn(runtime.GOOS, root, manifest)
+}
+
+// loadClaudePermissionLedgerOn is loadClaudePermissionLedger under the file
+// mode rules of goos, so a test can run the Windows rules on any host.
+func loadClaudePermissionLedgerOn(
+	goos, root string,
+	manifest *adapter.Manifest,
+) (*claudePermissionLedger, bool, error) {
 	if manifest == nil {
 		return nil, false, nil
 	}
@@ -82,7 +95,10 @@ func loadClaudePermissionLedger(
 		return nil, false, fmt.Errorf("permission ledger 읽기 실패: %w", err)
 	}
 	if !exists {
-		return nil, false, fmt.Errorf("permission ledger ownership file is missing")
+		// A claimed ledger that is gone, as git deletes it from a clone that
+		// pulls the commit untracking it, reads as none: the next write starts
+		// a fresh ledger, and clean retracts nothing it cannot show it added.
+		return nil, false, nil
 	}
 	target, pathErr := adapter.SafePruneFilePath(root, claudePermissionLedgerPath)
 	if pathErr != nil {
@@ -98,7 +114,7 @@ func loadClaudePermissionLedger(
 		return nil, false, fmt.Errorf("permission ledger must be an owner-only regular file: %s is not a regular file",
 			claudePermissionLedgerPath)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); !permissionLedgerModeTrusted(goos, perm) {
 		return nil, false, fmt.Errorf("permission ledger must be an owner-only regular file: %s has mode %04o, not 0600; "+
 			"if your own auto update wrote it, review its allow and deny lists and chmod 600 it",
 			claudePermissionLedgerPath, perm)
@@ -120,6 +136,14 @@ func loadClaudePermissionLedger(
 	ledger.Allow = appendUniqueStrings(nil, ledger.Allow...)
 	ledger.Deny = appendUniqueStrings(nil, ledger.Deny...)
 	return &ledger, true, nil
+}
+
+// permissionLedgerModeTrusted reports whether perm marks a ledger an Autopus
+// write left owner-only. Windows has no such mark: Go reports only 0666 or
+// 0444 there (the read-only attribute), so the regular-file, no-symlink,
+// manifest checksum, and committed-transaction checks decide alone.
+func permissionLedgerModeTrusted(goos string, perm os.FileMode) bool {
+	return goos == "windows" || perm == 0o600
 }
 
 func verifyClaudePermissionLedgerTransaction(root, checksum string) error {

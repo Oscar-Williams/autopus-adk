@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
+	"github.com/insajin/autopus-adk/pkg/adapter/claude"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
@@ -114,7 +115,7 @@ func buildPlatformPreview(ctx context.Context, dir string, cfg *config.HarnessCo
 		if !ok {
 			continue
 		}
-		action := adapter.ResolveAction(dir, file.TargetPath, file.OverwritePolicy, manifest)
+		action := resolvePreviewAction(dir, platform, file, manifest)
 		kind := adapter.ManifestActionEmit
 		reason := reasonForManifestEntry(entry, action)
 		if action == adapter.ActionSkip {
@@ -139,7 +140,7 @@ func buildPlatformPreview(ctx context.Context, dir string, cfg *config.HarnessCo
 		if !ok {
 			continue
 		}
-		action := adapter.ResolveAction(dir, file.TargetPath, file.OverwritePolicy, manifest)
+		action := resolvePreviewAction(dir, platform, file, manifest)
 		if action == adapter.ActionBackup {
 			needsBackup = true
 			willWrite = true
@@ -249,4 +250,13 @@ func reasonForManifestEntry(entry adapter.ManifestDiffEntry, action adapter.Upda
 		}
 		return "managed output would emit with checksum diff"
 	}
+}
+
+// resolvePreviewAction resolves a file's update action the way platform's
+// update applies it, so the preview names the writes the update makes.
+func resolvePreviewAction(dir, platform string, file adapter.FileMapping, manifest *adapter.Manifest) adapter.UpdateAction {
+	if platform == "claude-code" {
+		return claude.ResolveUpdateAction(dir, file, manifest)
+	}
+	return adapter.ResolveAction(dir, file.TargetPath, file.OverwritePolicy, manifest)
 }

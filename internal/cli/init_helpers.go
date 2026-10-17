@@ -67,6 +67,10 @@ func detectInstalledPlatforms() []string {
 // gitignorePatterns는 autopus 관련 .gitignore 패턴 목록이다.
 var gitignorePatterns = []string{
 	".autopus/*-manifest.json",
+	// The Claude permission ledger records what this machine's update added to
+	// its own .claude/settings.json; a committed copy reaches every clone as
+	// state no local write made (applyGitignoreUpdate hints at untracking it).
+	permissionLedgerRel,
 	".autopus/context/signatures.md",
 	".autopus/plugins/",
 	".autopus/orchestra/",
@@ -206,6 +210,8 @@ func updateGitignore(dir string) (gitignoreUpdatePlan, error) {
 // project only through update, and omp's rule and extension discovery is
 // gitignore-aware: an unignored generated surface also fails doctor's hygiene
 // check, so update owning this write is what makes the two entry points agree.
+// An ignore rule does not untrack a committed file, so a permission ledger git
+// still tracks gets one hint line instead of an index change.
 func applyGitignoreUpdate(out io.Writer, dir string) error {
 	plan, err := updateGitignore(dir)
 	if err != nil {
@@ -214,6 +220,7 @@ func applyGitignoreUpdate(out io.Writer, dir string) error {
 	if !plan.Empty() {
 		fmt.Fprintf(out, "  + .gitignore updated (%s)\n", plan.Summary())
 	}
+	hintTrackedPermissionLedger(out, dir)
 	return nil
 }
 

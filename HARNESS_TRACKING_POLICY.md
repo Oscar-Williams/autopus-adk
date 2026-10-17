@@ -29,6 +29,7 @@ Autopus-ADK is the source of truth for harness templates, content, adapters, and
 - `.omp/extensions/` — same directory-only rule: a file-name glob stops the generated extensions from registering in a session
 - `.autopus/plugins/**`
 - `.autopus/*-manifest.json`
+- `.autopus/claude-code-permissions.json` — the Claude permission ledger records what this machine's `auto update` added to its own `.claude/settings.json`; a clone that pulls the commit untracking it gets a fresh one on its next update
 - `.autopus/context/signatures.md`
 - `.autopus/orchestra/**`
 - `.autopus/brainstorms/**`
