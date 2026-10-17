@@ -11,6 +11,7 @@ import (
 
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/detect"
+	"github.com/insajin/autopus-adk/pkg/reamcp"
 )
 
 func newPlatformCmd() *cobra.Command {
@@ -214,6 +215,12 @@ func newPlatformRemoveCmdWithLookup(dir *string, lookup platformDescriptorLookup
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✓ Platform %q removed\n", platform)
+			if platform == string(reamcp.Antigravity) {
+				// Clean leaves a plugin MCP file that is not strict JSON alone.
+				if notice := reaPluginNotice(reaCurrentText(), readReaPluginState(d), config.ReaMCPRemove); notice != "" {
+					fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", notice)
+				}
+			}
 			return nil
 		},
 	}

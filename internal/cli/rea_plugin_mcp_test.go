@@ -5,6 +5,7 @@ package cli
 // the workspace plugin's file (SPEC-REA-001, agy 1.4 smoke of 2026-10-17).
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -93,4 +94,102 @@ func TestReaPluginMCP_PreviewItems(t *testing.T) {
 	cfg.Runtime.ReaMCP = config.ReaMCPRemove
 	cfg.Platforms = []string{"claude-code"}
 	assert.Empty(t, reaPluginPreviewItems(dir, cfg), "an unselected platform belongs to the off sweep")
+}
+
+// reaPluginJSONC is a plugin MCP file agy reads but strict JSON refuses: a
+// comment and trailing commas, with or without the managed rea entry.
+func reaPluginJSONC(withRea bool) []byte {
+	servers := `"mine": {"command": "mine-mcp"},`
+	if withRea {
+		servers += ` "rea": {"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]},`
+	}
+	return []byte("{\n  // mine\n  \"mcpServers\": {" + servers + "},\n}\n")
+}
+
+// Reviewer F2: a plugin file that is not strict JSON is user-owned. --rea
+// leaves it, registers the other files, and prints one line with the remedy;
+// --no-rea prints one line when the file still names rea-agents and none when
+// it does not; no run fails.
+func TestReaPluginMCP_NotStrictJSONSkipsWithARemedy(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	stubDriverProbes(t, false, "")
+	dir := reaOLD(t, reaAllTargets)
+	jsonc := reaPluginJSONC(false)
+	writeReaTarget(t, dir, reamcp.Antigravity, jsonc)
+	notRegistered := fmt.Sprintf(reaTextKo.PluginNotRegistered, reaPluginMCPRel)
+	notRemoved := fmt.Sprintf(reaTextKo.PluginNotRemoved, reaPluginMCPRel)
+
+	out, err := reaUpdate(t, strings.NewReader(""), dir, "--yes", "--rea")
+	require.NoError(t, err, out)
+	assert.Equal(t, 1, strings.Count(out, notRegistered), out)
+	assert.Contains(t, out, "REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml (rea-agents@6.5.0)")
+	assert.Equal(t, jsonc, readReaFile(t, dir, reamcp.Antigravity))
+
+	withRea := reaPluginJSONC(true)
+	writeReaTarget(t, dir, reamcp.Antigravity, withRea)
+	out, err = reaUpdate(t, strings.NewReader(""), dir, "--yes", "--no-rea")
+	require.NoError(t, err, out)
+	assert.Equal(t, 1, strings.Count(out, notRemoved), out)
+	assert.NotContains(t, out, notRegistered)
+	assert.Equal(t, withRea, readReaFile(t, dir, reamcp.Antigravity))
+
+	writeReaTarget(t, dir, reamcp.Antigravity, jsonc)
+	out, err = reaUpdate(t, strings.NewReader(""), dir, "--yes", "--no-rea")
+	require.NoError(t, err, out)
+	assert.NotContains(t, out, notRemoved, "a file that names no rea entry needs no removal")
+
+	writeReaTarget(t, dir, reamcp.Antigravity, withRea)
+	out, err = runReaCLI(t, "", "platform", "remove", "antigravity-cli", "--dir", dir)
+	require.NoError(t, err, out)
+	assert.Equal(t, 1, strings.Count(out, notRemoved), out)
+	assert.Equal(t, withRea, readReaFile(t, dir, reamcp.Antigravity))
+}
+
+// Doctor warns on that state: an on decision cannot register in the file,
+// and an off decision cannot remove the rea entry it still names.
+func TestReaPluginMCP_DoctorWarnsOnANotStrictPluginFile(t *testing.T) {
+	reaCLIEnv(t, "v24.11.0\n")
+	dir, cfg := reaFixture(t, "claude-code", "codex", "antigravity-cli")
+	cfg.Features.Rea.Enabled = reaBool(false)
+	require.NoError(t, config.Save(dir, cfg))
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
+
+	_, checks, status := reaDoctorJSON(t, dir)
+	row := checks["doctor.rea.platform.antigravity-cli"]
+	assert.Equal(t, jsonCheck{ID: row.ID, Severity: "warning", Status: "warn", Detail: "user_owned"}, row)
+	assert.Equal(t, "warn", status)
+	raw, _ := runReaCLI(t, "", "doctor", "--dir", dir, "--json")
+	assert.Contains(t, raw, `"rea_target_not_strict_json"`)
+	text, _ := runReaCLI(t, "", "doctor", "--dir", dir)
+	assert.Contains(t, text, fmt.Sprintf(reaTextKo.PluginNotRemoved, reaPluginMCPRel))
+
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(false))
+	_, checks, _ = reaDoctorJSON(t, dir)
+	assert.Equal(t, "info", checks["doctor.rea.platform.antigravity-cli"].Severity, "off with no rea entry left")
+	cfg.Features.Rea.Enabled = reaBool(true)
+	require.NoError(t, config.Save(dir, cfg))
+	_, checks, _ = reaDoctorJSON(t, dir)
+	assert.Equal(t, "warning", checks["doctor.rea.platform.antigravity-cli"].Severity, "on cannot register")
+}
+
+// The preview lists the skip instead of a change.
+func TestReaPluginMCP_PreviewListsTheSkip(t *testing.T) {
+	t.Parallel()
+	dir, cfg := reaFixture(t, "antigravity-cli")
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
+	for _, action := range []config.ReaMCPAction{config.ReaMCPAdd, config.ReaMCPRemove} {
+		cfg.Runtime.ReaMCP = action
+		items := reaPluginPreviewItems(dir, cfg)
+		require.Len(t, items, 1, action)
+		assert.Equal(t, "skip", items[0].Kind, action)
+		assert.Contains(t, items[0].Reason, "not strict JSON", action)
+	}
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(false))
+	cfg.Runtime.ReaMCP = config.ReaMCPRemove
+	assert.Empty(t, reaPluginPreviewItems(dir, cfg), "nothing to remove")
+	cfg.Platforms = []string{"claude-code"}
+	writeReaTarget(t, dir, reamcp.Antigravity, reaPluginJSONC(true))
+	sweep := reaSweepPreviewItems(dir, cfg)
+	require.Len(t, sweep, 1)
+	assert.Equal(t, "skip", sweep[0].Kind)
 }

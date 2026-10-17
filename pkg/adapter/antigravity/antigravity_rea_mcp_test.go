@@ -171,28 +171,23 @@ func TestReaMCP_AntigravityLeavesOtherPinAndUserOwnedEntries(t *testing.T) {
 }
 
 // A plugin file that does not decode (agy also reads comments and trailing
-// commas) is never overwritten: add refuses it with an error naming the file,
-// and remove and keep leave it alone.
-func TestReaMCP_AntigravityRefusesAMalformedPluginFile(t *testing.T) {
+// commas) is user-owned: add, remove, and keep leave its bytes alone and none
+// of them fails the run; the CLI prints the line that names it.
+func TestReaMCP_AntigravityLeavesAMalformedPluginFile(t *testing.T) {
 	t.Parallel()
-	const malformed = "{\n  // mine\n  \"mcpServers\": {\"mine\": {\"command\": \"mine-mcp\"},},\n}\n"
+	const malformed = "{\n  // mine\n  \"mcpServers\": {\"rea\": " + antigravityReaG1 + ",},\n}\n"
 	root := t.TempDir()
 	path := writeAntigravityPluginMCP(t, root, malformed)
 	a := NewWithRoot(root)
-
-	_, err := a.Generate(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "REA MCP")
-	assert.Contains(t, err.Error(), reamcp.TargetRelPath(reamcp.Antigravity))
-	assert.Equal(t, malformed, string(readAntigravityBytes(t, path)))
-
-	for _, action := range []config.ReaMCPAction{config.ReaMCPKeep, config.ReaMCPRemove} {
-		_, err = a.Generate(context.Background(), reaAntigravityConfig(action))
+	for _, action := range []config.ReaMCPAction{config.ReaMCPAdd, config.ReaMCPKeep, config.ReaMCPRemove} {
+		_, err := a.Generate(context.Background(), reaAntigravityConfig(action))
+		require.NoError(t, err, action)
+		assert.Equal(t, malformed, string(readAntigravityBytes(t, path)), action)
+		_, err = a.Update(context.Background(), reaAntigravityConfig(action))
 		require.NoError(t, err, action)
 		assert.Equal(t, malformed, string(readAntigravityBytes(t, path)), action)
 	}
-	_, err = a.Update(context.Background(), reaAntigravityConfig(config.ReaMCPAdd))
-	require.Error(t, err)
+	require.NoError(t, a.Clean(context.Background()))
 	assert.Equal(t, malformed, string(readAntigravityBytes(t, path)))
 }
 

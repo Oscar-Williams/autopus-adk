@@ -62,9 +62,11 @@ type reaPluginMCP struct {
 // a symlink anywhere on the path, a file that is not regular, or one larger
 // than reamcp.TargetLimit is never read, and the add or remove that needed it
 // ends the run with an error naming the file. A file that does not decode
-// cannot hold a managed entry, so remove leaves it alone, and add refuses it
-// rather than overwrite it. A change whose path crosses a symlink or leaves
-// the project is refused before anything is written.
+// (agy reads comments and trailing commas that strict JSON refuses) is
+// user-owned: add and remove leave it alone without failing the run, and the
+// CLI prints the line that names it and the remedy. A change whose path
+// crosses a symlink or leaves the project is refused before anything is
+// written.
 func (a *Adapter) planReaPluginMCP(action config.ReaMCPAction) (reaPluginMCP, bool, error) {
 	if action != config.ReaMCPAdd && action != config.ReaMCPRemove {
 		return reaPluginMCP{}, false, nil
@@ -76,13 +78,7 @@ func (a *Adapter) planReaPluginMCP(action config.ReaMCPAction) (reaPluginMCP, bo
 		return reaPluginMCP{}, false, fmt.Errorf("REA MCP 쓰기 거부: %w", err)
 	}
 	out, changed, err := reamcp.ApplyFile(reamcp.Antigravity, data, action)
-	switch {
-	case err != nil && action == config.ReaMCPRemove:
-		return reaPluginMCP{}, false, nil
-	case err != nil:
-		// The decode error already names the file.
-		return reaPluginMCP{}, false, fmt.Errorf("REA MCP 쓰기 거부: %w", err)
-	case !changed:
+	if err != nil || !changed {
 		return reaPluginMCP{}, false, nil
 	}
 	if _, err := adapter.SafeWorkspacePath(a.root, filepath.FromSlash(rel)); err != nil {

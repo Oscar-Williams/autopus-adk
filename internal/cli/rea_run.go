@@ -155,6 +155,7 @@ func (r *reaRun) finish(out io.Writer, dir string, cfg *config.HarnessConfig) er
 		for _, refused := range r.refusals {
 			r.line(out, refused.line(r.text))
 		}
+		r.pluginNotice(out, dir, cfg.Platforms)
 		if files := r.registered(dir, cfg.Platforms); len(files) > 0 {
 			r.line(out, fmt.Sprintf(r.text.Registered, strings.Join(files, ", ")))
 		}
@@ -191,6 +192,18 @@ func (r *reaRun) registered(dir string, platforms []string) []string {
 		}
 	}
 	return files
+}
+
+// pluginNotice prints the line for an Antigravity plugin file this run could
+// not change because it is not strict JSON (reaPluginNotice). add only writes
+// a selected platform's file, while off also sweeps an unselected one.
+func (r *reaRun) pluginNotice(out io.Writer, dir string, platforms []string) {
+	if r.action == config.ReaMCPAdd && !containsPlatform(platforms, string(reamcp.Antigravity)) {
+		return
+	}
+	if notice := reaPluginNotice(r.text, readReaPluginState(dir), r.action); notice != "" {
+		r.line(out, notice)
+	}
 }
 
 // guidance prints the OMP·OpenCode line when the project includes either and

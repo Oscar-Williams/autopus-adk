@@ -189,7 +189,11 @@ func reaSweepPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem {
 		if err != nil || data == nil {
 			continue
 		}
-		if out, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove); err == nil && changed {
+		out, changed, err := reamcp.ApplyFile(p, data, config.ReaMCPRemove)
+		switch {
+		case err != nil && p == reamcp.Antigravity:
+			items = append(items, reaPluginSkipItems(data, config.ReaMCPRemove)...)
+		case err == nil && changed:
 			items = append(items, previewItem{Path: reamcp.TargetRelPath(p), Kind: reaPreviewKind(p, data, out), Scope: string(p),
 				Reason: "REA off would remove the managed rea entry of this unselected platform"})
 		}
@@ -215,7 +219,10 @@ func reaPluginPreviewItems(dir string, cfg *config.HarnessConfig) []previewItem 
 		return nil
 	}
 	out, changed, err := reamcp.ApplyFile(p, data, action)
-	if err != nil || !changed {
+	if err != nil {
+		return reaPluginSkipItems(data, action)
+	}
+	if !changed {
 		return nil
 	}
 	reason := "REA would register its managed rea entry in this plugin MCP file"

@@ -28,6 +28,11 @@ type reaText struct {
 	ChangeRefused string
 	ChangeFailed  string    // the run's error after a refused change line
 	Refusals      [5]string // reaRefusal reasons, in reaRefusal order
+	// PluginNotRegistered and PluginNotRemoved name the Antigravity plugin
+	// file (%s) that is not strict JSON: add could not register in it, or off
+	// could not remove the rea entry it still names.
+	PluginNotRegistered string
+	PluginNotRemoved    string
 }
 
 // refusal is the reason text of one reaRefusal.
@@ -73,6 +78,8 @@ var reaTextKo = reaText{
 	ChangeFailed:  "REA MCP 항목을 바꾸지 못한 대상 파일이 있습니다",
 	Refusals: [5]string{"symlink를 따라가지 않습니다", "일반 파일이 아닙니다", "1 MiB보다 큽니다",
 		"바꾼 결과가 설정 구조 검사를 통과하지 못합니다", "읽을 수 없습니다"},
+	PluginNotRegistered: "REA MCP 항목을 등록하지 않았습니다: %s은 엄격한 JSON이 아닙니다(agy가 받는 주석·끝 쉼표). 주석과 끝 쉼표를 지우고 다시 실행하거나 rea 항목을 직접 더하세요",
+	PluginNotRemoved:    "REA MCP 항목을 자동으로 지우지 못했습니다: %s은 엄격한 JSON이 아닙니다(주석·끝 쉼표). 주석과 끝 쉼표를 지우고 auto update --no-rea를 다시 실행하거나 rea 항목을 직접 지우세요",
 }
 
 var reaTextEn = reaText{
@@ -95,4 +102,6 @@ var reaTextEn = reaText{
 	ChangeFailed:  "a REA MCP entry was left unchanged",
 	Refusals: [5]string{"crosses a symlink", "not a regular file", "larger than 1 MiB",
 		"the changed file fails its structure check", "cannot be read"},
+	PluginNotRegistered: "REA MCP entry not registered: %s is not strict JSON (agy accepts its comments or trailing commas); remove them and rerun, or add the rea entry by hand",
+	PluginNotRemoved:    "REA MCP entry not removed: %s is not strict JSON (comments or trailing commas); remove them and rerun auto update --no-rea, or delete the rea entry by hand",
 }
