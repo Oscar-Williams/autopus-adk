@@ -75,10 +75,10 @@ func TestDecideTeamLinesFollowReasonLineContract(t *testing.T) {
 func TestDecideTeamToolsFallbackLineOnlyForAutomaticTeam(t *testing.T) {
 	ko := DecideTeam(TeamInput{Units: shapeUDJ(), Capability: capOK(), Locale: "ko"})
 	en := DecideTeam(TeamInput{Units: shapeUDJ(), Capability: capOK(), Locale: "en"})
-	if ko.ToolsFallbackLine != "Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다" {
+	if ko.ToolsFallbackLine != "Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다" {
 		t.Fatalf("%q", ko.ToolsFallbackLine)
 	}
-	if en.ToolsFallbackLine != "Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents" {
+	if en.ToolsFallbackLine != "Agent Team: off — the SendMessage tool or the Agent name parameter is unavailable; running subagents" {
 		t.Fatalf("%q", en.ToolsFallbackLine)
 	}
 	for _, in := range []TeamInput{{Flags: TopologyFlags{Team: true}, Units: shapeUDJ(), Capability: capOK()}, {Units: shapeU1(), Capability: capOK()}} {

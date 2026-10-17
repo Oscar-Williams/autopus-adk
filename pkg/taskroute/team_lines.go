@@ -7,7 +7,8 @@ import (
 )
 
 // reasonTeamToolsUnavailable names tools_fallback_line, the line the lead
-// prints instead of line when the team tool schemas fail to load.
+// prints instead of line when SendMessage or the Agent tool's name parameter
+// is unavailable. The shared task-list tools are optional and never select it.
 const reasonTeamToolsUnavailable = "team_tools_unavailable"
 
 // reasonInvalidFacts is the reason of a decision for rejected facts.
@@ -63,8 +64,8 @@ var teamLineText = map[string][2]string{
 		"Agent Team: 유지 — Claude Code {v} 버전은 2.1.246보다 낮아 subagent로 실행한다",
 		"Agent Team: off — Claude Code {v} is older than 2.1.246; running subagents"},
 	reasonTeamToolsUnavailable: {
-		"Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다",
-		"Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents"},
+		"Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다",
+		"Agent Team: off — the SendMessage tool or the Agent name parameter is unavailable; running subagents"},
 	reasonExplicitFlag: {
 		"Agent Team: 자동 선택 안 함 — {f} 지정됨",
 		"Agent Team: auto-selection skipped — {f} was given"},

@@ -2,7 +2,7 @@
 
 **Status**: approved
 **Created**: 2026-10-15
-**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`), 2026-10-17 (S15 실제 터미널 smoke가 A2의 `CLAUDE_CODE_CHILD_SESSION` 가정을 반증해 규칙 8 `not_top_level`을 뺐다. `evidence/probe-teamauto-childsession.md`)
+**Revised**: 2026-10-15 (review round 1: F-001–F-006, F-010–F-021, 미룬 F-007–F-009도 반영. round 2: F-022, F-019. `evidence/review-rounds.md`), 2026-10-17 (S15 실제 터미널 smoke가 A2의 `CLAUDE_CODE_CHILD_SESSION` 가정을 반증해 규칙 8 `not_top_level`을 뺐다. `evidence/probe-teamauto-childsession.md`. 재-smoke에서 Claude Code 2.1.301의 ToolSearch가 `SendMessage`만 돌려줘, 사용자 결정으로 자동 진입과 `--team`의 팀 도구 요구를 `SendMessage`와 `Agent`의 `name` 인자로 줄이고 공유 task-list 도구는 선택으로 바꿨다. `evidence/probe-teamauto-teamtools.md`)
 **Domain**: TEAMAUTO
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003, SPEC-REA-001, PR #199와 함께). 작업 branch는 `feat/teamauto-001`이고 기준은 origin/main `33b5bb55`다. PATH의 기준 바이너리는 `auto 0.50.125`다.
@@ -21,7 +21,7 @@
 - Explicit non-goals:
   - `/auto plan`, `/auto review`, `auto pipeline run`, Phase 1·1.5·Gate 2·3·4의 실행 방식 변경. 의존 관계가 있는 단계는 subagent 그대로다
   - 비 Claude 플랫폼(codex, antigravity-cli, opencode, omp)의 생성 결과 변경. 이유 한 줄도 더하지 않는다(`research.md` 가정 AS-1)
-  - 새 topology flag(`--no-team` 등), topology flag 상호 배타 규칙, `--team`·`--workflow`·`--solo`의 의미와 진단 변경
+  - 새 topology flag(`--no-team` 등), topology flag 상호 배타 규칙, `--team`·`--workflow`·`--solo`의 의미와 진단 변경. 예외는 2026-10-17 사용자 결정 하나다: `--team` preflight와 agent-teams lifecycle의 도구 요구를 현재 runtime에 맞춰 공유 task-list 도구를 선택으로 바꿨다(REQ-TA-10)
   - Route B 계약 밖의 팀 기능: 팀 크기 정책, 팀원 model 지정, pane 시각화, 두 번째 wave 재판단, 겹치는 slice 자동 재분할
   - `--workflow` Workflow 기반층과의 결합, `workflow.team_default` 부활
 - Completion evidence: Must S1–S15 PASS, `go test ./pkg/taskroute/... ./internal/cli/... ./pkg/config/... ./pkg/adapter/...`, 신규·변경 package coverage 85% 이상, 신규·변경 Go 소스 300줄 이하, `GOOS=windows GOARCH=amd64 go build ./...`, `make generate-templates` 뒤 drift 없음, `evidence/manual-smoke-teamauto.txt`(S15), `auto spec validate .autopus/specs/SPEC-TEAMAUTO-001 --strict`. `research.md` `## Completion Debt`의 CD-1·CD-2·CD-3이 남아 있으면 완료가 아니다.
@@ -46,9 +46,10 @@ WHEN a Claude Code `/auto go` run with no topology flag enters Phase 2, THEN THE
 ### REQ-TA-02 팀 실행
 Priority: Must · EARS: Event-driven
 
-WHEN the decision route is `team` and the `SendMessage` and shared task-list schemas load, THEN THE SYSTEM SHALL run exactly the units in `team_units` as named teammates under the Route B lifecycle, SHALL send every teammate a shutdown request and wait for every acknowledgement, SHALL then implement exactly the units in `followup_units` (Phase 2 units that are neither in `team_units` nor done) under the Route A Phase 2 rules, re-running no done unit, and only after that SHALL enter Gate 2 under Route A.
+WHEN the decision route is `team`, the `SendMessage` schema loads, and the `Agent` tool exposes its `name` parameter, THEN THE SYSTEM SHALL run exactly the units in `team_units` as named teammates under the Route B lifecycle, SHALL send every teammate a shutdown request and wait for every acknowledgement, SHALL then implement exactly the units in `followup_units` (Phase 2 units that are neither in `team_units` nor done) under the Route A Phase 2 rules, re-running no done unit, and only after that SHALL enter Gate 2 under Route A.
 
-- 팀원 이름은 `team_units` 순서로 `builder-1` … `builder-n`이다. 각 prompt는 Phase 2 prompt와 같은 항목(요구사항, owned·forbidden paths, acceptance, gate 결정, minimality ladder)과 Route B receipt 필드를 담는다. tester·guardian 팀원은 띄우지 않는다.
+- 팀원 이름은 `team_units` 순서로 `builder-1` … `builder-n`이다. 각 prompt는 자기 unit 배정과 Phase 2 prompt와 같은 항목(요구사항, owned·forbidden paths, acceptance, gate 결정, minimality ladder), Route B receipt 필드를 담는다. tester·guardian 팀원은 띄우지 않는다.
+- 공유 task-list 도구(`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`)는 같은 ToolSearch로 요청해 돌아오면 unit마다 task를 기록한다. 돌아오지 않으면(Claude Code 2.1.288·2.1.301의 기본) lead가 unit을 직접 추적한다. 완료는 팀원 결과나 `SendMessage` 보고로 알고 receipt 다섯 필드는 lead가 기록한다. shutdown은 `SendMessage`의 `shutdown_request`와 `shutdown_response`다.
 
 ### REQ-TA-03 subagent 유지
 Priority: Must · EARS: Event-driven
@@ -73,7 +74,9 @@ THE SYSTEM SHALL build the capability snapshot in the CLI only from its process 
 ### REQ-TA-07 도구 schema 실패
 Priority: Must · EARS: Unwanted
 
-IF the decision route is `team` and the `SendMessage` or shared task-list schemas cannot be loaded, THEN THE SYSTEM SHALL print `tools_fallback_line` instead of `line`, so the run still prints exactly one line, and SHALL run Phase 2 under Route A.
+IF the decision route is `team` and the `SendMessage` schema cannot be loaded or the `Agent` tool has no `name` parameter, THEN THE SYSTEM SHALL print `tools_fallback_line` instead of `line`, so the run still prints exactly one line, and SHALL run Phase 2 under Route A; missing shared task-list tools SHALL NOT trigger this fallback.
+
+- 환경으로는 최상위 세션과 subagent를 가를 수 없다(Capability Observation Contract). `Agent`가 없는 subagent·teammate는 이 확인에서 subagent로 남는다.
 
 ### REQ-TA-08 CLI
 Priority: Must · EARS: Event-driven
@@ -91,7 +94,9 @@ WHERE `autopus.yaml` sets `workflow.auto_team: false`, THEN THE SYSTEM SHALL ret
 ### REQ-TA-10 명시 flag
 Priority: Must · EARS: Event-driven
 
-WHEN `/auto go` receives `--team`, `--workflow`, or `--solo`, THEN THE SYSTEM SHALL keep the current topology semantics, preflight, and diagnostics unchanged and SHALL neither run nor print the Auto-Team Decision; the decision function SHALL return the flag's route with reason `explicit_flag` without reading capability.
+WHEN `/auto go` receives `--team`, `--workflow`, or `--solo`, THEN THE SYSTEM SHALL keep the current topology semantics and diagnostics, SHALL require in the `--team` preflight only the `Agent` tool's `name` parameter and the `SendMessage` schema among tools, treating the shared task-list tools as optional, and SHALL neither run nor print the Auto-Team Decision; the decision function SHALL return the flag's route with reason `explicit_flag` without reading capability.
+
+- `--team` preflight의 도구 줄은 2026-10-17 사용자 결정으로 바뀌었다. 전에는 `Agent`, `SendMessage`, 공유 task-list 도구 schema를 모두 요구해 Claude Code 2.1.288·2.1.301 기본 세션에서 늘 blocker였다. 나머지 preflight(버전, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, 대화형)와 "If preflight fails, report the blocker and suggest Route A."는 그대로다.
 
 ### REQ-TA-11 비 Claude 플랫폼
 Priority: Must · EARS: State-driven
@@ -179,7 +184,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | 대화형 | `CLAUDE_CODE_ENTRYPOINT`, `CLAUDE_CODE_SESSION_ATTENDED` | `cli`, `1` | `cli`, `1` |
 | 최상위 lead | 없음. CLI는 `CLAUDE_CODE_CHILD_SESSION`을 읽지 않는다 | — | `1`(probe가 subagent에서 돌았다). 2026-10-17 최상위 대화형 세션도 `1`이다(아래 "최상위 여부") |
 | 버전 | `"$CLAUDE_CODE_EXECPATH" --version` 첫 줄 | `^(\d+)\.(\d+)\.(\d+) \(Claude Code\)$` 이고 ≥ 2.1.246 | `2.1.288 (Claude Code)`. PATH `claude`는 `2.1.299` |
-| 도구 schema | 세션의 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet` | 로드됨 | CLI 밖. REQ-TA-07 |
+| 팀 도구 | 세션의 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`, `Agent`의 `name` 인자 | `SendMessage` 로드, `name` 있음. task-list 도구는 선택 | CLI 밖. REQ-TA-07. 2026-10-17 2.1.301 lead 세션은 `SendMessage`만 돌려받았다 |
 
 - 버전 probe guard: 값이 절대 경로이고, `os.Stat`(symlink는 따라간 결과)이 regular file이며, basename이 `claude` 또는 `claude.exe`일 때만 shell 없이 인자 `--version` 하나로 실행한다. 5초 timeout, 출력은 기존 `processprobe.OutputLimited`로 4096 bytes까지다.
 - Windows에서는 drive 문자 경로(`C:\…`, `C:/…`)이고 basename이 `claude.exe`일 때만 실행한다. 확장자 없는 `claude`는 os/exec가 PATHEXT로 옆의 `claude.cmd`·`claude.bat`을 찾아 cmd.exe로 돌릴 수 있기 때문이다. UNC(`\\server\share`), `\\?\`·`\\.\` device 경로, `:`가 든 대체 데이터 스트림은 거부한다. 판정은 `[NEW] claudeVersionProbePathAllowed(goos, path)`의 경로 문자열 규칙이라 모든 host의 test가 두 플랫폼 규칙을 판정한다.
@@ -202,7 +207,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
 | `not_interactive` | `Agent Team: 유지 — 대화형 CLI 세션이 아니라(entrypoint={e}, attended={t}) subagent로 실행한다` | `Agent Team: off — not an interactive CLI session (entrypoint={e}, attended={t}); running subagents` |
 | `claude_version_unknown` | `Agent Team: 유지 — 실행 중인 Claude Code 버전을 읽지 못해(execpath={x}) subagent로 실행한다` | `Agent Team: off — the running Claude Code version could not be read (execpath={x}); running subagents` |
 | `claude_version_old` | `Agent Team: 유지 — Claude Code {v} 버전은 2.1.246보다 낮아 subagent로 실행한다` | `Agent Team: off — Claude Code {v} is older than 2.1.246; running subagents` |
-| `team_tools_unavailable` | `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` | `Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents` |
+| `team_tools_unavailable` | `Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다` | `Agent Team: off — the SendMessage tool or the Agent name parameter is unavailable; running subagents` |
 | `explicit_flag` | `Agent Team: 자동 선택 안 함 — {f} 지정됨` | `Agent Team: auto-selection skipped — {f} was given` |
 | `invalid_facts` | `Agent Team: 유지 — topology facts가 잘못되어({c}) subagent로 실행한다` | `Agent Team: off — the topology facts are invalid ({c}); running subagents` |
 
@@ -261,7 +266,7 @@ THE SYSTEM SHALL count as complete only after real-terminal Claude Code runs sho
   2. lead는 한 Bash tool 호출 안에서 한다. Bash tool 호출끼리는 shell 변수를 나누지 않기 때문이다. 그 호출은 `WORKING_DIR`에서 `FACTS="$(mktemp)"`, `TEAM_JSON="$(mktemp)"`를 만들고, Phase 1 배정 표를 quoted heredoc(`cat >"$FACTS" <<'JSON'` … `JSON`)으로 facts에 옮기고(echo나 unquoted heredoc 금지, done unit 포함, 표가 없으면, 예를 들어 compact route에서 unit을 나누지 않았으면 `units: []`이고 결과는 `fewer_than_two_ready`다), 아래 snippet을 그대로 실행한 뒤 `cat "$TEAM_JSON"`과 `rm -f "$TEAM_JSON"`을 한다.
   3. `TEAM_JSON`이 비어 있으면 snippet이 이미 고정 실패 줄을 출력했다. lead는 줄을 더 출력하지 않고 Route A Phase 2로 간다.
   4. route가 `subagent`면 `line`을 출력하고 Route A Phase 2를 그대로 돈다.
-  5. route가 `team`이면 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. 실패하면 `tools_fallback_line`을 출력하고 Route A Phase 2다. 성공하면 `line`을 출력하고 `team_units`를 Route B lifecycle(shared task, named `builder-1` … `builder-n`, receipt)로 실행한다. 모든 teammate에 shutdown을 보내 ack를 받은 뒤, decision의 `followup_units`(team_units에도 없고 done도 아닌 unit)만 Route A Phase 2 규칙으로 구현하고, done unit은 다시 돌리지 않으며, 그 다음에 Gate 2로 간다.
+  5. route가 `team`이면 ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. 필수는 `SendMessage`와 `Agent`의 `name` 인자이고 task-list 도구는 선택이다. 둘 중 하나가 없으면 `tools_fallback_line`을 출력하고 Route A Phase 2다. 둘 다 있으면 `line`을 출력하고 `team_units`를 Route B lifecycle(named `builder-1` … `builder-n`, 각 prompt의 unit 배정, receipt, task-list 도구가 있을 때만 shared task)로 실행한다. 모든 teammate에 shutdown을 보내 ack를 받은 뒤, decision의 `followup_units`(team_units에도 없고 done도 아닌 unit)만 Route A Phase 2 규칙으로 구현하고, done unit은 다시 돌리지 않으며, 그 다음에 Gate 2로 간다.
 
 ```sh
 if ! auto workflow triage --topology --facts-json "$FACTS" --format json >"$TEAM_JSON" 2>/dev/null || [ ! -s "$TEAM_JSON" ]; then
@@ -272,14 +277,16 @@ rm -f "$FACTS"
 ```
 
 - snippet은 stderr를 버린다. 진단 문구가 이유 한 줄 말고 다른 줄을 만들지 않게 하기 위해서다.
-- 바꾸지 않는 곳: Step 0(flag 해석, `[TOPOLOGY ERROR]`, `Mode:` 표시), Route B, Route C, Deterministic Workflow 절, `content/skills/agent-pipeline.md`, `content/skills/references/agent-pipeline/*.md`.
-- `content/skills/agent-teams.md`(platform claude 전용)에 `[NEW] ## Automatic Entry from Route A`를 더한다: 같은 lifecycle, 범위는 Phase 2의 준비된 wave 하나, tester·guardian 없음, schema 실패는 stop이 아니라 fallback 줄, shutdown·ack 뒤 남은 unit은 Route A, 비용 공지. 명령 문자열은 auto-go skill에만 둔다.
+- 바꾸지 않는 곳: Step 0(flag 해석, `[TOPOLOGY ERROR]`, `Mode:` 표시), Route C, Deterministic Workflow 절, `content/skills/agent-pipeline.md`, `content/skills/references/agent-pipeline/*.md`. Route B는 2026-10-17 도구 요구만 바뀐다: preflight 4가 ``4. The `Agent` tool exposes its `name` parameter and the `SendMessage` schema is loaded.``이고, task-list 도구는 선택이며, 배정은 각 prompt에, teardown은 `shutdown_request`·`shutdown_response`다.
+- `content/skills/agent-teams.md`(platform claude 전용)에 `[NEW] ## Automatic Entry from Route A`를 더한다: 같은 lifecycle, 범위는 Phase 2의 준비된 wave 하나, tester·guardian 없음, schema 실패(`SendMessage`나 `Agent`의 `name`이 없음)는 stop이 아니라 fallback 줄, shutdown·ack 뒤 남은 unit은 Route A, 비용 공지. 명령 문자열은 auto-go skill에만 둔다. 2026-10-17부터 그 skill의 Preflight·배정·teardown도 task-list 도구 없이 동작한다.
+- `content/rules/deferred-tools.md`의 `/auto go --team` preload 행은 `SendMessage`와, 있으면 `TaskCreate`·`TaskUpdate`·`TaskList`·`TaskGet`이다. 이 원천은 Claude rule만 만든다(OMP·OpenCode·Antigravity는 자기 문구로 바꾼다).
 
 ## Migration Notes
 
 - 이 branch로 `auto update`를 해도 `autopus.yaml`은 바뀌지 않는다. key는 쓰지 않는다.
 - 이미 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`을 켠 대화형 Claude Code 사용자는 다음 `/auto go`부터 조건이 맞는 Phase 2를 팀으로 돌린다. teammate마다 별도 Claude 세션이라 토큰이 늘어난다. 이유 한 줄과 CHANGELOG가 이를 알린다. 끄려면 `workflow.auto_team: false`, 한 run만이면 `--solo`다.
 - 팀 기능을 켜지 않은 사용자, 비 Claude 플랫폼, 명시 topology flag run은 이유 한 줄(Claude Code의 flag 없는 run만) 말고는 지금과 같다.
+- `--team`은 공유 task-list 도구가 없는 세션(Claude Code 2.1.288·2.1.301의 기본)에서도 preflight를 통과한다. 전에는 그 세션에서 blocker였다.
 - `workflow.auto_team`을 적은 프로젝트는 auto 0.50.113–0.50.125에서 load되지 않는다(값과 무관). 그 줄을 지우면 다시 읽힌다. auto 0.50.112 이하는 key를 무시하고 그 `auto update`가 그 줄을 지운다.
 
 ## Existing Test Changes
@@ -287,14 +294,15 @@ rm -f "$FACTS"
 - `pkg/adapter/claude/claude_topology_flags_test.go`의 `TestAutoGoTopologyFlags_FailClosedBeforeRouteSelection`은 바꾸지 않고 통과해야 한다.
 - `internal/cli/workflow_triage_test.go`의 기존 test는 바꾸지 않고 통과해야 한다. reader 분리(T5) 뒤에도 기존 경로의 stdout·stderr·종료 코드가 같아야 하기 때문이다(S11).
 - 생성 Claude skill을 snapshot하는 golden이 있으면 갱신한다. 실제 목록은 T9가 `go test ./pkg/adapter/claude/...` 실패 목록으로 정해 `research.md`에 붙인다. codex·antigravity·opencode·omp adapter의 test·golden은 바꾸지 않는다(REQ-TA-11).
+- 2026-10-17 팀 도구 조정(T12)으로 바뀐 test와 golden, 이유는 `research.md` `## 생성 surface 영향`의 T12 목록이다.
 
 ## 생성 파일 상세
 
 - `pkg/taskroute`: `[NEW] team.go`(`TeamInput`, `NeedsVersionProbe`, `DecideTeam`, ready 집합, `firstOverlapPair`, 버전 비교), `[NEW] team_decode.go`(`DecodeTeamFacts`, `/**` 처리, 검증), `[NEW] team_lines.go`(ko·en 문구, 정규화), 각 `_test.go`. 기존 `cleanPath`, `uniqueValue`, `ownershipOverlap`의 판정식을 쓴다.
 - `internal/cli`: `workflow_triage.go`(`--topology` flag, `readWorkflowTriageFile` 분리, 분기), `[NEW] workflow_triage_topology.go`(보고서, `Lstat`·`LoadPreview`), `[NEW] workflow_triage_capability.go`(env snapshot, 버전 probe), 각 `_test.go`.
 - `pkg/config`: `schema_workflow.go`(+field, accessor), `[NEW] schema_workflow_auto_team.go`(raw node `!!bool` 검사), `loader_strict.go`(`decodeStrict`에서 호출 한 줄), `[NEW] schema_workflow_auto_team_test.go`.
-- 생성 원천: `templates/claude/commands/auto-workflows.md.tmpl`, `content/skills/agent-teams.md`. 생성 surface는 `make generate-templates`와 adapter `Generate`가 만든다.
-- 문서: README, CHANGELOG(v0.50.126). 증거: `evidence/probe-teamauto-capability.md`, `[NEW] evidence/manual-smoke-teamauto.txt`.
+- 생성 원천: `templates/claude/commands/auto-workflows.md.tmpl`, `content/skills/agent-teams.md`, `content/rules/deferred-tools.md`(2026-10-17 preload 행). 생성 surface는 `make generate-templates`와 adapter `Generate`가 만든다.
+- 문서: README, CHANGELOG(v0.50.126). 증거: `evidence/probe-teamauto-capability.md`, `evidence/probe-teamauto-childsession.md`, `evidence/probe-teamauto-teamtools.md`, `[NEW] evidence/manual-smoke-teamauto.txt`.
 
 ## Related SPECs
 
@@ -321,7 +329,7 @@ flowchart TD
   F -- "종료 ≠ 0 또는 빈 stdout" --> Z["snippet이 고정 실패 줄 → Route A Phase 2"]
   F --> R{"decision.route"}
   R -- "subagent (config_off, fewer_than_two_ready, ownership_overlap, 능력 부족)" --> S["line 출력 → Route A Phase 2"]
-  R -- "team" --> T{"SendMessage·task schema 로드?"}
+  R -- "team" --> T{"SendMessage 로드, Agent name 있음?"}
   T -- "실패" --> U["tools_fallback_line → Route A Phase 2"]
   T -- "성공" --> V["line 출력 → team_units를 named builder로 → shutdown·ack"]
   V --> W["followup_units(team_units 밖, done 아님)만 Route A로"]
@@ -359,15 +367,15 @@ These are optional improvements and do not block sync completion.
 | Requirement | Plan Task | Acceptance Scenario | Semantic Invariant |
 |-------------|-----------|---------------------|--------------------|
 | REQ-TA-01 | T7, T9, T11 | S12, S14, S15 | INV-TA-01 |
-| REQ-TA-02 | T1, T7, T8, T11 | S4, S13, S15 | INV-TA-02, INV-TA-07 |
+| REQ-TA-02 | T1, T7, T8, T11, T12 | S4, S13, S15 | INV-TA-02, INV-TA-07 |
 | REQ-TA-03 | T7, T11 | S1, S2, S3, S15 | INV-TA-01 |
 | REQ-TA-04 | T1 | S1, S2, S3, S4, S5 | INV-TA-01 |
 | REQ-TA-05 | T1, T2 | S2, S3, S4 | INV-TA-02 |
 | REQ-TA-06 | T1, T4, T5 | S4, S5 | INV-TA-03 |
-| REQ-TA-07 | T7, T8, T11 | S4, S15 | INV-TA-01 |
+| REQ-TA-07 | T7, T8, T11, T12 | S4, S13, S15 | INV-TA-01 |
 | REQ-TA-08 | T2, T5 | S11, S12 | INV-TA-01 |
 | REQ-TA-09 | T6 | S8 | INV-TA-04 |
-| REQ-TA-10 | T1, T7, T9 | S6, S7 | INV-TA-05 |
+| REQ-TA-10 | T1, T7, T9, T12 | S6, S7 | INV-TA-05 |
 | REQ-TA-11 | T9 | S9 | INV-TA-05 |
 | REQ-TA-12 | T3 | S10 | INV-TA-06 |
 | REQ-TA-13 | T7, T9 | S14 | INV-TA-01 |

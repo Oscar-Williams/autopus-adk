@@ -197,9 +197,15 @@ All notable changes to this project will be documented in this file.
   - 하위 세션(2026-10-17): 환경 변수로는 최상위 세션과 subagent를 가를 수 없다. Claude Code(2.1.288, 2.1.301)는
     세션이 띄우는 모든 process에 `CLAUDE_CODE_CHILD_SESSION=1`을 넣어 대화형 최상위 세션의 Bash tool도 같은 값을
     본다. 실제 터미널 smoke에서 이 값을 하위 세션 표시로 읽은 첫 구현은 팀이 켜질 plan도 subagent로 남겼다. 이제
-    판단은 이 변수를 읽지 않는다. 팀 도구가 없는 subagent 안의 run은 도구 schema를 불러오지 못해
-    `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` 줄과 함께 subagent로
-    남는다.
+    판단은 이 변수를 읽지 않는다. `Agent` 도구가 없는 subagent 안의 run은 아래 팀 도구 확인에서
+    `Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다` 줄과 함께
+    subagent로 남는다.
+  - 팀 도구(2026-10-17): Claude Code 2.1.288·2.1.301의 기본 대화형 세션에는 공유 task-list 도구(`TaskCreate`,
+    `TaskUpdate`, `TaskList`, `TaskGet`)가 없다. ToolSearch가 `SendMessage`만 돌려줘, 그 도구를 요구하던 자동
+    진입은 팀이 켜질 plan에서도 subagent로 남았고 `--team`은 preflight에서 막혔다. 이제 둘 다 `SendMessage`와
+    `Agent`의 `name` 인자만 요구한다. task-list 도구는 있으면 쓰고, 없으면 lead가 unit을 직접 추적한다(배정은 각
+    팀원 prompt, 완료는 팀원 결과나 `SendMessage` 보고, receipt 다섯 필드는 lead가 기록). 종료는 `SendMessage`의
+    `shutdown_request`와 `shutdown_response`다. 둘 중 하나가 없으면 위 줄을 출력하고 subagent로 실행한다.
   - CLI: `auto workflow triage --topology --facts-json <file> [--format json|human]`이 판단을 보고하고 agent를
     띄우거나 파일을 쓰지 않는다. facts가 계약을 어기면 오류 대신 `invalid_facts` 결정(종료 0)을 내고 이유 줄이 원인
     code를 보인다(예: `Agent Team: off — the topology facts are invalid (owned_paths); running subagents`).

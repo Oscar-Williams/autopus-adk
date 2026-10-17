@@ -2,7 +2,7 @@
 
 ## Tasks
 
-기준은 origin/main `33b5bb55`이고 branch는 `feat/teamauto-001`이다. 순서: T1 → T2 → T3(같은 package라 차례로) · T4 · T6(서로 독립) → T5(T1–T4, T6 뒤) → T7 · T8(문구, T5의 출력 모양 확정 뒤) → T9(T7, T8 뒤) → T10(T5 뒤) → T11(마지막). 신규·변경 Go 소스는 300줄 이하다. 기존 `pkg/taskroute/decide.go`(195줄)는 바꾸지 않는다.
+기준은 origin/main `33b5bb55`이고 branch는 `feat/teamauto-001`이다. 순서: T1 → T2 → T3(같은 package라 차례로) · T4 · T6(서로 독립) → T5(T1–T4, T6 뒤) → T7 · T8(문구, T5의 출력 모양 확정 뒤) → T9(T7, T8 뒤) → T10(T5 뒤) → T11(마지막) → T12(T11 재-smoke가 찾은 도구 차이, 2026-10-17). 신규·변경 Go 소스는 300줄 이하다. 기존 `pkg/taskroute/decide.go`(195줄)는 바꾸지 않는다.
 
 - [ ] T1: 판단 함수. 소유: `[NEW] pkg/taskroute/team.go`, `[NEW] pkg/taskroute/team_test.go`. `TeamInput`(flags, auto_team, units, capability snapshot, locale)·`TeamUnit`·`TopologyFlags`·`Capability`·`TeamDecision` 타입, 순수 함수 `NeedsVersionProbe`(규칙 1–7 통과 여부)와 `DecideTeam`(규칙 1–10), ready 집합, `followup_units`(team_units에도 done에도 없는 unit, facts 순서), `ownershipOverlap`과 같은 판정식의 `[NEW] firstOverlapPair`, 정수 버전 비교. callback·env·실행 없음. test는 flag × config × unit 모양 × snapshot 표 전체 (REQ-TA-04, 05, 10).
 - [ ] T2: facts decode. 소유: `[NEW] pkg/taskroute/team_decode.go`(+test). 기존 `uniqueValue`와 `DisallowUnknownFields`로 decode하고, owned path 끝의 `/**` 하나를 뗀 뒤 `cleanPath`를 적용하며, Topology Facts Contract의 오류 code(`json`, `version`, `topology_conflict`, `unit_id`, `unit_count`, `execution`, `owned_paths`, `depends_on`)를 낸다 (REQ-TA-05, 08).
@@ -15,12 +15,13 @@
 - [ ] T9: 생성 surface와 회귀 test. 소유: `[NEW] pkg/adapter/claude/claude_auto_team_surface_test.go`(S6·S7·S13의 절 bytes·순서, S14의 snippet 추출·실행), `[NEW] pkg/adapter/auto_team_platform_parity_test.go`(S9의 네 플랫폼 생성 문자열 부재), `make generate-templates`가 바꾸는 생성 root. 깨지는 Claude golden 목록을 `research.md`에 붙인다. 다른 플랫폼 adapter 파일은 소유하지 않는다 (REQ-TA-01, 10, 11, 13).
 - [ ] T10: 문서. 소유: README 설정 표, CHANGELOG v0.50.126, `auto workflow triage` help 문구(T5 파일 안). EXECPATH 조건과 값 무관한 옛 바이너리 거부를 적는다 (REQ-TA-14).
 - [ ] T11: 실제 터미널 확인. 소유: `[NEW] evidence/manual-smoke-teamauto.txt`. S15 (a)–(e). 결과로 A2를 PASS나 FAIL로 바꾸고 CD-1·CD-2·CD-3을 닫는다 (REQ-TA-01, 02, 03, 07, 15).
+- [ ] T12: 현재 runtime의 팀 도구에 맞춤(2026-10-17 사용자 결정, T11 재-smoke에서 발견). 소유: `templates/claude/commands/auto-workflows.md.tmpl`(자동 진입 규칙 5, Route B preflight·배정·teardown), `content/skills/agent-teams.md`(Preflight, 배정, Result Handoff, Teardown, Automatic Entry, Failure Policy), `content/rules/deferred-tools.md`(preload 행), `pkg/taskroute/team_lines.go`(`team_tools_unavailable` 문구)와 그 test, surface test digest, TUIUX base golden. 필수 도구는 `SendMessage`와 `Agent`의 `name` 인자이고 공유 task-list 도구는 선택이다. 증거는 `evidence/probe-teamauto-teamtools.md` (REQ-TA-02, 07, 10).
 
 ## Implementation Strategy
 
 - 판단은 Go 순수 함수 둘(`NeedsVersionProbe`, `DecideTeam`)이고 관측(env, 버전 probe)은 CLI의 일이다. 세션(LLM)은 facts를 옮기고 결과를 따르기만 한다. CLI가 실패하면 생성 `sh` snippet이 고정 줄을 직접 출력해 그 분기도 실행으로 판정된다. 그래서 flag × 설정 × slice × 능력 조합은 `go test`로 결정적으로 판정되고 문구는 생성 skill golden으로 판정된다.
 - 새 subcommand 대신 기존 `auto workflow triage`에 mode flag를 붙인다. 파일 guard(`readWorkflowTriageFacts`에서 떼어 낸 `readWorkflowTriageFile`), 형식 flag(`singleTriageFlag`), JSON hardening(`uniqueValue`), 경로 규칙(`cleanPath`), 겹침 판정식(`ownershipOverlap`), 쓰지 않는 설정 load(`config.LoadPreview`)를 쓴다.
-- 팀 lifecycle은 Route B를 다시 정의하지 않는다. 자동 진입은 Route B의 named teammate, shared task, receipt, shutdown 규칙을 Phase 2의 한 wave에 쓰고 나머지 run은 Route A다.
+- 팀 lifecycle은 Route B를 다시 정의하지 않는다. 자동 진입은 Route B의 named teammate, receipt, shutdown 규칙과 (task-list 도구가 있을 때만) shared task를 Phase 2의 한 wave에 쓰고 나머지 run은 Route A다.
 - 비 Claude 플랫폼은 공유 content(`agent-pipeline.md`, `references/agent-pipeline/*.md`)를 바꾸지 않아서 그대로다. 바뀌는 생성 원천은 Claude 전용 두 곳뿐이다.
 - 설정 key는 바이너리가 스스로 쓰지 않는다. v0.50.125는 값과 무관하게 key가 있으면 파일을 거부하므로(A3) 호환 비용은 key를 직접 쓴 사용자(`true`든 `false`든)에게만 생기고 문서로 알린다.
 
@@ -43,11 +44,11 @@ sequenceDiagram
   C->>C: DecideTeam (규칙 1–10)
   C-->>L: decision {route, reason, line, team_units, tools_fallback_line}
   alt route = team
-    L->>L: ToolSearch select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet
+    L->>L: ToolSearch select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet (필수 SendMessage + Agent name, task 도구는 선택)
     L->>L: line 한 줄 출력
-    L->>T: shared task + Agent(name=builder-1..n)
+    L->>T: Agent(name=builder-1..n), prompt마다 unit 배정 (task 도구가 있으면 shared task도)
     T-->>L: receipt (owned_paths, changed_files, verification, blockers, next_required_step)
-    L->>T: shutdown request → ack
+    L->>T: SendMessage shutdown_request → shutdown_response
     L->>L: followup_units만 Route A로 (done unit 재실행 없음)
   else route = subagent 또는 schema 실패
     L->>L: line / tools_fallback_line 중 하나 출력
@@ -87,6 +88,8 @@ sequenceDiagram
 | root는 오류를 `Error: <msg>\n`으로 쓰고 일반 종료 코드는 1이다 | verified_fact | evidence R1 |
 | print mode는 (`cli`, `1`)을 보고하지 않는다 | implementation_assumption | A2, T11 |
 | `--disallowedTools SendMessage` 세션에서는 SendMessage schema 로드가 실패한다 | implementation_assumption | S15(c), T11 |
+| Claude Code 2.1.288·2.1.301의 기본 대화형 세션에는 `TaskCreate`·`TaskUpdate`·`TaskList`·`TaskGet`이 없고 ToolSearch는 있는 도구만 돌려준다 | verified_fact | `evidence/probe-teamauto-teamtools.md` R2·R4·S1 |
+| `Agent`의 team 이름 인자는 무시되고 세션에는 implicit team 하나뿐이다 | verified_fact | `evidence/probe-teamauto-teamtools.md` S2 |
 | 최상위 대화형 세션과 subagent의 Bash 환경에 모두 `CLAUDE_CODE_CHILD_SESSION=1`이 있어 그 값으로는 최상위를 가를 수 없다(처음 가정 "최상위에는 없다"는 반증됨) | verified_fact | A2 FAIL, `evidence/probe-teamauto-childsession.md` |
 | 자동 진입한 팀도 Route B와 같이 shutdown·자동 정리된다 | implementation_assumption | CD-1, T11 |
 | 생성 Claude golden 몇 개가 바뀔 수 있다 | implementation_assumption | T9 |

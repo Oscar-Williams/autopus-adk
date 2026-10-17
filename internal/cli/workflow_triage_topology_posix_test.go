@@ -98,7 +98,7 @@ func TestWorkflowTriageTopologyS4TeamProbesOncePerRun(t *testing.T) {
 		if d.Route != "team" || d.Reason != "independent_disjoint_slices" || d.ReadyUnits == nil || *d.ReadyUnits != 2 || strings.Join(d.TeamUnits, ",") != "T1,T2" || d.FollowupUnits == nil || strings.Join(*d.FollowupUnits, ",") != followup {
 			t.Fatalf("%s: %+v", facts, d)
 		}
-		if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다" {
+		if d.Line != "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다" || d.ToolsFallbackLine == nil || *d.ToolsFallbackLine != "Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다" {
 			t.Fatalf("%+v", d)
 		}
 	}

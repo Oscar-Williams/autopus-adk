@@ -6,7 +6,7 @@ triggers:
   - teams
   - 에이전트 팀
 category: agentic
-level1_metadata: "Claude native teams, named Agent teammates, SendMessage, shared task list"
+level1_metadata: "Claude native teams, named Agent teammates, SendMessage, optional shared task list"
 platforms:
   - claude
 ---
@@ -29,8 +29,11 @@ Before dispatch:
    session environment. Settings hooks do not inject it.
 3. Confirm the session is interactive. Native teams are not a headless or print
    mode surface.
-4. Load the runtime schemas for `Agent`, `SendMessage`, and the shared task-list
-   tools when they are deferred.
+4. Confirm that the `Agent` tool exposes its `name` parameter, and load the
+   `SendMessage` schema when it is deferred. Request the shared task-list tools
+   (`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`) in the same ToolSearch
+   call; they are optional, and current Claude Code releases enable them only
+   in some configurations.
 
 If any precondition fails, stop with a concrete blocker and suggest the default
 Route A subagent pipeline. Do not silently switch to `--workflow`.
@@ -73,19 +76,23 @@ guardian = Agent(
 
 Every call includes the required `description` and `prompt`. Model selection and
 effort come from the installed agent definition. Teammate calls do not set
-per-call effort, permission mode, team identity, or isolation.
+per-call effort, permission mode, team identity, or isolation; the session has
+a single implicit team, and the runtime ignores a team name.
 
-## Shared Task List
+## Assignments and the Optional Task List
 
-The lead decomposes work before teammate dispatch and records it in Claude's
-shared task list. Every writable task has a disjoint `owned_paths` set and an
-explicit `forbidden_paths` complement. Interdependent source and test files stay
-in one task so parallel teammates never need to edit the same file.
+The lead decomposes work before teammate dispatch. Every writable unit has a
+disjoint `owned_paths` set and an explicit `forbidden_paths` complement.
+Interdependent source and test files stay in one unit so parallel teammates
+never need to edit the same file.
 
-The lead assigns and updates tasks with the runtime-exposed task tools. It uses
-`SendMessage` for coordination, blockers, shutdown requests, and receipt
-clarification. Use the schema exposed by the current runtime rather than a
-handwritten legacy payload.
+Each teammate's prompt carries its own assignment, so a team works without a
+shared task list. When the task-list tools loaded, the lead also records one
+task per unit and assigns and updates it with the runtime-exposed task tools;
+otherwise the lead keeps the assignment table itself. It uses `SendMessage`
+for coordination, blockers, shutdown requests, and receipt clarification. Use
+the schema exposed by the current runtime rather than a handwritten legacy
+payload.
 
 ## Result Handoff
 
@@ -97,16 +104,19 @@ Every teammate returns exactly these five fields:
 4. `blockers`
 5. `next_required_step`
 
-The lead checks that changed files are a subset of owned paths, then hands the
-integrated shared-tree result to Guardian and final review. A missing field or
-an ownership violation is a blocker, not a successful receipt.
+A teammate delivers the receipt as its result or through `SendMessage`, and
+the lead's record of it marks the unit complete. The lead checks that changed
+files are a subset of owned paths, then hands the integrated shared-tree result
+to Guardian and final review. A missing field or an ownership violation is a
+blocker, not a successful receipt.
 
 ## Teardown
 
 On success, abort, or circuit break:
 
-1. Send each live teammate a shutdown request through `SendMessage`.
-2. Wait for shutdown acknowledgements using the runtime's native delivery.
+1. Send each live teammate a `shutdown_request` through `SendMessage`.
+2. Wait for the shutdown acknowledgements, each teammate's `shutdown_response`,
+   through the runtime's native delivery.
 3. Let Claude perform automatic team cleanup.
 
 Do not call removed lifecycle tools, edit runtime team configuration, or delete
@@ -122,16 +132,17 @@ an interactive session that already has
 and has at least two ready worker units whose owned paths do not overlap.
 Otherwise the run stays on subagents and says why in one line.
 
-- Same lifecycle: named teammates, the shared task list, the five receipt
+- Same lifecycle: named teammates, the optional task list, the five receipt
   fields, and the shutdown and acknowledgement teardown above apply unchanged.
 - Scope: one ready wave of Phase 2. Each ready unit becomes one Builder
   teammate, `builder-1` … `builder-n` in decision order. No `tester` or
   `guardian` teammate is launched, and every other phase stays on Route A.
-- Schema failure: when the `SendMessage` or shared task-list schemas cannot be
-  loaded, print the decision's fallback line and continue on Route A. This is
-  a fallback, not a stop. The decision cannot tell a subagent from the
-  top-level session, so this check is what keeps a session without the team
-  tools, such as a subagent, on subagents.
+- Schema failure: when the `SendMessage` schema cannot be loaded or the
+  `Agent` tool has no `name` parameter, print the decision's fallback line and
+  continue on Route A. This is a fallback, not a stop. Missing task-list tools
+  are not a failure. The decision cannot tell a subagent from the top-level
+  session, so this check is what keeps a session without the team tools,
+  such as a subagent, on subagents.
 - Handoff: after every teammate acknowledged its shutdown, the lead implements
   the remaining Phase 2 units under Route A, never re-runs a finished unit, and
   only then enters Gate 2.
@@ -151,6 +162,7 @@ Otherwise the run stays on subagents and says why in one line.
 | Failure | Required action |
 |---|---|
 | Experimental environment missing | Stop and report the required environment variable. |
+| Task-list tools unavailable | Continue; the lead keeps the assignment table itself. |
 | Non-interactive session | Fall back only after reporting that native teams require an interactive session. |
 | Teammate dispatch fails | Reassign the disjoint task to another named teammate or return a blocker. |
 | Ownership overlap | Stop both writers, repartition files, and dispatch again. |

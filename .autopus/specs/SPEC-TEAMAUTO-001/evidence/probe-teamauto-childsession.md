@@ -54,6 +54,6 @@ if(e.effortLevel!==void 0)n.CLAUDE_EFFORT=e.effortLevel;
 ## 결정과 남은 확인
 
 - 규칙 8과 `not_top_level` 줄을 지웠다. CLI는 `CLAUDE_CODE_CHILD_SESSION`을 읽지 않는다. 환경 변수 중 최상위를 가르는 계약된 값은 없다(`CLAUDE_EFFORT`, `AI_AGENT`는 effort 설정과 호출 출처에 따른다).
-- subagent는 세션 쪽 schema 확인으로 subagent에 남는다. route가 `team`이어도 `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`을 불러오지 못하면 `tools_fallback_line`을 출력하고 Route A로 간다(REQ-TA-07). 생성 auto-go·agent-teams skill이 이를 적는다.
+- subagent는 세션 쪽 schema 확인으로 subagent에 남는다. route가 `team`이어도 `SendMessage`를 불러오지 못하거나 `Agent`에 `name` 인자가 없으면 `tools_fallback_line`을 출력하고 Route A로 간다(REQ-TA-07). 처음에는 공유 task-list 도구까지 요구했으나 같은 날 그 도구가 기본 세션에 없음을 확인해 선택으로 바꿨다(`probe-teamauto-teamtools.md`). 생성 auto-go·agent-teams skill이 이를 적는다.
 - CAP-OK fixture는 실제 최상위 세션처럼 `CLAUDE_CODE_CHILD_SESSION=1`을 담는다.
 - A2의 나머지(print mode가 (`cli`, `1`) 쌍이 아닌지, npm 설치 세션의 EXECPATH 버전)는 아직 S15(e) 확인 전이다. 2.1.301 npm 설치의 실제 파일 이름이 `claude.exe`라는 것은 파일로만 확인했고, 그 세션의 `CLAUDE_CODE_EXECPATH` 값은 기록되지 않았다.

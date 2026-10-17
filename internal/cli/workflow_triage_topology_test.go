@@ -196,7 +196,7 @@ func TestWorkflowTriageTopologyConfigSources(t *testing.T) {
 	stubVersionProbe(t, "2.1.288 (Claude Code)\n", nil)
 	stubTeamEnv(t, capOKEnv(writeProbeTarget(t)))
 	teamEN := "Agent Team: on — 2 ready slices have disjoint owned_paths; running them as a native Agent Team"
-	fallbackEN := "Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents"
+	fallbackEN := "Agent Team: off — the SendMessage tool or the Agent name parameter is unavailable; running subagents"
 	for name, yaml := range map[string]string{"en": cfgEN, "ja": cfgJA, "none": ""} {
 		report := decodeTopology(t, runTopology(t, topologyProject(t, yaml), factsUDJ))
 		if report.Decision.Line != teamEN || report.Decision.ToolsFallbackLine == nil || *report.Decision.ToolsFallbackLine != fallbackEN {

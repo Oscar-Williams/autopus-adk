@@ -39,7 +39,7 @@ Priority: Must
 Given CAP-OK와 UDJ(`pkg/a`와 `pkg/ab`는 겹치지 않고 T3은 T1을 기다리며 T4는 done), UGL이 있다
 When UDJ로 두 번, UGL로 한 번 명령을 실행한다
 Then 세 run 모두 `route: team`, `reason: independent_disjoint_slices`, `ready_units: 2`, `team_units: ["T1", "T2"]`다
-And `line`은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다`, `tools_fallback_line`은 `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다`다
+And `line`은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다`, `tools_fallback_line`은 `Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다`다
 And UDJ의 `followup_units`는 `["T3"]`(T4는 done이라 없다), UGL은 `[]`다
 And `<tmp>/probe/probe.count`는 run마다 한 줄씩 3줄이고 `<tmp>/probe/path.touched`가 없으며 UDJ 두 run의 stdout bytes가 같다
 
@@ -87,7 +87,7 @@ Priority: Must
 Given CAP-NOENV와 UDJ, `flags.team: true`가 있다
 When 명령을 실행하고 S6처럼 두 생성 결과를 비교한다
 Then decision은 `route: team`, `reason: explicit_flag`, `line`은 `Agent Team: 자동 선택 안 함 — --team 지정됨`이고 능력을 읽지 않아 `<tmp>/probe/probe.count`가 없다
-And 생성 skill의 `#### Route B` 절(다음 `#### Route C` 앞까지)은 기준과 bytes가 같고 ``2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is present in the current session.``과 `If preflight fails, report the blocker and suggest Route A.`를 담는다
+And 생성 skill의 `#### Route B` 절(다음 `#### Route C` 앞까지)은 ``2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is present in the current session.``, `If preflight fails, report the blocker and suggest Route A.`, ``4. The `Agent` tool exposes its `name` parameter and the `SendMessage` schema is loaded.``를 담고, 공유 task-list 도구를 선택으로 적으며, 옛 preflight 문장 `shared task-list tools are loaded`와 `team_name`이 없다(2026-10-17 사용자 결정. 기준과는 도구 요구·배정·teardown 문장만 다르다)
 And 새 자동 선택 절의 첫 규칙은 `TOPOLOGY_FLAG_COUNT == 0`이다
 
 ### S8: 설정 key 값과 옛 바이너리
@@ -103,7 +103,7 @@ And v0.50.125 `auto update --yes`는 `false`·`true` project에서 모두 종료
 Priority: Must
 Given branch와 `33b5bb55`가 있다
 When `git diff 33b5bb55 --name-only`를 보고, codex·antigravity·opencode·omp adapter test를 돌리고, branch에서 빈 project에 그 네 플랫폼 `Generate`를 돌린다
-Then `-- templates content`의 변경은 `templates/claude/commands/auto-workflows.md.tmpl`과 `content/skills/agent-teams.md` 둘뿐이다
+Then `-- templates content`의 변경은 `templates/claude/commands/auto-workflows.md.tmpl`, `content/skills/agent-teams.md`, `content/rules/deferred-tools.md` 셋뿐이다. 마지막 파일(2026-10-17 preload 행)은 Claude rule만 만든다. OMP·OpenCode·Antigravity는 자기 deferred-tools 문구로 바꾸고 Codex는 rule 파일을 만들지 않는다
 And `-- pkg/adapter/codex pkg/adapter/antigravity pkg/adapter/opencode pkg/adapter/omp`의 변경은 없고 `go test ./pkg/adapter/codex/... ./pkg/adapter/antigravity/... ./pkg/adapter/opencode/... ./pkg/adapter/omp/...`가 통과한다
 And 네 플랫폼 생성 파일에는 `--topology`, `Agent Team Auto-Selection`, `Automatic Entry from Route A`, `auto_team`이 하나도 없다
 
@@ -111,7 +111,7 @@ And 네 플랫폼 생성 파일에는 `--topology`, `Agent Team Auto-Selection`,
 Priority: Must
 Given CAP-OK와 UDJ, U1이 있다
 When CFG-EN, CFG-JA, autopus.yaml 없음, CFG-EN + `workflow.auto_team: false`에서 명령을 실행한다
-Then CFG-EN·CFG-JA·파일 없음의 UDJ `line`은 모두 `Agent Team: on — 2 ready slices have disjoint owned_paths; running them as a native Agent Team`이고 `tools_fallback_line`은 `Agent Team: off — SendMessage/task tool schemas could not be loaded; running subagents`다
+Then CFG-EN·CFG-JA·파일 없음의 UDJ `line`은 모두 `Agent Team: on — 2 ready slices have disjoint owned_paths; running them as a native Agent Team`이고 `tools_fallback_line`은 `Agent Team: off — the SendMessage tool or the Agent name parameter is unavailable; running subagents`다
 And 파일 없음은 `config_source: default`, CFG-EN의 U1은 `Agent Team: off — 1 ready slice(s) can run together; running subagents`, 끈 CFG-EN은 `Agent Team: off — workflow.auto_team is false in autopus.yaml; running subagents`다
 
 ### S11: facts 검증과 기존 triage 회귀
@@ -147,9 +147,9 @@ And 실행 뒤 `<tmp>/proj`의 파일 목록과 SHA-256이 실행 전과 같고(
 Priority: Must
 Given branch에서 claude-code `Generate`를 돌린 결과와 `33b5bb55` 결과가 있다
 When `.claude/skills/auto-go/SKILL.md`와 `.claude/skills/agent-teams/SKILL.md`를 읽는다
-Then auto-go의 `#### Route A: Supervisor-Led Pipeline`과 `#### Route B: Native Agent Team` 사이에 `#### Route A Phase 2 Entry: Agent Team Auto-Selection`이 있고, 그 절에 `TOPOLOGY_FLAG_COUNT == 0`, `--continue` 건너뛰기 문장, 한 Bash tool 호출과 quoted heredoc(`<<'JSON'`, echo·unquoted heredoc 금지) 문장, Skill Surface Contract의 `sh` snippet 다섯 줄 그대로, `cat "$TEAM_JSON"` 문장, `TEAM_JSON` 빈 경우 규칙, `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`, `tools_fallback_line`이 이 순서로 나온다
+Then auto-go의 `#### Route A: Supervisor-Led Pipeline`과 `#### Route B: Native Agent Team` 사이에 `#### Route A Phase 2 Entry: Agent Team Auto-Selection`이 있고, 그 절에 `TOPOLOGY_FLAG_COUNT == 0`, `--continue` 건너뛰기 문장, 한 Bash tool 호출과 quoted heredoc(`<<'JSON'`, echo·unquoted heredoc 금지) 문장, Skill Surface Contract의 `sh` snippet 다섯 줄 그대로, `cat "$TEAM_JSON"` 문장, `TEAM_JSON` 빈 경우 규칙, `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`, 필수는 `SendMessage`와 `Agent`의 `name` 인자이고 task-list 도구는 선택이라는 문장, `tools_fallback_line`, task-list 도구가 없으면 lead가 unit을 직접 추적한다는 문장이 이 순서로 나온다
 And 그 뒤에 shutdown·ack 문장, `team_units`에 없는 Phase 2 unit을 Route A로 구현하는 문장, Gate 2로 가는 문장이 이 순서로 나온다
-And 기준과의 diff는 추가 줄뿐이고 모두 그 절 안이며, agent-teams skill에는 `## Automatic Entry from Route A`가 있고 `--topology`는 없다
+And 기준과의 diff는 그 절과 `#### Route B` 절 안뿐이고(Route B는 S7), agent-teams skill에는 `## Automatic Entry from Route A`가 있고 `--topology`는 없으며, 그 skill의 Preflight·배정·Teardown은 task-list 도구를 선택으로 다루고 teardown은 `shutdown_request`·`shutdown_response`다
 
 ### S14: 판단 도구 실패 시 생성 snippet
 Priority: Must
@@ -162,9 +162,9 @@ And (iv)의 stdout과 stderr는 비어 있고 `TEAM_JSON`은 `decision.route: te
 Priority: Must
 Given 실제 터미널의 대화형 최상위 `claude`(2.1.246 이상) 세션에 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`이 있고, scratch project에 SPEC-A(disjoint ready worker T1·T2와 T1에 의존하는 T3)와 SPEC-B(ready worker 1개)가 있다
 When (a) SPEC-A, (b) SPEC-B로 `/auto go SPEC-ID --auto`를, (c) `claude --disallowedTools SendMessage` 세션에서 SPEC-A를, (d) (a)를 Gate 2에서 멈춘 뒤 `/auto go SPEC-A --continue`를 돌리고, (e) 같은 세션 Bash와 `claude -p`에서 `CLAUDE_CODE_ENTRYPOINT`·`CLAUDE_CODE_SESSION_ATTENDED`·`CLAUDE_CODE_CHILD_SESSION`과 npm 설치가 있으면 그 세션의 EXECPATH basename을 기록한다
-Then (a) transcript의 `Agent Team:` 줄은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다` 하나이고, runtime이 teammate로 보고한 `builder-1`·`builder-2`, shutdown ack, `followup_units`인 T3의 파일 변경(T1·T2는 다시 돌지 않음), Gate 2 시작이 이 순서로 나온다(CD-1)
+Then (a) 공유 task-list 도구가 없는 기본 세션에서도 transcript의 `Agent Team:` 줄은 `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다` 하나이고, runtime이 teammate로 보고한 `builder-1`·`builder-2`, shutdown ack, `followup_units`인 T3의 파일 변경(T1·T2는 다시 돌지 않음), Gate 2 시작이 이 순서로 나온다(CD-1)
 And (b)는 `Agent Team: 유지 — 함께 실행할 준비된 slice가 1개라 subagent로 실행한다` 한 줄뿐이고 named teammate가 없다(CD-2)
-And (c)는 `Agent Team: 유지 — SendMessage·task 도구 schema를 불러오지 못해 subagent로 실행한다` 한 줄뿐이고 named teammate가 없으며, (d)의 `Agent Team:` 줄은 0개다(CD-3)
+And (c)는 `Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다` 한 줄뿐이고 named teammate가 없으며, (d)의 `Agent Team:` 줄은 0개다(CD-3)
 And (e)의 최상위 세션은 `cli`, `1`이고 `claude -p`는 (`cli`, `1`) 쌍이 아니다. `CLAUDE_CODE_CHILD_SESSION`은 값만 기록한다(2026-10-17 최상위 세션도 `1`이었고 판단은 읽지 않는다). 쌍이 같으면 A2의 print mode 부분도 FAIL이고 규칙 7을 고친 뒤에만 릴리스한다. 기록은 `<home>`·scratch 경로를 바꿔 `evidence/manual-smoke-teamauto.txt`에 있다
 
 ### S16: 문서

@@ -1657,9 +1657,10 @@ In Claude Code, an `/auto go` run without `--team`, `--workflow`, or `--solo`
 decides once, when it enters Phase 2, whether the first ready wave runs as a
 native Agent Team. It switches only for an interactive session that already
 has `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`, runs Claude Code 2.1.246 or
-newer, and can load the team tools, when the plan holds at least two ready
-worker units with disjoint owned paths. Every such run prints one `Agent Team:`
-line that says why it switched or stayed.
+newer, and has the `SendMessage` tool and the `Agent` tool's `name` parameter,
+when the plan holds at least two ready worker units with disjoint owned paths.
+Every such run prints one `Agent Team:` line that says why it switched or
+stayed.
 
 - Each teammate is a separate Claude session, so a team run uses more tokens.
   The feature is experimental.
@@ -1673,9 +1674,14 @@ line that says why it switched or stayed.
   subagents with the `claude_version_unknown` line.
 - The session environment cannot tell a subagent from the top-level session:
   Claude Code sets `CLAUDE_CODE_CHILD_SESSION=1` for every process a session
-  starts. A session that cannot load the `SendMessage` and task tools, such as
-  a subagent, prints the `SendMessage/task tool schemas could not be loaded`
+  starts. A session without `SendMessage` or the `Agent` tool's `name`
+  parameter, such as a subagent, prints the `the SendMessage tool or the Agent name parameter is unavailable`
   line and stays on subagents.
+- The shared task-list tools (`TaskCreate`, `TaskUpdate`, `TaskList`,
+  `TaskGet`) are optional for the automatic team and for `--team`. Current
+  Claude Code releases enable them only in some configurations; without them
+  the lead tracks the units itself and puts each assignment in the teammate's
+  prompt.
 - `auto workflow triage --topology --facts-json <file>` prints the decision
   without launching an agent or writing a file. Facts it rejects come back as
   an `invalid_facts` decision whose line names the rejected field.
