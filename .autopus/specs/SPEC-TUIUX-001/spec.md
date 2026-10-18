@@ -1,6 +1,6 @@
 # SPEC-TUIUX-001: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시
 
-**Status**: approved
+**Status**: implemented
 **Created**: 2026-10-16
 **Revision**: 3 (review round 1의 F-001–F-012, round 2의 F-007·F-008·F-010 반영. 반영표 `evidence/review-rounds.md`)
 **Domain**: TUIUX
