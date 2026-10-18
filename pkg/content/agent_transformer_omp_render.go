@@ -17,13 +17,17 @@ var ompAgentToolMap = map[string]string{
 }
 
 // ompAgentNativeTools are the OMP-native capabilities a role needs on top of
-// its portable tools.
+// its portable tools. The browser roles name both OMP generations: omp/17.2.7
+// ships browser and inspect_image as tools, while 18.x drives the browser from
+// the eval prelude and reads images with read. OMP drops a frontmatter tool
+// the running release lacks when it spawns the agent, so each release keeps
+// only its own names.
 var ompAgentNativeTools = map[string][]string{
 	"debugger":            {"lsp"},
 	"executor":            {"lsp"},
-	"frontend-specialist": {"browser", "inspect_image", "lsp"},
+	"frontend-specialist": {"browser", "eval", "inspect_image", "lsp"},
 	"reviewer":            {"lsp"},
-	"ux-validator":        {"browser", "inspect_image"},
+	"ux-validator":        {"browser", "eval", "inspect_image"},
 	"validator":           {"lsp"},
 }
 
@@ -132,7 +136,8 @@ func RenderOMPAgentDefinition(src AgentSource, opts OMPAgentDefinitionOptions) (
 }
 
 // ompAgentTools starts from the canonical portable tools and adds only the
-// native capabilities the role needs. MCP tools keep their exact names.
+// native capabilities the role needs. MCP tools keep their exact names, except
+// the REA server, which Autopus does not register for OMP.
 func ompAgentTools(src AgentSource) []string {
 	seen := make(map[string]bool)
 	var tools []string
@@ -144,6 +149,9 @@ func ompAgentTools(src AgentSource) []string {
 	}
 	for _, tool := range strings.Split(src.Meta.Tools, ",") {
 		tool = strings.TrimSpace(tool)
+		if isReaMCPReference(tool) {
+			continue
+		}
 		if strings.HasPrefix(tool, "mcp__") {
 			add(tool)
 			continue

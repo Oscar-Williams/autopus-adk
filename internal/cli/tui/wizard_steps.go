@@ -22,6 +22,10 @@ type InitWizardOpts struct {
 	Accessible      bool     // true for non-TTY / --yes mode
 	Providers       []string // detected orchestra providers
 	ExistingProfile string   // pre-set profile; non-empty skips the profile step
+	Rea             *bool    // pre-set from --rea/--no-rea or an existing decision; non-nil skips the REA step
+
+	Runner NavRunner         // runs each step's form; nil runs RunNav on the terminal (SPEC-TUIUX-001)
+	Resume *InitWizardResult // non-nil starts at the last step with these answers (SPEC-TUIUX-001)
 }
 
 // InitWizardResult holds all wizard selections.
@@ -31,6 +35,7 @@ type InitWizardResult struct {
 	AILang       string
 	Quality      string // ultra, balanced, or QualityRoleGroups
 	ReviewGate   bool
+	Rea          *bool // register the project-scope REA MCP; nil leaves it to init's default (SPEC-REA-001)
 	Methodology  string
 	UsageProfile string
 	Cancelled    bool
@@ -55,18 +60,7 @@ func RunInitWizard(opts InitWizardOpts) (*InitWizardResult, error) {
 		return result, nil
 	}
 
-	steps := buildStepList(opts)
-	step := 0
-	for step < len(steps) {
-		form := steps[step](result)
-		if err := form.Run(); err != nil {
-			// User cancelled (ctrl+c or esc)
-			return &InitWizardResult{Cancelled: true}, nil
-		}
-		step++
-	}
-
-	return result, nil
+	return runWizardSteps(opts, result)
 }
 
 // FormsSupported reports whether huh forms can run in this terminal.
@@ -113,6 +107,10 @@ func buildStepList(opts InitWizardOpts) []stepBuilder {
 		entries = append(entries, entry{"reviewgate", func(idx, total int, r *InitWizardResult) *huh.Form {
 			return buildReviewGateStep(idx, total, r, opts)
 		}})
+	}
+
+	if reaStepWanted(opts) {
+		entries = append(entries, entry{"rea", buildReaStep})
 	}
 
 	entries = append(entries, entry{"methodology", func(idx, total int, r *InitWizardResult) *huh.Form {
@@ -249,6 +247,7 @@ func defaultResult(opts InitWizardOpts) *InitWizardResult {
 		AILang:       sysLang,
 		Quality:      "balanced",
 		ReviewGate:   len(opts.Providers) >= 2,
+		Rea:          reaDefault(opts),
 		Methodology:  "tdd",
 		UsageProfile: "developer",
 	}

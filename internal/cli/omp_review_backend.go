@@ -49,7 +49,11 @@ func (backend *ompReviewBackend) Execute(ctx context.Context, req orchestra.Prov
 	timeout := ompReviewTimeout(req.Timeout)
 	maxTime := strconv.Itoa(ompReviewTimeoutSeconds(timeout))
 	toolsCSV := strings.Join(tools, ",")
-	fmt.Fprintf(os.Stderr, "OMP 리뷰 세션: provider=%s model=%s tools=%s\n", req.Provider, selector, toolsCSV)
+	// Provider names and selectors come from autopus.yaml and reach the
+	// terminal directly, so they pass through terminalSafe (SPEC-REVMODEL-001
+	// REQ-RVM-20); printable text is unchanged.
+	fmt.Fprintf(os.Stderr, "OMP 리뷰 세션: provider=%s model=%s tools=%s\n",
+		terminalSafe(req.Provider), terminalSafe(selector), terminalSafe(toolsCSV))
 
 	started := time.Now()
 	response := &orchestra.ProviderResponse{
@@ -69,8 +73,8 @@ func (backend *ompReviewBackend) Execute(ctx context.Context, req orchestra.Prov
 		if !ompReviewShouldRetry(executeCtx, executionErr, cleanupErr, attempt) {
 			break
 		}
-		fmt.Fprintf(os.Stderr, "OMP 리뷰 세션 재시도: provider=%s attempt=%d/%d reason=%v\n",
-			req.Provider, attempt+1, ompReviewMaxAttempts, executionErr)
+		fmt.Fprintf(os.Stderr, "OMP 리뷰 세션 재시도: provider=%s attempt=%d/%d reason=%s\n",
+			terminalSafe(req.Provider), attempt+1, ompReviewMaxAttempts, terminalSafe(fmt.Sprint(executionErr)))
 		if err := ompReviewBackoff(executeCtx, attempt); err != nil {
 			break
 		}

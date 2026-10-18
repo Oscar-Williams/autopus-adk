@@ -28,7 +28,7 @@ func assertOMPReadinessProviderFree(t *testing.T, root string) {
 	rpcOutput := strings.Join([]string{
 		`{"type":"ready","protocolVersion":1,"supportedProtocolVersions":[1,2]}`,
 		`{"id":"readiness-negotiate","type":"response","command":"negotiate_protocol","success":true,"data":{"protocolVersion":2}}`,
-		`{"id":"readiness-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"readiness-contract","isStreaming":false,"isCompacting":false,"messageCount":0,"queuedMessageCount":0,"dumpTools":[{"name":"task","parameters":{"type":"object","properties":{"context":{"type":"string"},"tasks":{"type":"array"}}}},{"name":"hub","parameters":{"type":"object"}},{"name":"todo","parameters":{"type":"object"}}]}}`,
+		`{"id":"readiness-state","type":"response","command":"get_state","success":true,"data":{"sessionId":"readiness-contract","isStreaming":false,"isCompacting":false,"messageCount":0,"queuedMessageCount":0,"dumpTools":[{"name":"task","parameters":{"type":"object","properties":{"context":{"type":"string"},"tasks":{"type":"array"}}}},{"name":"todo","parameters":{"type":"object"}}]}}`,
 		`{"id":"readiness-commands","type":"response","command":"get_available_commands","success":true,"data":{"commands":[{"name":"auto","source":"project"},{"name":"auto-plan","source":"project"}]}}`,
 		`{"id":"readiness-subscribe","type":"response","command":"set_subagent_subscription","success":true}`,
 		`{"id":"readiness-unsubscribe","type":"response","command":"set_subagent_subscription","success":true}`,

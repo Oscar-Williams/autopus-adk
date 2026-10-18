@@ -50,7 +50,7 @@ func (t composeTable) layout(lang string, before *composeTable) composeTableLayo
 		}
 		layout.rows = append(layout.rows, cells)
 	}
-	layout.footer = t.footer(labels, before != nil)
+	layout.footer = t.footer(labels, lang, before != nil)
 	return escapeComposeTableLayout(layout)
 }
 
@@ -79,7 +79,7 @@ func composeTableOverrideHeader(name, override string, labels composeTableLabels
 	return name + " (" + fmt.Sprintf(labels.override, override) + ")"
 }
 
-func (t composeTable) footer(labels composeTableLabels, marked bool) []string {
+func (t composeTable) footer(labels composeTableLabels, lang string, marked bool) []string {
 	var footer []string
 	if t.shows("codex") {
 		if t.catalogRead {
@@ -94,6 +94,7 @@ func (t composeTable) footer(labels composeTableLabels, marked bool) []string {
 		if t.codexRefused() {
 			footer = append(footer, labels.codexFails)
 		}
+		footer = append(footer, t.codexReaFallbackLines(lang)...)
 	}
 	if !t.usesAgentModels() {
 		footer = append(footer, labels.noAgentModels)
@@ -153,6 +154,9 @@ func composeTableCodexText(cell composeTableCodexCell, labels composeTableLabels
 		return labels.refused
 	}
 	resolution := cell.resolution
+	if resolution.Reason == config.CodexResolutionSessionModel {
+		return labels.sessionModel
+	}
 	if resolution.Effective.Model == "" {
 		return labels.codexDefault
 	}

@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/huh"
+	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestUpdateComposeForms_FormFailureWarnsAndTheUpdateGenerates(t *testing.T) 
 	originalProbe, originalRun := composeFormsProbe, composeRunForm
 	t.Cleanup(func() { composeFormsProbe, composeRunForm = originalProbe, originalRun })
 	composeFormsProbe = func(*cobra.Command) bool { return true }
-	composeRunForm = func(*cobra.Command, *huh.Form) error { return errors.New("terminal gone") }
+	composeRunForm = func(*cobra.Command, *huh.Form, tui.NavFrame) error { return errors.New("terminal gone") }
 	before := composeSessionHash(t, dir)
 
 	out, err := runComposeUpdate(t, formInput(), "--dir", dir)

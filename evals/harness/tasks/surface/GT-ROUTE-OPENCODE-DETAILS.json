@@ -11,7 +11,7 @@
       "kind": "contains",
       "platform": "opencode",
       "path": ".agents/skills/auto/SKILL.md",
-      "needle": "- 서브커맨드를 해석한 뒤에는 반드시 대응하는 상세 스킬(`auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`) 중 하나를 로드합니다."
+      "needle": "- 서브커맨드를 해석한 뒤에는 반드시 대응하는 상세 스킬(`auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`, `auto-reverse`) 중 하나를 로드합니다."
     },
     {
       "kind": "contains",
@@ -130,6 +130,12 @@
     {
       "kind": "contains",
       "platform": "opencode",
+      "path": ".opencode/commands/auto-reverse.md",
+      "needle": "Reinterpret it as `/auto reverse ...` payload로 다시 해석하고, `skill` 도구로 `auto`를 로드한 뒤 canonical router 규칙을 따르세요."
+    },
+    {
+      "kind": "contains",
+      "platform": "opencode",
       "path": ".agents/skills/auto-setup/SKILL.md",
       "needle": "name: auto-setup\n"
     },
@@ -240,6 +246,12 @@
       "platform": "opencode",
       "path": ".agents/skills/auto-doctor/SKILL.md",
       "needle": "name: auto-doctor\n"
+    },
+    {
+      "kind": "contains",
+      "platform": "opencode",
+      "path": ".agents/skills/auto-reverse/SKILL.md",
+      "needle": "name: auto-reverse\n"
     }
   ],
   "provenance": {

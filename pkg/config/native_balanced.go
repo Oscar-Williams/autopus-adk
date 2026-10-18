@@ -35,10 +35,14 @@ func (q QualityConf) NativeBalancedAgentCandidate(provider, agent string) (RoleM
 }
 
 func balancedTierForRung(rung balancedRoleRung) string {
-	if rung == balancedRungTop {
+	switch rung {
+	case balancedRungTop:
 		return "fable"
+	case balancedRungAnalysis:
+		return "opus"
+	default:
+		return "sonnet"
 	}
-	return "sonnet"
 }
 
 // defaultBalancedAgentTiers returns a fresh map for caller-owned quality

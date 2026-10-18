@@ -12,7 +12,7 @@ import (
 // only existed to bind generated agent definitions that no longer exist.
 const OMPNativeAgentModelOverridesKey = "task.agentModelOverrides"
 
-// OMP registers exactly one agent definition per name, so the 16 ADK work
+// OMP registers exactly one agent definition per name, so the 17 ADK work
 // roles cannot each own a registry entry. This file is the single owner of the
 // collapse: which role_model_policy.agents key governs a native agent, and
 // when two operator-written keys landing on the same native agent have to be
@@ -31,7 +31,7 @@ type OMPPolicyAgentRoute struct {
 	Capability string
 }
 
-// ResolveOMPPolicyAgent accepts either one of the 16 ADK role names or one of
+// ResolveOMPPolicyAgent accepts either one of the 17 ADK role names or one of
 // the five native OMP agent names. An ADK name keeps its own role and
 // capability; a native name borrows its representative's, because the native
 // registry carries no capability of its own.
@@ -144,7 +144,7 @@ func (c RoleModelProfileConf) ompNativeAgentRouteKey(native string) (string, err
 		return keys[0], nil
 	}
 	// A full per-role policy - what the quality wizard writes and what every
-	// pre-cutover config holds - names all 16 roles with different models, so
+	// pre-cutover config holds - names all 17 roles with different models, so
 	// disagreement is the normal case rather than an operator mistake. The
 	// representative row is the declared tie-break, and the preview and receipt
 	// report it as the governing key, so the choice is visible instead of

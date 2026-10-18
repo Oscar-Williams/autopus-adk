@@ -26,7 +26,7 @@ import (
 // profile or family (SPEC-MODELUX-003 T11): 구성 편집, OMP, 에이전트별,
 // planner, openai-codex/gpt-6-astra, max, 완료, 적용, 유지. Init's menu has
 // no default preset choice.
-var composeInitS21 = []string{"2\n", "4\n", "2\n", "2\n", "4\n", "2\n", "\n", "2\n", "\n"}
+var composeInitS21 = []string{"2\n", "4\n", "2\n", "2\n", "5\n", "2\n", "\n", "2\n", "\n"}
 
 // composeInitS21Plan is composeInitS21 up to its plan, without 적용 and 유지.
 var composeInitS21Plan = composeInitS21[:len(composeInitS21)-2]

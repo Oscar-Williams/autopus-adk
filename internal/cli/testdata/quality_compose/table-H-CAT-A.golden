@@ -15,4 +15,5 @@
 검증·리뷰  ux-validator         기본값(sonnet)  sonnet-5-5 · high  6-luna · max
 탐색·보조  explorer             haiku           haiku · -          6-luna · medium
 탐색·보조  annotator            기본값(sonnet)  sonnet-5-5 · high  6-luna · max
+탐색·보조  reverse-engineer     기본값(opus)    opus-5-5 · high    6.1-sol · xhigh
 Codex catalog: 읽음 · 대체 0칸

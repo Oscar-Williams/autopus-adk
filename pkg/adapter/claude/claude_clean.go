@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 var claudeSharedManagedPaths = map[string]bool{
@@ -197,10 +198,16 @@ func (a *Adapter) prepareCleanMCP() (*adapter.TransactionWrite, error) {
 			changed = true
 		}
 	}
-	if !changed {
+	// Clean removes the managed rea entry with the same transform as a REA
+	// remove run; other_pin and user-owned rea entries stay.
+	reaChanged, err := a.applyClaudeReaMCP(value, config.ReaMCPRemove)
+	if err != nil {
+		return nil, err
+	}
+	if !changed && !reaChanged {
 		return nil, nil
 	}
-	if len(servers) == 0 {
+	if servers, _ = value["mcpServers"].(map[string]any); len(servers) == 0 {
 		delete(value, "mcpServers")
 	}
 	return claudeJSONWrite(".mcp.json", value)

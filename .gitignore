@@ -11,6 +11,7 @@ __pycache__/
 
 # Autopus-ADK generated/runtime files
 .autopus/*-manifest.json
+.autopus/claude-code-permissions.json
 .autopus/context/signatures.md
 .autopus/plugins/
 .autopus/orchestra/

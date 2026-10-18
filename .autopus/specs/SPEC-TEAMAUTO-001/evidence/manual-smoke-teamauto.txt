@@ -1,0 +1,151 @@
+# SPEC-TEAMAUTO-001 S15 실제 터미널 smoke (macOS, 실제 TTY, Claude Code 2.1.301, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).
+# 날짜: 2026-10-17. 사용자 동의 아래 모델 호출. 실행자: maintainer.
+# 기록: `script -q`로 남긴 31f-team, 31g-team-nosend, 31h-team-nosend, 31i-team-nosend, 31j-team, 31k-team-b와 같은 세션의
+#   Claude Code 세션 로그(team-proj project의 메인·teammate·subagent jsonl). 판정은 세션 로그를 읽기 전용으로 집계해 다시 확인했다
+#   (assistant text, tool_use, tool_result을 나눠 셌다. TUI는 Bash 결과를 접어 보여 transcript의 `Agent Team:` 줄은
+#   assistant text 기준이다).
+# 치환: home -> <home>, scratch 경로 -> <scratch>, 사용자 이름 -> <user>. agent id·request id는 줄였다.
+#
+# fixture(team-proj): SPEC-A plan은 T1 `a.txt`·T2 `b.txt`(disjoint, ready worker)와 T1에 의존하는 T3 `c.txt`, SPEC-B plan은
+#   ready worker T1 `d.txt` 하나다.
+#
+# 세션과 바이너리:
+#   31f  9b058d15  618ecb30(세션 로그에 `0.50.126-0.20261017064345-618ecb3073e9`)  (a) (d) (b) (e)
+#   31g  b3b5cff4  618ecb30(운영자 기록)  --disallowedTools SendMessage, SPEC-A
+#   31h  5eba6fbd  bde31009(a1e5e460 포함, 운영자 기록)  --disallowedTools SendMessage, SPEC-A
+#   31i  d8e0f7b7  537dab36 포함 빌드(운영자 기록)  --disallowedTools SendMessage, SPEC-A  -> (c)
+#   31j  a1a11713  537dab36(운영자 기록)  SPEC-A -> (a), 이어서 SPEC-B
+#   31k  1a70c20c  580d7ef3 빌드(운영자 기록)  SPEC-B -> (b)
+#   31g·31h·31j의 SPEC-B·31f의 (a)(b)는 lead가 판단 줄을 그대로 출력하지 않은 결함을 드러냈고, 그 결함을 a1e5e460, 537dab36,
+#   580d7ef3이 고쳤다. 최종 판정은 고친 뒤의 31i, 31j, 31k와 31f의 (d)(e)로 한다.
+#
+# 판정 요약: S15 PASS, 편차 2건((b)의 숫자, (e)의 EXECPATH 미기록).
+#   (a) PASS (31j)   (b) PASS·편차 (31k)   (c) PASS (31i)   (d) PASS (31f)   (e) PASS (31f + 운영자 실행 claude -p)
+#
+# ─────────────── (a) SPEC-A 자동 전환 -> PASS (31j, a1a11713) ───────────────
+#   UTC 시각, 세션 로그 기준:
+#   10:50:05  판단 Bash의 결과 JSON: `"route": "team"`, `"reason": "independent_disjoint_slices"`, `"ready_units": 2`,
+#             `"team_units": ["T1","T2"]`, `"followup_units": ["T3"]`
+#   10:50:07  ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`
+#   10:50:10  assistant text `Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다`
+#             (assistant text의 `Agent Team:` 줄은 이 하나뿐이다. TUI 기록 31j도 이 줄만 보인다)
+#   10:50:16·20  Agent `subagent_type: executor`, `name: builder-1`(T1) / `name: builder-2`(T2). runtime 응답
+#             `Spawned successfully ... name: builder-1` / `name: builder-2` (`will receive instructions via mailbox`)
+#   10:50:35  builder-1 결과 보고 -> 10:50:45 SendMessage `shutdown_request` to builder-1 -> 10:50:52 builder-1
+#             `shutdown_approved`와 `teammate_terminated` 알림
+#   10:51:15  builder-2 결과 보고 -> 10:51:21 SendMessage `shutdown_request` to builder-2
+#   11:25:13  Agent `executor`(name 없음) `Implement SPEC-A unit T3 (c.txt)`. T1·T2는 다시 돌지 않았다
+#   11:27:29~ Gate 2 검증 뒤 Phase 4 reviewer·security-auditor, oracle PASS, SPEC-A `implemented`
+#   관찰(Claude Code runtime 전달): builder-2는 10:51:25.55에 `{"type":"shutdown_response","request_id":"shutdown-…@builder-2",
+#     "approve":true}`를 보냈다(builder-2 teammate 로그). 그러나 lead 세션에는 builder-2의 `shutdown_approved`도
+#     teammate 종료 알림도 오지 않았고, lead는 10:51:27부터 응답을 기다렸다. 11:24:55에 운영자가 한 줄
+#     `builder-2는 이미 종료됐습니다(teammate 목록에 없음). 계속 진행하세요.`를 입력한 뒤 T3로 넘어갔다. teammate가 보낸
+#     응답이 lead에게 전달되지 않은 runtime 쪽 현상으로 기록한다(Autopus 생성물의 순서·문구 결함은 아니다).
+#
+# ─────────────── (b) SPEC-B 유지 -> PASS, 편차 1건 (31k, 1a70c20c) ───────────────
+#   11:48:20  판단 결과 JSON: `"route": "subagent"`, `"reason": "fewer_than_two_ready"`, `"ready_units": 0`,
+#             `"line": "Agent Team: 유지 — 함께 실행할 준비된 slice가 0개라 subagent로 실행한다"`
+#   11:48:22  assistant text 그 줄 그대로 한 번(assistant text의 `Agent Team:` 줄은 이 하나뿐이다)
+#   11:48:23  Write `d.txt`. Agent에 `name`을 준 호출 0, teammate 0. 11:49:03 reviewer·security-auditor dispatch 직후
+#             운영자가 run을 멈췄다(`[Request interrupted by user]`).
+#   편차: S15(b)의 문자열은 `…준비된 slice가 1개라…`인데 이 run은 `0개라`다. lead가 Phase 1에서 T1을 `execution: inline`으로
+#     배정해(plan은 `execution: worker`) facts가 `{"id": "T1", "execution": "inline", "owned_paths": ["d.txt"], ...}`였고, CLI는
+#     ready worker를 0개로 셌다. 숫자는 lead의 배정을 그대로 반영한 것이고 TEAMAUTO 판단의 결함이 아니다. 또 줄은
+#     "subagent로 실행한다"이지만 lead는 d.txt를 직접 썼다(inline 배정과 일치).
+#   `1개라` 문자열 자체는 같은 fixture에서 CLI 판단으로 두 번 나왔다: 31f 07:00:39와 31j 11:45:23의 판단 결과 JSON
+#     (`"ready_units": 1`, `"line": "Agent Team: 유지 — 함께 실행할 준비된 slice가 1개라 subagent로 실행한다"`). 두 run 모두 lead가
+#     그 줄을 출력하지 않았다(31f는 바꿔 말하고 완료 보고 topology 줄에 `Agent Team: 유지, fewer_than_two_ready)`를 다시 썼고,
+#     31j는 줄 없이 d.txt를 직접 만들었다). 이 결함은 a1e5e460·537dab36·580d7ef3으로 고쳐졌고, 31k가 고친 뒤의 run이다.
+#   계약 기준(유지 route, 판단 줄 그대로 한 줄, named teammate 없음)으로 PASS. 문자열 `1개라`가 고친 뒤 run의 assistant text로
+#     나온 기록은 없다.
+#
+# ─────────────── (c) SendMessage 없는 세션 -> PASS (31i, d8e0f7b7) ───────────────
+#   세션: `claude --disallowedTools SendMessage`.
+#   10:47:28  판단 결과 JSON: `"route": "team"`(ready 2)과 `tools_fallback_line`
+#   10:47:30  ToolSearch `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`(SendMessage를 얻지 못함)
+#   10:47:38  assistant text `Agent Team 판정은 `team`이었지만 이 세션에는 `SendMessage` 도구가 없어 계약대로 subagent로 실행합니다.`
+#             (`Agent Team:` 접두가 없는 설명 문장)
+#   10:47:42  assistant text `Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다`
+#             (assistant text의 `Agent Team:` 줄은 이 하나뿐이다)
+#   10:47:47·51  Agent `executor`(name 없음) T1, T2. SendMessage 호출 0, named teammate 0.
+#   run은 첫 dispatch 직후 운영자가 끝냈다(세션 로그는 두 dispatch 결과에서 끝난다).
+#   고치기 전 run: 31g(b3b5cff4)와 31h(5eba6fbd)도 name 없는 executor만 띄웠지만 판단 줄을 assistant text로 내지 않았다
+#     (31h는 ToolSearch 뒤 바로 dispatch). 537dab36 뒤 31i에서 줄이 나왔다.
+#
+# ─────────────── (d) Gate 2에서 멈춘 뒤 --continue -> PASS (31f, 9b058d15) ───────────────
+#   31f의 (a)는 06:52:05 판단 결과 JSON `route: team`, builder-1·builder-2 spawn(06:52:24·30), 두 teammate의 결과 보고,
+#   shutdown_request 두 번과 두 `shutdown_approved`(06:53:07), T3 executor(name 없음, 06:53:23)까지 갔고 Gate 2 도중
+#   06:54:53에 운영자가 멈췄다(`[Request interrupted by user]`). 이 run의 lead는 전환 줄을 assistant text로 내지 않았다
+#   (TUI 기록 31f에도 `Agent Team: 전환` 줄이 없다). 그래서 (a)는 31j로 판정한다.
+#   06:55:09  `/auto go SPEC-A --continue`. 이 run에는 판단 Bash가 없고, assistant text의 `Agent Team:` 줄은 0개다.
+#             완료 보고에는 `Phase 2가 이미 끝난 상태라 Agent Team 단계는 건너뛰었습니다.`(접두 없는 설명)만 있다.
+#             reviewer·security-auditor(06:56)로 이어져 끝났다.
+#
+# ─────────────── (e) 환경 값 -> PASS, 편차 1건 ───────────────
+#   최상위 대화형 세션(31f 세션 안의 `!` Bash, 10:24:50 UTC):
+#     CLAUDE_CODE_ENTRYPOINT=cli
+#     CLAUDE_CODE_CHILD_SESSION=1
+#     CLAUDE_CODE_SESSION_ATTENDED=1
+#   print mode(운영자가 team-proj에서 직접 실행한 `claude -p`, 출력은 운영자 기록이고 script 기록은 없다):
+#     CLAUDE_CODE_ENTRYPOINT=sdk-cli
+#     CLAUDE_CODE_CHILD_SESSION=1
+#     CLAUDE_CODE_SESSION_ATTENDED=0
+#   판정: 최상위는 (`cli`, `1`)이고 `claude -p`는 (`sdk-cli`, `0`)이라 쌍이 다르다 -> A2 print mode 부분 PASS.
+#     CLAUDE_CODE_CHILD_SESSION은 두 경우 모두 `1`이고 값만 기록한다(판단은 읽지 않는다).
+#   편차: EXECPATH basename은 기록하지 않았다. smoke 명령이 `env -u CLAUDE_CODE_EXECPATH ...`로 그 변수를 지운 뒤 실행돼
+#     값이 남지 않았다.
+#
+# CD 상태: CD-1 닫힘((a) 31j), CD-2 닫힘((b) 31k, (e)), CD-3 닫힘((c) 31i, (d) 31f).
+
+## (a) 31j 발췌 (세션 로그)
+10:50:05 RESULT(Bash) {"mode": "topology", ... "decision": {"version": 1, "route": "team", "reason": "independent_disjoint_slices", "ready_units": 2, "team_units": ["T1","T2"], "followup_units": ["T3"], "line": "Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다", ...}}
+10:50:07 ToolSearch {"query": "select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet"}
+10:50:10 TEXT Agent Team: 전환 — 준비된 slice 2개의 owned_paths가 겹치지 않아 native Agent Team으로 실행한다
+10:50:16 AGENT {"subagent_type": "executor", "name": "builder-1", "description": "Implement SPEC-A unit T1 (a.txt)"}
+10:50:20 AGENT {"subagent_type": "executor", "name": "builder-2", "description": "Implement SPEC-A unit T2 (b.txt)"}
+10:50:21 RESULT(Agent) Spawned successfully. ... name: builder-1 / The agent is now running and will receive instructions via mailbox.
+10:50:21 RESULT(Agent) Spawned successfully. ... name: builder-2 / The agent is now running and will receive instructions via mailbox.
+10:50:45 SEND {"to": "builder-1", "msg": {"type": "shutdown_request", "reason": "T1 receipt accepted (a.txt = \"a\\n\", no out-of-scope changes). ..."}}
+10:50:52 USER {"type":"shutdown_approved","requestId":"shutdown-…@builder-1","from":"builder-1",...} / teammate_terminated
+10:51:21 SEND {"to": "builder-2", "msg": {"type": "shutdown_request", "reason": "T2 receipt accepted ... Team wave closing."}}
+(builder-2 로그) 10:51:25 SEND {"to": "team-lead", "message": {"type": "shutdown_response", "request_id": "shutdown-…@builder-2", "approve": true}}
+11:24:55 USER builder-2는 이미 종료됐습니다(teammate 목록에 없음). 계속 진행하세요.
+11:25:13 AGENT {"subagent_type": "executor", "name": null, "description": "Implement SPEC-A unit T3 (c.txt)"}
+11:27:29 AGENT {"subagent_type": "reviewer", "name": null, "description": "Review SPEC-A changes against TRUST 5 and acceptance"}
+11:27:33 AGENT {"subagent_type": "security-auditor", "name": null, "description": "Audit SPEC-A changed files for security issues"}
+
+## (b) 31k 발췌 (세션 로그)
+facts: {"version": 1, ..., "units": [{"id": "T1", "execution": "inline", "owned_paths": ["d.txt"], ...}]}
+11:48:20 RESULT(Bash) {"mode": "topology", ... "decision": {"version": 1, "route": "subagent", "reason": "fewer_than_two_ready", "ready_units": 0, "line": "Agent Team: 유지 — 함께 실행할 준비된 slice가 0개라 subagent로 실행한다"}}
+11:48:22 TEXT Agent Team: 유지 — 함께 실행할 준비된 slice가 0개라 subagent로 실행한다
+11:48:23 Write <scratch>/smoke-kit/team-proj/d.txt
+11:49:03 AGENT reviewer / security-auditor
+11:49:06 USER [Request interrupted by user]
+(참고: 31f 07:00:39와 31j 11:45:23의 CLI 판단) "ready_units": 1, "line": "Agent Team: 유지 — 함께 실행할 준비된 slice가 1개라 subagent로 실행한다"
+(31f 완료 보고, 고치기 전) topology: requested default (no flag) → executed subagent (Agent Team: 유지, fewer_than_two_ready)
+
+## (c) 31i 발췌 (세션 로그)
+10:47:28 RESULT(Bash) {... "decision": {"version": 1, "route": "team", ... "tools_fallback_line": "Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다" ...}}
+10:47:30 ToolSearch {"query": "select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet"}
+10:47:38 TEXT Agent Team 판정은 `team`이었지만 이 세션에는 `SendMessage` 도구가 없어 계약대로 subagent로 실행합니다.
+10:47:42 TEXT Agent Team: 유지 — SendMessage 도구나 Agent의 name 인자를 쓸 수 없어 subagent로 실행한다
+10:47:47 AGENT {"subagent_type": "executor", "name": null, "description": "SPEC-A T1: create a.txt"}
+10:47:51 AGENT {"subagent_type": "executor", "name": null, "description": "SPEC-A T2: create b.txt"}
+
+## (d) 31f 발췌 (세션 로그)
+06:54:53 USER [Request interrupted by user]
+06:55:09 USER /auto go SPEC-A --continue
+06:56:05 AGENT {"subagent_type": "reviewer", "name": null, ...}
+06:56:11 AGENT {"subagent_type": "security-auditor", "name": null, ...}
+07:00:10 TEXT - **중간 재개:** Gate 2 도중 끊겨 `--continue`로 이어갔습니다. Phase 2가 이미 끝난 상태라 Agent Team 단계는 건너뛰었습니다.
+(이 구간 assistant text의 `Agent Team:` 줄: 0)
+
+## (e) 환경 값
+$ env | grep -E 'CLAUDE_CODE_(ENTRYPOINT|SESSION_ATTENDED|CHILD_SESSION)'      (31f 대화형 세션의 ! Bash)
+CLAUDE_CODE_ENTRYPOINT=cli
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ATTENDED=1
+$ claude -p '... env | grep ...'      (운영자 실행, team-proj)
+CLAUDE_CODE_ENTRYPOINT=sdk-cli
+CLAUDE_CODE_CHILD_SESSION=1
+CLAUDE_CODE_SESSION_ATTENDED=0

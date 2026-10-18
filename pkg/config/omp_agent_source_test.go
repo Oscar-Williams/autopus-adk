@@ -58,15 +58,15 @@ func TestRoleModelPolicy_AgentSourceAloneIsNotAConfiguredPolicy(t *testing.T) {
 	assert.Contains(t, err.Error(), `role_model_policy.agent_source_invalid: "nativ"`)
 }
 
-// The Autopus set is the 16 canonical agents in canonical order followed by
+// The Autopus set is the 17 canonical agents in canonical order followed by
 // task, OMP's default for a dispatch that names no agent. Native keeps the
 // five bundled agents in registry order.
 func TestOMPAgentNames_FollowTheSource(t *testing.T) {
 	t.Parallel()
 	autopus := OMPAgentNames(OMPAgentSourceAutopus)
-	require.Len(t, autopus, 17)
-	assert.Equal(t, CanonicalAgentNames(), autopus[:16])
-	assert.Equal(t, "task", autopus[16])
+	require.Len(t, autopus, 18)
+	assert.Equal(t, CanonicalAgentNames(), autopus[:17])
+	assert.Equal(t, "task", autopus[17])
 	assert.Equal(t, autopus, OMPAgentNames(""))
 	assert.Equal(t, []string{"scout", "reviewer", "security-reviewer", "task", "sonic"},
 		OMPAgentNames(OMPAgentSourceNative))

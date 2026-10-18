@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 )
 
 const (
@@ -12,9 +13,15 @@ const (
 	ompReadinessCommandsID    = "readiness-commands"
 	ompReadinessSubscribeID   = "readiness-subscribe"
 	ompReadinessUnsubscribeID = "readiness-unsubscribe"
-	// @AX:NOTE [AUTO]: this selector satisfies OMP RPC bootstrap parsing only; the readiness path never invokes its provider.
+	// @AX:NOTE [AUTO]: OMP resolves this selector in its built-in catalog before RPC starts and exits on an unknown one, so it must name a model every supported release ships (omp/17.2.7 has no gpt-6.x); the readiness path never invokes its provider.
 	ompReadinessBootstrapModel = "openai-codex/gpt-5.6-sol"
 )
+
+// ompReadinessProbeTools are the only tools the provider-free probe enables,
+// and get_state must dump each of them. OMP exits on an unknown --tools name
+// before RPC starts, so the list holds only tools every supported release
+// ships: omp/18.3.0 replaced hub with wait, and earlier releases reject wait.
+var ompReadinessProbeTools = []string{"task", "todo"}
 
 func ompProviderFreeRPCInput() []byte {
 	frames := []map[string]any{
@@ -38,7 +45,7 @@ func ompProviderFreeRPCArgs(root string) []string {
 		"--no-session",
 		"--cwd", root,
 		"--model", ompReadinessBootstrapModel,
-		"--tools", "task,hub,todo",
+		"--tools", strings.Join(ompReadinessProbeTools, ","),
 		"--no-extensions",
 		"--no-rules",
 		"--no-lsp",

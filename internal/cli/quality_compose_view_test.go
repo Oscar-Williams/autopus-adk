@@ -139,7 +139,7 @@ func TestUpdateCompose_ConfirmedEditWithDetectedCodexGeneratesThePreview(t *test
 	run := newComposeDetectRun(t, "codex")
 	dir := writeComposeFixture(t, "claude-code")
 
-	out, err := runComposeUpdate(t, strings.NewReader("g\n\n3\n\n4\ny\n"), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(strings.NewReader("g\n\n3\n\n4\ny\n")), "--dir", dir)
 
 	require.NoError(t, err, out)
 	saved := composeBindLoad(t, dir)

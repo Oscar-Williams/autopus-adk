@@ -13,6 +13,9 @@ const (
 	balancedRungTop balancedRoleRung = iota
 	balancedRungImplementation
 	balancedRungRoutine
+	// balancedRungAnalysis is reverse-engineer's own rung (SPEC-REA-001): the
+	// opus tier, at the exact model and thinking the native ladders give opus.
+	balancedRungAnalysis
 )
 
 // balancedRungByAgent covers every canonical agent exactly once. Debugger and
@@ -37,6 +40,8 @@ var balancedRungByAgent = map[string]balancedRoleRung{
 	"explorer":     balancedRungRoutine,
 	"ux-validator": balancedRungRoutine,
 	"validator":    balancedRungRoutine,
+
+	"reverse-engineer": balancedRungAnalysis,
 }
 
 // balancedRungCandidates pins one exact candidate per anchor family and rung.
@@ -54,6 +59,9 @@ var balancedRungCandidates = map[string]map[balancedRoleRung]RoleModelCandidateC
 		balancedRungRoutine: {
 			Selector: "anthropic/" + ClaudeSonnetModel, Thinking: "high", Family: "anthropic",
 		},
+		balancedRungAnalysis: {
+			Selector: "anthropic/" + ClaudeOpusModel, Thinking: "high", Family: "anthropic",
+		},
 	},
 	builtinRoleModelFamilyOpenAI: {
 		balancedRungTop: {
@@ -64,6 +72,9 @@ var balancedRungCandidates = map[string]map[balancedRoleRung]RoleModelCandidateC
 		},
 		balancedRungRoutine: {
 			Selector: "openai-codex/" + CodexLunaModel, Thinking: "max", Family: "openai",
+		},
+		balancedRungAnalysis: {
+			Selector: "openai-codex/" + CodexSolModel, Thinking: "xhigh", Family: "openai",
 		},
 	},
 }

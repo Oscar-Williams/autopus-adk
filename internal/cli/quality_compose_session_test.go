@@ -106,13 +106,13 @@ func TestNewComposeSession_FileWriterPreviewsAndWritesTheGroupEdit(t *testing.T)
 		"설계·판단  planner, architect, spec-writer, security-auditor  현재: fable\n",
 		"구현  executor, debugger, deep-worker, devops, frontend-specialist, perf-engineer  현재: 혼합 (fable 2 · sonnet 4)\n",
 		"검증·리뷰  reviewer, validator, tester, ux-validator  현재: 혼합 (fable 1 · sonnet 3)\n",
-		"탐색·보조  explorer, annotator  현재: sonnet\n",
+		"탐색·보조  explorer, annotator, reverse-engineer  현재: 혼합 (opus 1 · sonnet 2)\n",
 	} {
 		assert.Contains(t, out, display)
 	}
 	assert.Contains(t, out, "미리보기 (아직 바뀌지 않음)\n"+composeSessionGolden(t, "preview-D-K-CAT-A.golden")+
 		"바뀌는 설정:\n"+
-		"  quality.presets.custom 새로 씀 (16개 에이전트)\n"+
+		"  quality.presets.custom 새로 씀 (17개 에이전트)\n"+
 		"  quality.default balanced → custom\n"+
 		"  custom은 balanced 표준 배치를 받지 않음\n"+
 		"  quality 블록을 다시 씁니다: 블록 안 주석 0줄과 서식은 유지되지 않습니다(값은 그대로)\n"+
@@ -148,7 +148,7 @@ func TestNewComposeSession_MemoryWriterAppliesToTheConfigOnly(t *testing.T) {
 	assert.Contains(t, out, "Implementation  executor, debugger, deep-worker, devops, frontend-specialist, perf-engineer"+
 		"  current: mixed (fable 2 · sonnet 4)\n")
 	assert.Contains(t, out, "Settings that change:\n"+
-		"  quality.presets.custom written new (16 agents)\n"+
+		"  quality.presets.custom written new (17 agents)\n"+
 		"  quality.default balanced → custom\n"+
 		"  custom does not get the balanced standard placement\n"+
 		"Apply? [y/N]")
@@ -174,7 +174,7 @@ func TestNewComposeSession_EditAfterRefreshKeepsTheRefreshInTheOneWrite(t *testi
 	assert.Equal(t, 2, strings.Count(out, "미리보기 (아직 바뀌지 않음)\n"))
 	assert.Contains(t, out, "  quality.presets.ultra 최신 기본값으로 갱신: 모델 변화 없음, YAML만 정리\n"+
 		"  quality.presets.balanced 최신 기본값으로 갱신: 모델 변화 없음, YAML만 정리\n"+
-		"  quality.presets.custom 새로 씀 (16개 에이전트)\n"+
+		"  quality.presets.custom 새로 씀 (17개 에이전트)\n"+
 		"  quality.default ultra → custom\n")
 	written := rawQualityOf(t, readBlockFixture(t, dir))
 	defaults := config.DefaultFullConfig("").Quality.Presets

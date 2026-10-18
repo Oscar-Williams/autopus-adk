@@ -19,9 +19,9 @@ func TestQualityOMPWizardCustomPinsChosenModelPerBundledAgent(t *testing.T) {
 	markOMPProjectNative(t, dir)
 	runner.catalog = ompCLIBalancedCatalogJSON()
 
-	// custom -> task: model 3 (openai-codex/gpt-6-astra) at thinking max;
+	// custom -> task: model 4 (openai-codex/gpt-6-astra) at thinking max;
 	// every other agent keeps the balanced default.
-	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n\n\n\n3\nmax\n\ny\n", ompPlatformDependencies{
+	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n\n\n\n4\nmax\n\ny\n", ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate:  func(context.Context, string, *config.HarnessConfig) error { return nil },
 	})
@@ -67,8 +67,8 @@ func TestQualityOMPWizardCustomRejectsUnsupportedThinking(t *testing.T) {
 	runner.catalog = ompCLIBalancedCatalogJSON()
 	before := readAutopusConfigTree(t, dir)
 
-	// scout requires fast_validation, which claude-sonnet-5-5 (2) declares.
-	_, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n2\nminimal\n", ompPlatformDependencies{
+	// scout requires fast_validation, which claude-sonnet-5-5 (3) declares.
+	_, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n3\nminimal\n", ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate: func(context.Context, string, *config.HarnessConfig) error {
 			t.Fatal("an unsupported thinking level must not activate a profile")

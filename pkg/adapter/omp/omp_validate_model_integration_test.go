@@ -22,7 +22,7 @@ func TestOMPValidate_ModelIntegrationGeneratedSurfaceIsClean(t *testing.T) {
 	assert.FileExists(t, filepath.Join(root, OMPModelReceiptRelativePath))
 	entries, err := os.ReadDir(filepath.Join(root, ".omp", "agents"))
 	require.NoError(t, err)
-	assert.Len(t, entries, 16, "the default source generates the canonical agent registry")
+	assert.Len(t, entries, 17, "the default source generates the canonical agent registry")
 }
 
 // agent_source: native keeps the v0.50.125 contract that model routing

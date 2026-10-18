@@ -8,6 +8,10 @@ import (
 	"github.com/insajin/autopus-adk/templates"
 )
 
+// ompJobCoordination names the job and peer surface of both OMP generations:
+// omp/18.3.0 replaced the hub tool with wait and proc:// / agent:// URLs.
+const ompJobCoordination = "`wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP)"
+
 func ompRouterBody(prefix string) string {
 	return prefix + strings.Join([]string{
 		"`$ARGUMENTS`",
@@ -67,11 +71,7 @@ func normalizeOMPWorkflowBodyWith(body string, refs pkgcontent.PlatformReference
 }
 
 func normalizeOMPTeamMultiContract(body string) string {
-	body = strings.ReplaceAll(
-		body,
-		"- `--team`은 OMP Multi-Agent V2 팀 프로파일입니다. 모든 worker는 같은 shared cwd/filesystem을 사용하며 병렬 writer는 disjoint write ownership을 가져야 합니다. 메인 세션은 `task` batch, `send_message`, `followup_task`, target-less `hub with {\"i\":\"Waiting for blocked work\",\"op\":\"wait\",\"ids\":[\"<job id>\"]}`, `interrupt_agent`, `list_agents`만 사용합니다.",
-		"- `--team` uses the OMP Team and Provider Axes contract plus the pipeline reference above; Lead/Builder/Guardian share cwd/filesystem, write only disjoint paths, dispatch through `task`, coordinate through `hub`, and leave parent progress to `todo`.",
-	)
+	body = replaceOMPTeamProfileLine(body)
 	body = strings.ReplaceAll(
 		body,
 		"- `/goal` active state가 있으면 `get_goal`로 목표를 확인하고 worker 프롬프트와 최종 `goal_status`에 반영합니다. 새 goal이 필요하면 `/auto goal \"<objective>\" [--budget N]`을 사용하고, `create_goal`/`update_goal`은 사용자가 명시했거나 goal tool contract가 충족될 때만 사용합니다.",
@@ -82,15 +82,32 @@ func normalizeOMPTeamMultiContract(body string) string {
 		".omp/skills/agent-teams/SKILL.md", ".omp/skills/agent-pipeline/SKILL.md",
 		"`--team` → OMP team profile", "`--team` → owner `omp` native task-batch team profile",
 		"spawn_agent", "task",
-		"send_message", "hub send",
-		"followup_task", "hub send",
-		"wait_agent()", "hub wait",
-		"interrupt_agent", "hub cancel",
-		"list_agents", "hub list",
+		// Codex coordination names become neutral operations; the tools that
+		// perform them differ by OMP generation (ompJobCoordination).
+		"send_message", "agent message",
+		"followup_task", "agent follow-up",
+		"wait_agent()", "job wait",
+		"interrupt_agent", "job cancel",
+		"list_agents", "agent list",
 		"get_goal", "runtime-exposed goal state",
 		"create_goal", "/auto goal",
 		"update_goal", "/auto goal",
 	).Replace(body)
+}
+
+// replaceOMPTeamProfileLine swaps the shared Codex `--team` sentence for the
+// OMP one. The shared pass has already rewritten that sentence's tool list,
+// so the line is matched by its fixed head rather than byte for byte.
+func replaceOMPTeamProfileLine(body string) string {
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "- `--team`은 ") && strings.Contains(line, "Multi-Agent V2 팀 프로파일입니다.") {
+			lines[i] = "- `--team` uses the OMP Team and Provider Axes contract plus the pipeline reference above; " +
+				"Lead/Builder/Guardian share cwd/filesystem, write only disjoint paths, dispatch through `task`, " +
+				"coordinate through " + ompJobCoordination + ", and leave parent progress to `todo`."
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func dedupeOMPReference(body, ref string) string {
@@ -108,7 +125,7 @@ func normalizeOMPExecutionOwnerContract(body string) string {
 		"- Choose exactly one topology before dispatch: `OMP-local` or `Orca-supervised`.",
 		"- Choose exactly one DAG owner with `--execution-owner omp|orca` before dispatch; omission selects owner `omp`.",
 		"- `OMP-local` is the default. The current OMP session is the sole DAG owner and uses its native `task`, `hub`, and `todo` tools.",
-		"- Owner `omp` is the default. The current OMP session is the sole DAG owner and uses its native `task`, `hub`, and `todo` tools.",
+		"- Owner `omp` is the default. The current OMP session is the sole DAG owner, uses its native `task` and `todo` tools, and coordinates through "+ompJobCoordination+".",
 		"- `Orca-supervised` is allowed only when the user explicitly selects a supervised or durable topology. Before any Orca orchestration, run and read `orca skills get orchestration --full`.",
 		"- Owner `orca` is allowed only when `--execution-owner orca` is explicit. Before any Orca orchestration, run and read `orca skills get orchestration --full`.",
 		"- The single DAG owner invariant is mandatory: when Orca owns the DAG, the OMP session does not dispatch a competing DAG; when OMP owns it, Orca does not dispatch one.",
@@ -132,7 +149,7 @@ func injectOMPExecutionOwnerControl(body, name string) string {
 		"- Invocation: `/auto go SPEC-ID [--execution-owner omp|orca]`. Omission selects `omp` with receipt source `default`; a supplied exact value has source `explicit`.",
 		"- Parse the flag exactly once before any `task`, DAG-owning `todo`, OMP subprocess, or Orca Run effect. Reject repeated, mixed, case-shifted, whitespace-padded, or aliased values without fallback.",
 		"- Persist the body-free receipt `.autopus/pipeline-state/<SPEC-ID>.execution-owner.json` with schema `pipeline_execution_owner_receipt.v1` and only owner, source, reason, SPEC/run identity, `checked_at`, and `verification_status` evidence.",
-		"- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task`, `hub`, and `todo`, and must not create an Orca Run.",
+		"- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task` and `todo`, coordinates through " + ompJobCoordination + ", and must not create an Orca Run.",
 		"- Owner `orca`: do not initialize an OMP task/todo DAG or call `task`. Run and read `orca skills get orchestration --full`, then use its supervised durable cross-worktree Run contract.",
 		"- At `auto pipeline run SPEC-ID --platform omp --execution-owner orca`, the tier integrity gate runs and the receipt is persisted before any Run, worker, or provider session exists, and the pipeline then executes its phases on supervised Orca workers. Never retry a failure as owner `omp`.",
 	}, "\n")
@@ -151,7 +168,7 @@ func injectOMPTeamMultiControl(body, name string) string {
 		"- `--team --multi` composes team execution with provider-diverse planning and review.",
 		"- without `--team` or `--solo`, owner `omp` uses the default native `task` batch pipeline.",
 		"- `--team` conflicts with `--solo` and owner `orca`.",
-		"- Lead, Builder, and Guardian coordinate only through native `task`, `hub`, and `todo`; the main OMP session owns the checklist and DAG.",
+		"- Lead, Builder, and Guardian coordinate only through native `task` and `todo` plus " + ompJobCoordination + "; the main OMP session owns the checklist and DAG.",
 	}, "\n")
 	return injectOMPAfterHeading(body, block)
 }
@@ -177,6 +194,9 @@ func injectOMPAfterHeading(body, block string) string {
 }
 
 func renderOMPCompactWorkflowSkill(spec workflowSpec) string {
+	if spec.Name == "auto-reverse" {
+		return renderOMPReverseWorkflowSkill(spec)
+	}
 	command, result := ompCompactWorkflowContract(spec.Name)
 	sections := []string{
 		"# " + spec.Name,
@@ -201,10 +221,33 @@ func renderOMPCompactWorkflowSkill(spec workflowSpec) string {
 	return buildMarkdown(ompSkillFrontmatter(spec.Name, description), normalizeOMPWorkflowBody(content))
 }
 
+// renderOMPReverseWorkflowSkill renders the shared /auto reverse contract. The
+// OMP reverse-engineer has no REA tools, so the contract's analysis step ends
+// the route with that agent's unavailable sentence and writes nothing.
+func renderOMPReverseWorkflowSkill(spec workflowSpec) string {
+	description := normalizeOMPDescription(spec.Description)
+	content := strings.Join([]string{
+		"# " + spec.Name,
+		"",
+		"## OMP Invocation",
+		"",
+		"- `/auto reverse <대상> <기능> [--runtime]`",
+		"- `/" + spec.Name + " ...`",
+		"- Load detail skill `" + spec.Name + "` for either entrypoint.",
+		"",
+		"## Contract",
+		"",
+		description,
+		"",
+		templates.ReverseRouteContract(),
+	}, "\n")
+	return buildMarkdown(ompSkillFrontmatter(spec.Name, description), normalizeOMPWorkflowBody(content))
+}
+
 func ompCompactWorkflowContract(name string) (string, string) {
 	switch name {
 	case "auto-status":
-		return "Bash tool로 `auto status`를 실행해 SPEC lifecycle과 module 상태를 수집한 뒤 현재 workspace의 `.autopus/pipeline-state/<SPEC-ID>.execution-owner.json` receipt와 현재 OMP 세션의 native `hub` jobs 상태를 읽습니다. 외부 CLI가 OMP user-session roots를 검사할 수 있다고 가정하지 않습니다.", "receipt의 owner/source/verification과 OMP-native `hub` 상태를 결합해 단일 DAG owner 위반 여부, SPEC별 status, 다음 실행 가능한 명령을 보고합니다."
+		return "Bash tool로 `auto status`를 실행해 SPEC lifecycle과 module 상태를 수집한 뒤 현재 workspace의 `.autopus/pipeline-state/<SPEC-ID>.execution-owner.json` receipt와 현재 OMP 세션의 native job 상태(OMP 18.3+는 `read proc://`, 이전 OMP는 `hub` jobs)를 읽습니다. 외부 CLI가 OMP user-session roots를 검사할 수 있다고 가정하지 않습니다.", "receipt의 owner/source/verification과 OMP-native job 상태를 결합해 단일 DAG owner 위반 여부, SPEC별 status, 다음 실행 가능한 명령을 보고합니다."
 	case "auto-update":
 		return "Bash tool로 `auto update`를 실행해 현재 repo 또는 meta workspace의 harness surface를 갱신합니다.", "변경된 generated surface와 source-of-truth 경계를 보고합니다."
 	case "auto-map":

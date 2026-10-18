@@ -24,7 +24,7 @@ const (
 // the shipped defaults.
 type BuiltinQualityPresetStatus struct {
 	Class BuiltinQualityPresetClass
-	// Row names the matching registry row (HB1 ... HU2) of a historical preset.
+	// Row names the matching registry row (HB1 ... HU3) of a historical preset.
 	Row string
 	// RuntimeStandard is true for a historical row that NativeBalancedAgentCandidate
 	// keeps resolving to the standard balanced placement.
@@ -43,8 +43,8 @@ type historicalQualityPreset struct {
 	commit  string // commit that introduced the layout
 	shipped string // release tags that carried it
 	// runtimeStandard keeps the layout on the standard balanced placement at
-	// runtime. Only HB2 and HB5 carry it; widening it would change the models
-	// existing projects already run.
+	// runtime. Only HB2, HB5, and HB6 carry it; widening it would change the
+	// models existing projects already run.
 	runtimeStandard bool
 	agents          map[string]string
 }
@@ -92,6 +92,17 @@ var historicalQualityPresets = []historicalQualityPreset{
 		},
 	},
 	{
+		// The sixteen-agent default before reverse-engineer joined (SPEC-REA-001).
+		id: "HB6", preset: "balanced", commit: "fbe502c0", shipped: "v0.50.116-v0.50.125", runtimeStandard: true,
+		agents: map[string]string{
+			"architect": "fable", "debugger": "fable", "deep-worker": "fable", "planner": "fable",
+			"reviewer": "fable", "security-auditor": "fable", "spec-writer": "fable",
+			"annotator": "sonnet", "devops": "sonnet", "executor": "sonnet", "explorer": "sonnet",
+			"frontend-specialist": "sonnet", "perf-engineer": "sonnet", "tester": "sonnet",
+			"ux-validator": "sonnet", "validator": "sonnet",
+		},
+	},
+	{
 		id: "HU1", preset: "ultra", commit: "c95806e2", shipped: "v0.4.3-v0.50.103",
 		agents: map[string]string{
 			"planner": "opus", "executor": "opus", "validator": "opus", "tester": "opus",
@@ -106,6 +117,17 @@ var historicalQualityPresets = []historicalQualityPreset{
 			"devops": "opus", "executor": "opus", "explorer": "opus", "frontend-specialist": "opus",
 			"perf-engineer": "opus", "planner": "opus", "reviewer": "opus", "security-auditor": "opus",
 			"spec-writer": "opus", "tester": "opus", "ux-validator": "opus", "validator": "opus",
+		},
+	},
+	{
+		// The sixteen-agent default before reverse-engineer joined (SPEC-REA-001).
+		id: "HU3", preset: "ultra", commit: "001830fd", shipped: "v0.50.115-v0.50.125",
+		agents: map[string]string{
+			"architect": "fable", "debugger": "fable", "deep-worker": "fable", "planner": "fable",
+			"reviewer": "fable", "security-auditor": "fable", "spec-writer": "fable",
+			"annotator": "opus", "devops": "opus", "executor": "opus", "explorer": "opus",
+			"frontend-specialist": "opus", "perf-engineer": "opus", "tester": "opus",
+			"ux-validator": "opus", "validator": "opus",
 		},
 	},
 }

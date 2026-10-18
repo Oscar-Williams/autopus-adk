@@ -20,7 +20,7 @@ compatibility: omp
 - `--team --multi` composes team execution with provider-diverse planning and review.
 - without `--team` or `--solo`, owner `omp` uses the default native `task` batch pipeline.
 - `--team` conflicts with `--solo` and owner `orca`.
-- Lead, Builder, and Guardian coordinate only through native `task`, `hub`, and `todo`; the main OMP session owns the checklist and DAG.
+- Lead, Builder, and Guardian coordinate only through native `task` and `todo` plus `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP); the main OMP session owns the checklist and DAG.
 
 
 ## Execution Owner Control Plane
@@ -28,7 +28,7 @@ compatibility: omp
 - Invocation: `/auto go SPEC-ID [--execution-owner omp|orca]`. Omission selects `omp` with receipt source `default`; a supplied exact value has source `explicit`.
 - Parse the flag exactly once before any `task`, DAG-owning `todo`, OMP subprocess, or Orca Run effect. Reject repeated, mixed, case-shifted, whitespace-padded, or aliased values without fallback.
 - Persist the body-free receipt `.autopus/pipeline-state/<SPEC-ID>.execution-owner.json` with schema `pipeline_execution_owner_receipt.v1` and only owner, source, reason, SPEC/run identity, `checked_at`, and `verification_status` evidence.
-- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task`, `hub`, and `todo`, and must not create an Orca Run.
+- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task` and `todo`, coordinates through `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP), and must not create an Orca Run.
 - Owner `orca`: do not initialize an OMP task/todo DAG or call `task`. Run and read `orca skills get orchestration --full`, then use its supervised durable cross-worktree Run contract.
 - At `auto pipeline run SPEC-ID --platform omp --execution-owner orca`, the tier integrity gate runs and the receipt is persisted before any Run, worker, or provider session exists, and the pipeline then executes its phases on supervised Orca workers. Never retry a failure as owner `omp`.
 
@@ -475,7 +475,7 @@ satisfy the gate.
 - Codex의 기본 구현 모드는 `task` batch 기반 subagent pipeline입니다.
 - Codex에서 `--auto`는 기본 subagent pipeline 진행에 대한 명시적 승인입니다.
 - `--auto`가 없고 현재 Codex 런타임 정책이 암묵적 `task` batch 호출을 제한하면, 조용히 단일 세션으로 폴백하지 말고 하네스 기본값과 제약을 사용자에게 명시적으로 설명한 뒤 서브에이전트 opt-in 또는 `--solo` 선택을 받습니다.
-- `--team`은 Codex Multi-Agent V2 팀 프로파일입니다. 모든 worker는 같은 shared cwd/filesystem을 사용하며 병렬 writer는 disjoint write ownership을 가져야 합니다. 메인 세션은 `task` batch, `hub send`, `hub send`, target-less `hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]}`, `hub cancel`, `hub list`만 사용합니다.
+- `--team` uses the OMP Team and Provider Axes contract plus the pipeline reference above; Lead/Builder/Guardian share cwd/filesystem, write only disjoint paths, dispatch through `task`, coordinate through `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP), and leave parent progress to `todo`.
 - Use only a runtime-exposed OMP goal surface. If none is available, do not claim or create persisted goal state; `/auto goal` remains the explicit route.
 - `--multi`는 구현 이후 reviewer / security-auditor / orchestra 리뷰를 추가로 붙이는 강화 모드입니다.
 - 전체 파이프라인 단계, 재시도 한도, 게이트 규칙은 `/auto go ...` 라우터 본문을 우선합니다.

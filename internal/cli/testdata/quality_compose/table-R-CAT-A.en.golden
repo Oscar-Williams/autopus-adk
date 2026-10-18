@@ -15,5 +15,6 @@ Verification·Review  tester               opus             opus · max     6.1-
 Verification·Review  ux-validator         default(sonnet)  sonnet · high  6.1-sol · xhigh  platform default  platform default  platform default
 Exploration·Support  explorer             opus             opus · max     6.1-sol · xhigh  platform default  platform default  platform default
 Exploration·Support  annotator            default(sonnet)  sonnet · high  6.1-sol · xhigh  platform default  platform default  platform default
+Exploration·Support  reverse-engineer     default(opus)    opus · max     6.1-sol · xhigh  platform default  platform default  platform default
 Codex catalog: read · 0 substituted
 Codex default session: 6-astra · ultra

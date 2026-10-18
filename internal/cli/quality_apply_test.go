@@ -195,7 +195,7 @@ func TestQualityUltraApplyWritesSelectiveCodexAgentEffort(t *testing.T) {
 	agentDir := filepath.Join(dir, ".codex", "agents")
 	entries, err := os.ReadDir(agentDir)
 	require.NoError(t, err)
-	require.Len(t, entries, 16)
+	require.Len(t, entries, 17)
 	seenFableAgents := make(map[string]bool, len(fableAgents))
 	for _, entry := range entries {
 		data, readErr := os.ReadFile(filepath.Join(agentDir, entry.Name()))

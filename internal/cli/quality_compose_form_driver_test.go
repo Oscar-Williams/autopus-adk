@@ -130,19 +130,33 @@ func TestComposeForms_RefusedDefaultWriteKeepsTheBaseline(t *testing.T) {
 
 // S3: the tool tab lists the installed tools with per-agent models; a
 // project with one tool lists two options and one with none skips the tab.
+// SPEC-REVMODEL-001 REQ-RVM-01: the review tab is listed last while the
+// review gate is on, so only a project without it skips the tab.
 func TestComposeForms_ToolTabListsTheInstalledTools(t *testing.T) {
 	composeSessionCatalog(t, "CAT-A")
 	cases := []struct {
 		platforms []string
+		gateOff   bool
 		want      string
 	}{
-		{[]string{"claude-code", "codex"}, composeFormTabD},
-		{[]string{"claude-code"}, "어느 도구를 바꿀까요? \n1. 모든 도구 같게\n2. Claude Code\n"},
-		{[]string{"opencode", "antigravity-cli"}, ""},
+		{[]string{"claude-code", "codex"}, false, composeFormTabD},
+		{[]string{"claude-code"}, false, "어느 도구를 바꿀까요? \n1. 모든 도구 같게\n2. Claude Code\n"},
+		{[]string{"opencode", "antigravity-cli"}, false, "어느 도구를 바꿀까요? \n1. 모든 도구 같게\n2. 멀티프로바이더 리뷰\n"},
+		{[]string{"opencode", "antigravity-cli"}, true, ""},
 	}
 	for _, tc := range cases {
-		t.Run(strings.Join(tc.platforms, ","), func(t *testing.T) {
+		name := strings.Join(tc.platforms, ",")
+		if tc.gateOff {
+			name += " review gate off"
+		}
+		t.Run(name, func(t *testing.T) {
 			dir := writeComposeFixture(t, tc.platforms...)
+			if tc.gateOff {
+				cfg, err := config.Load(dir)
+				require.NoError(t, err)
+				cfg.Spec.ReviewGate.Enabled = false
+				require.NoError(t, config.Save(dir, cfg))
+			}
 			_, out, err := runComposeForms(t, newComposeFormSession(t, dir), composeFormOptions{}, "2\n", "\n", "\n")
 			require.NoError(t, err)
 			assert.NotRegexp(t, `(?m)^\d+\. (OpenCode|Antigravity)`, out, "no tab for a tool without per-agent models")

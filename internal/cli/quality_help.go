@@ -27,7 +27,7 @@ Change the composition? takes:
            Implementation: executor, debugger, deep-worker, devops,
              frontend-specialist, perf-engineer
            Verification·Review: reviewer, validator, tester, ux-validator
-           Exploration·Support: explorer, annotator
+           Exploration·Support: explorer, annotator, reverse-engineer
   a      advanced: one agent=tier line per agent, an empty line finishes
   t      per-tool settings; global, claude-code, codex, and omp work too
 
@@ -68,7 +68,7 @@ automatic level is marked (automatic) and stores nothing. Chosen efforts are
 written to quality.presets.<provider>-custom.efforts, which auto older than
 v0.50.126 cannot read; a file without efforts generates exactly as before.
 
-OMP serves the 16 Autopus agents from .omp/agents by default and disables
+OMP serves the 17 Autopus agents from .omp/agents by default and disables
 every bundled agent but task (scout, security-reviewer, sonic, designer,
 librarian). In that mode the OMP tab asks no profile or family: from the
 current pins or profile routes it edits the 4 role groups or each agent
@@ -83,4 +83,40 @@ confirmation: unchanged agents and task keep their routes, and an ultra
 profile stops following quality.presets.ultra. Native mode, the OMP line
 editor, and auto platform omp profile apply keep profiles;
 role_model_policy.agent_source: native keeps the five bundled agents during
-v0.50.126 (removal planned in v0.50.127).`
+v0.50.126 (removal planned in v0.50.127).
+
+The tool tab ends with Multi-provider review while spec.review_gate is
+enabled, autopus.yaml holds at least two orchestra.providers entries, and CI
+is not set (SPEC-REVMODEL-001); a summary line under the table names the
+review providers and the judge. The tab sets the providers auto spec review
+uses (spec.review_gate.providers), each provider's model and effort, and the
+judge (spec.review_gate.judge). A provider with backend: omp picks an
+installed model Autopus attests for its family and a thinking level
+(orchestra.providers.<p>.model). On a CLI backend, claude picks a Claude tab
+model and effort (--model, --effort), codex a model of the Codex catalog and
+one of its efforts (-m and model_reasoning_effort, with model_policy:
+pinned), and agy an id agy models lists (--model); only those args values
+change. When omp attests a model of its family, any CLI provider can switch
+to the OMP backend (backend: omp and model). The preview shows changed CLI
+values as written in autopus.yaml and never other args; a value taken from
+${NAME} is left alone. Only those values are rewritten, so comments and
+layout stay. Orchestra commands (brainstorm, plan, review, secure) and
+auto spec review --multi keep every provider. An optional live check sends
+one request to each of n review providers (at most 3n model calls with
+retries) and writes nothing.
+
+Every form shows a header with the path that reached it, for example
+quality · Model composition › edit the composition › Codex, the values
+chosen so far in an edit pass (Chosen so far), and the footer Arrows move ·
+Enter select · Esc back · Ctrl+C cancel, all inside the terminal height
+(SPEC-TUIUX-001). Esc goes back one form, and a form shown again keeps the
+earlier answer selected: an edit pass returns to the form it asked before,
+the method to the tool tab, and the tool tab to the menu. Esc on Apply? or
+on the override question keeps editing, and the OMP and Multi-provider
+review tabs go back to the tool tab as a whole. The menu is the first form:
+Esc there prints "This is the first step; press Ctrl+C to cancel." and
+stays. Esc never undoes a write already applied. In accessible line mode
+(TERM=dumb) a line b, back, or 뒤로 is Esc; the line prompts have no back.
+Before it writes any file, auto init shows Settings to apply (the answers,
+every changed setting key, and the REA decision) and asks apply, back, or
+cancel (auto init --help).`

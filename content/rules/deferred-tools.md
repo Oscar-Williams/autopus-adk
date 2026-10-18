@@ -6,7 +6,7 @@ category: harness
 
 # Deferred Tools Loading
 
-IMPORTANT: Claude Code loads most tool schemas lazily as "deferred tools". Calling them without first loading their schema silently downgrades UI (e.g., `AskUserQuestion` renders as plain text) or raises `InputValidationError` (e.g., `TaskCreate`, `SendMessage`).
+IMPORTANT: Claude Code loads most tool schemas lazily as "deferred tools". Calling them without first loading their schema silently downgrades UI (e.g., `AskUserQuestion` renders as plain text) or raises `InputValidationError` (e.g., `SendMessage`).
 
 This rule applies to Claude Code platforms. Antigravity CLI, Codex, and OpenCode do not expose a deferred-tool mechanism — platform adapters may safely ignore or transform the specific tool references below.
 
@@ -19,7 +19,7 @@ Deferred tools appear by name in a `<system-reminder>` at the start of the sessi
 Common deferred tools in this workspace:
 
 - `AskUserQuestion` — interactive option picker (Triage flow, Gate 1 approval)
-- `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` — shared task-list management
+- `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` — shared task-list management, offered only in some Claude Code configurations; use them when ToolSearch returns them
 - `SendMessage` — native named-teammate coordination and shutdown
 - `Workflow` — dynamic Workflow launch
 - `CronCreate`, `CronList`, `CronDelete`, `RemoteTrigger` — scheduling
@@ -40,6 +40,8 @@ Batch multiple tools in one call when they will all be used in the same flow:
 ToolSearch(query = "select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet")
 ```
 
+ToolSearch returns only the tools the runtime offers. A flow that treats some of them as optional checks which ones loaded instead of failing on the first missing name.
+
 WHERE the schema is already loaded in the current session, skip — do not re-load.
 
 ## Trigger Points (Proactive Loading)
@@ -52,9 +54,9 @@ Load schemas proactively at these points to avoid mid-flow failures:
 | `/auto idea` clarification gate (interactive, non-`--auto`) | `AskUserQuestion` |
 | `/auto plan` intent ledger gate (interactive, non-`--auto`) | `AskUserQuestion` |
 | `/auto go` Gate 1 Approval (non-`--auto`) | `AskUserQuestion` |
-| `/auto go --team` (Route B) | `SendMessage`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` |
+| `/auto go --team` (Route B) | `SendMessage`; `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` if available |
 | `/auto go --workflow` | `Workflow` |
-| `/auto` long-running operations | `TaskCreate`, `TaskUpdate`, `TaskList` |
+| `/auto` long-running operations | `TaskCreate`, `TaskUpdate`, `TaskList` if available |
 | Phase 1.8 Doc Fetch web fallback | `WebSearch`, `WebFetch` |
 | `/auto schedule` or `/loop` | `CronCreate`, `CronList`, `CronDelete` |
 

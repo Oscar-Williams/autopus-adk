@@ -1189,6 +1189,87 @@ Pass each phase result into the next dependent prompt. For independent Route A
 writers, optional worktree isolation is allowed only when the runtime schema
 exposes it, and every isolated result must be integrated before validation.
 
+#### Route A Phase 2 Entry: Agent Team Auto-Selection
+
+When a Route A run enters Phase 2, the CLI decides once whether the first ready
+wave runs as a native Agent Team. The session copies facts in and follows the
+decision; it never decides on its own. Each teammate is a separate Claude
+session, so a team run uses more tokens; the feature is experimental.
+
+1. This section runs only when `TOPOLOGY_FLAG_COUNT == 0`, exactly once, before
+   any Phase 2 dispatch. A `--continue` run that resumes from a checkpoint where
+   Phase 2 already finished skips this section and prints no `Agent Team:` line.
+2. Do steps (a)–(d) in ONE Bash tool call from `WORKING_DIR`, because shell
+   variables such as `FACTS` do not survive between Bash tool calls.
+   (a) Create `FACTS="$(mktemp)"` and `TEAM_JSON="$(mktemp)"`.
+   (b) Copy the Phase 1 assignment table into `FACTS`, done units included:
+   `Unit` → `id`, `Execution` → `execution` (`worker` or `inline`),
+   `Owned paths` → `owned_paths` (literal paths or one trailing `/**`),
+   `Depends on` → `depends_on`, and `done: true` for a unit that is already
+   complete. Write it with the quoted heredoc below (`<<'JSON'`) so the shell
+   expands nothing in the facts; never use `echo` or an unquoted heredoc. A plan
+   without a table, for example a compact route that kept one unit, writes
+   `"units": []`, which decides `fewer_than_two_ready`.
+
+```bash
+cat >"$FACTS" <<'JSON'
+{"version": 1,
+ "flags": {"team": false, "workflow": false, "solo": false},
+ "units": [{"id": "T1", "execution": "worker", "owned_paths": ["pkg/a/**"], "depends_on": [], "done": false}]}
+JSON
+```
+
+   (c) Run this snippet exactly as written. It discards stderr so a diagnostic
+   never becomes a second line:
+
+```sh
+if ! auto workflow triage --topology --facts-json "$FACTS" --format json >"$TEAM_JSON" 2>/dev/null || [ ! -s "$TEAM_JSON" ]; then
+  printf '%s\n' 'Agent Team: off — auto workflow triage --topology failed; running subagents'
+  : >"$TEAM_JSON"
+fi
+rm -f "$FACTS"
+```
+
+   (d) Print the decision with `cat "$TEAM_JSON"`, then remove the file with
+   `rm -f "$TEAM_JSON"`.
+3. If `TEAM_JSON` is empty, the snippet already printed the fixed failure line.
+   Print no other `Agent Team:` line and run Route A Phase 2.
+4. If `decision.route` is `subagent`, print `decision.line` and run Route A
+   Phase 2 unchanged. No named teammate is launched.
+5. If `decision.route` is `team`, load the team tool schemas with ToolSearch
+   `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. A team needs
+   only `SendMessage` and the `name` parameter of the `Agent` tool; the shared
+   task-list tools are optional, and current Claude Code releases enable them
+   only in some configurations. If either one is missing,
+   print `decision.tools_fallback_line` instead of `decision.line` and run
+   Route A Phase 2. The CLI cannot tell a subagent from the top-level
+   session, whose environments Claude Code marks alike, so this check is what
+   keeps a session without the team tools, such as a subagent, on subagents.
+   When both are present, print `decision.line` and run exactly the
+   `decision.team_units` under the Route B lifecycle: named teammates
+   `builder-1` … `builder-n` in `team_units` order, one per unit, each prompt
+   carrying its unit assignment, the Phase 2 prompt items (requirement, owned
+   and forbidden paths, acceptance, gate decisions, minimality ladder), and
+   the Route B receipt fields. When the task-list tools loaded, also record
+   one shared task per unit; without them the lead tracks the units itself.
+   Launch no `tester` or `guardian` teammate.
+
+A run prints exactly one `Agent Team:` line: `decision.line`,
+`decision.tools_fallback_line`, or the snippet's failure line.
+"Print" means: copy the JSON string value verbatim as its own line of your
+reply text, before the Phase 2 dispatch. Do not translate, paraphrase, or
+fold it into a sentence, and write `Agent Team:` nowhere else in the run,
+including the completion report. The message that starts Phase 2 carries
+this line as its text, ahead of its tool call: the first `Agent` dispatch,
+or the first edit or command when the lead implements a unit inline. A
+message that starts Phase 2 with no text skipped the print.
+
+After the team wave, send every teammate a shutdown request and wait for every
+acknowledgement. Then implement exactly the `decision.followup_units` (the
+Phase 2 units that are neither in `team_units` nor done) under the Route A
+Phase 2 rules, and never re-run a done unit. Only after that, enter Gate 2 and
+continue under Route A.
+
 #### Route B: Native Agent Team (`--team`)
 
 `--team` uses Claude Code's native implicit team. It never dispatches a Workflow.
@@ -1197,13 +1278,18 @@ Preflight:
 1. Claude Code is 2.1.246 or newer.
 2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is present in the current session.
 3. The session is interactive.
-4. The current schemas for `Agent`, `SendMessage`, and shared task-list tools are loaded.
+4. The `Agent` tool exposes its `name` parameter and the `SendMessage` schema is loaded.
 
 If preflight fails, report the blocker and suggest Route A. Do not silently
 switch to `--workflow`.
 
-The lead creates shared tasks with disjoint `owned_paths` and explicit
-`forbidden_paths`, then launches named teammates:
+The shared task-list tools (`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`)
+are optional. Request them in the same ToolSearch call as `SendMessage` and use
+them when they load; current Claude Code releases enable them only in some
+configurations. Without them the lead keeps the assignment table itself.
+
+The lead assigns disjoint `owned_paths` and explicit `forbidden_paths`, then
+launches named teammates, each carrying its assignment in its prompt:
 
 ```python
 Agent(
@@ -1234,14 +1320,18 @@ Agent(
 )
 ```
 
-Named teammates share the working tree and task list. Do not pass call-level
-isolation, permission mode, effort, or a manual team identifier. Coordinate
-assignments and blockers through `SendMessage` using the runtime-exposed schema.
-Reject receipts with missing fields or out-of-scope changes.
+Named teammates share the working tree, and the task list when it exists. Do
+not pass call-level isolation, permission mode, effort, or a team identifier:
+the session has a single implicit team and the runtime ignores a team name.
+Coordinate assignments and blockers through `SendMessage` using the
+runtime-exposed schema. A unit is complete when its teammate returns its
+result or reports it through `SendMessage`; the lead records the five receipt
+fields and rejects receipts with missing fields or out-of-scope changes.
 
-At every terminal state, send each live teammate a shutdown request, wait for
-acknowledgements, and let Claude perform automatic team cleanup. Never edit or
-delete native runtime team configuration manually.
+At every terminal state, send each live teammate a `shutdown_request` through
+`SendMessage`, wait for its `shutdown_response`, and let Claude perform
+automatic team cleanup. Never edit or delete native runtime team configuration
+manually.
 
 Reference: `.claude/skills/agent-teams/SKILL.md`
 

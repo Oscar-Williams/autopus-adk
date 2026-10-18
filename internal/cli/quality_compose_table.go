@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/adapter/codex"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -70,6 +71,9 @@ type composeTable struct {
 	supervisor        config.CodexProfileResolution
 	supervisorManaged bool
 	rows              []composeTableRow
+	// reaFallbackFilter, when set, keeps the analysis-rung fallback lines the
+	// run has not printed yet; a table outside a run prints them all.
+	reaFallbackFilter func([]adapter.ReaFallback) []adapter.ReaFallback
 }
 
 // buildComposeTable computes the table through the functions the generators
@@ -144,11 +148,38 @@ func (t composeTable) codexRefused() bool {
 func (t composeTable) codexFallbacks() int {
 	count := 0
 	for _, row := range t.rows {
-		if !row.codex.refused && row.codex.resolution.Fallback {
+		if !row.codex.refused && row.codex.resolution.Fallback &&
+			row.codex.resolution.Reason != config.CodexResolutionSessionModel {
 			count++
 		}
 	}
 	return count
+}
+
+// codexReaFallbackLines is the Form Text line of every Codex cell left on the
+// session model by the analysis-rung fallback (SPEC-REA-001), in row order,
+// less the ones reaFallbackFilter says the run already printed. The cell
+// itself reads as the session model and counts as no substitute.
+func (t composeTable) codexReaFallbackLines(lang string) []string {
+	var facts []adapter.ReaFallback
+	for _, row := range t.rows {
+		resolution := row.codex.resolution
+		if row.codex.refused || resolution.Reason != config.CodexResolutionSessionModel {
+			continue
+		}
+		facts = append(facts, adapter.ReaFallback{
+			Catalog: "Codex", Agent: row.agent,
+			Requested: resolution.Requested.Model + "/" + resolution.Requested.Effort,
+		})
+	}
+	if t.reaFallbackFilter != nil {
+		facts = t.reaFallbackFilter(facts)
+	}
+	lines := make([]string, 0, len(facts))
+	for _, fact := range facts {
+		lines = append(lines, reaFallbackLine(fact, lang))
+	}
+	return lines
 }
 
 // usesAgentModels reports whether any installed platform binds a model per

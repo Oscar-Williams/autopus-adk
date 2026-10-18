@@ -112,7 +112,7 @@ func (f *composeFormRun) ompAutopusGroups(tab *ompAutopusTab) error {
 	return nil
 }
 
-// ompAutopusAgents lists the 16 canonical agents, and task when the policy
+// ompAutopusAgents lists the 17 canonical agents, and task when the policy
 // pins it, behind 완료, each with its current model, until the operator is
 // done.
 func (f *composeFormRun) ompAutopusAgents(tab *ompAutopusTab) error {

@@ -98,7 +98,7 @@ func TestOMPModelActivation_S9_AutopusReadsEveryAgentBackOverRPC(t *testing.T) {
 	sort.Strings(agents)
 	want := config.OMPAutopusAgentNames()
 	sort.Strings(want)
-	assert.Equal(t, want, agents, "the 16 canonical agents and task, no bundled scout, security-reviewer, or sonic")
+	assert.Equal(t, want, agents, "the 17 canonical agents and task, no bundled scout, security-reviewer, or sonic")
 	distinct := make([]string, 0, len(selectors))
 	seen := make(map[string]bool, len(selectors))
 	for _, selector := range selectors {

@@ -195,8 +195,8 @@ func TestQualityCompose_ApplyGeneratesTheApprovedPreviewWithTheRunSnapshot(t *te
 		assert.Equal(t, "haiku", claude.model)
 		assert.Empty(t, claude.effort, "a haiku agent carries no effort line")
 		claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, composeRenderedTable(t, out, "미리보기 (아직 바뀌지 않음)"))
-		assert.Equal(t, 16, claudeMarks)
-		assert.Equal(t, 4, codexMarks)
+		assert.Equal(t, 17, claudeMarks)
+		assert.Equal(t, 5, codexMarks)
 	})
 }
 

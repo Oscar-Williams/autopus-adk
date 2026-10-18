@@ -1,0 +1,26 @@
+🐙 Autopus ──────────────────────────
+   dev │ p │ init
+  → [1/5] Configuration Wizard
+  → [2/5] Design Context
+  ✓ created DESIGN.md
+  → [3/5] Platform Files
+  ✓ claude-code
+  ✓ codex
+  REA 역공학 MCP를 등록했습니다: .mcp.json, .codex/config.toml (rea-agents@6.5.0)
+    • constraints: <DIR>/.autopus/context/constraints.yaml
+  → [4/5] Gitignore
+  → [5/5] Summary
+╭────────────────────────────────────────╮
+│ Summary                                │
+│   Profile         developer            │
+│   Quality         balanced             │
+│   Review Gate     false (0 providers)  │
+│   Methodology     tdd                  │
+│   Platforms       claude-code, codex   │
+│   Design Context  DESIGN.md            │
+│   Language        comments=en,         │
+│ commits=ko, ai=ko                      │
+╰────────────────────────────────────────╯
+  ℹ Claude statusLine: Autopus statusLine enabled
+  ℹ Next: open Autopus Desktop Connect or run 'autopus-desktop-runtime connect' to connect with Autopus server
+  ✓ Autopus harness initialized (full mode)

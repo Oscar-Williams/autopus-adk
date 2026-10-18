@@ -47,6 +47,7 @@ var capabilityBySourceAgent = map[string]string{
 	"frontend-specialist": CapabilityVisionDesign,
 	"perf-engineer":       CapabilityCodingToolUse,
 	"planner":             CapabilityDeepReasoning,
+	"reverse-engineer":    CapabilityDeepReasoning,
 	"reviewer":            CapabilityIndependentDissent,
 	"security-auditor":    CapabilityIndependentDissent,
 	"spec-writer":         CapabilityDeepReasoning,
@@ -175,7 +176,7 @@ func ValidateRoleCapabilityPair(role, capability string) error {
 	return nil
 }
 
-// ValidateOMPAgentRoleSet requires exact equality with the 16 generated agents.
+// ValidateOMPAgentRoleSet requires exact equality with the 17 generated agents.
 func ValidateOMPAgentRoleSet(agents []string) error {
 	seen := make(map[string]bool, len(agents))
 	for _, agent := range agents {

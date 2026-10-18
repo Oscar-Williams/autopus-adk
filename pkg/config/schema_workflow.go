@@ -11,6 +11,17 @@ const DefaultCoverageThreshold = 85
 // WorkflowConf holds the workflow configuration settings.
 type WorkflowConf struct {
 	CoverageThreshold int `yaml:"coverage_threshold,omitempty"`
+	// AutoTeam is workflow.auto_team. nil means the key is absent, and the
+	// binary never writes the key itself: auto 0.50.125 and older reject any
+	// file that carries it, whatever its value.
+	AutoTeam *bool `yaml:"auto_team,omitempty"`
+}
+
+// AutoTeamEnabled reports whether a Claude Code /auto go run may select a
+// native Agent Team for Phase 2 on its own. An absent key and true enable it;
+// only false turns it off.
+func (w WorkflowConf) AutoTeamEnabled() bool {
+	return w.AutoTeam == nil || *w.AutoTeam
 }
 
 // Validate checks that the workflow configuration is valid.

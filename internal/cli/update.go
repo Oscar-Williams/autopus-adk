@@ -16,7 +16,7 @@ import (
 // @AX:REASON: [AUTO] Freshness re-exec, self-update, workspace detection, preview, platform updates, and rollback paths converge in its RunE handler.
 func newUpdateCmd() *cobra.Command {
 	var dir string
-	var selfFlag, checkOnly, force, yesFlag, previewMode, workspaceFlag, localFlag bool
+	var selfFlag, checkOnly, force, yesFlag, previewMode, workspaceFlag, localFlag, reaOn, reaOff bool
 	var targetVersion, statusLine, workspaceOnly string
 	var freshnessReexec updateFreshnessNonceFlag
 	freshnessGate := newUpdateFreshnessGate()
@@ -76,6 +76,9 @@ func newUpdateCmd() *cobra.Command {
 			if !localFlag && !workspaceFlag && shouldAutoWorkspaceUpdate(dir) {
 				workspaceFlag = true
 			}
+			if reaErr := checkReaFlags(reaOn, reaOff, workspaceFlag); reaErr != nil {
+				return reaErr
+			}
 			if workspaceFlag {
 				return runWorkspaceUpdate(cmd, dir, workspaceOnly, yesFlag, previewMode, statusLine)
 			}
@@ -109,6 +112,7 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			rea := resolveUpdateRea(cmd, dir, cfg, reaOn, reaOff, previewMode)
 			if previewMode {
 				previewCfg, configReasons, cloneErr := prepareUpdatePreviewConfig(
 					dir,
@@ -130,6 +134,7 @@ func newUpdateCmd() *cobra.Command {
 					)
 				}
 				configReasons = appendGitignorePreviewReason(configReasons, dir)
+				configReasons = appendConfigPreviewReason(configReasons, rea.previewReason(dir, previewCfg))
 
 				migrated, migrateErr := config.MigrateOrchestraConfig(previewCfg)
 				if migrateErr != nil {
@@ -186,6 +191,7 @@ func newUpdateCmd() *cobra.Command {
 			if !yesFlag {
 				promptLanguageSettings(cmd, dir, cfg)
 			}
+			rea.prepare(cmd, cfg, composeGate{Yes: yesFlag, Check: checkOnly, Detected: addedPlatforms})
 			statusLineSummary, statusLineErr := applyStatusLineMode(cmd, dir, cfg, statusLine, isStdinTTY() && !yesFlag)
 			if statusLineErr != nil {
 				return statusLineErr
@@ -251,6 +257,7 @@ func newUpdateCmd() *cobra.Command {
 			updated += addedUpdated
 			codexUpdated = codexUpdated || addedCodexUpdated
 			platformErrors = append(platformErrors, addedErrors...)
+			platformErrors = append(platformErrors, rea.finishUpdate(cmd.OutOrStdout(), dir, cfg)...)
 			if supervisorMigrated {
 				if codexUpdated {
 					fmt.Fprintln(cmd.OutOrStdout(), "  + Codex supervisor model now inherits the user default")
@@ -286,6 +293,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&workspaceFlag, "workspace", false, "메타 워크스페이스의 하위 Git 리포까지 업데이트")
 	cmd.Flags().StringVar(&workspaceOnly, "only", "", "--workspace 대상 필터 (쉼표 구분 repo path/name)")
 	cmd.Flags().BoolVar(&localFlag, "local", false, "workspace 자동 감지를 끄고 현재 repo만 업데이트")
+	registerReaFlags(cmd, &reaOn, &reaOff)
 	cmd.Flags().Var(&freshnessReexec, updateFreshnessReexecFlag, "internal one-shot freshness re-exec nonce")
 	_ = cmd.Flags().MarkHidden(updateFreshnessReexecFlag)
 	return cmd

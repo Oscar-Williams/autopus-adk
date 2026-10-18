@@ -11,4 +11,8 @@ var (
 	TestBuildReviewGateStep  = buildReviewGateStep
 	TestBuildMethodologyStep = buildMethodologyStep
 	TestBuildProfileStep     = buildProfileStep
+	TestBuildReaStepFor      = buildReaStepFor
+	TestReaStepTextFor       = reaStepTextFor
+	TestWizardStreams        = wizardStreams
+	TestWizardStepKinds      = wizardStepKinds
 )

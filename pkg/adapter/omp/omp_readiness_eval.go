@@ -251,7 +251,12 @@ func parseOMPPreIntentTools(rawTools []json.RawMessage) bool {
 			}
 		}
 	}
-	return found["task"] && found["hub"] && found["todo"]
+	for _, name := range ompReadinessProbeTools {
+		if !found[name] {
+			return false
+		}
+	}
+	return true
 }
 
 func parseOMPReadinessCommands(data []byte) bool {

@@ -49,7 +49,7 @@ var (
 		"architect": "fable", "planner": "fable", "reviewer": "fable", "security-auditor": "fable", "spec-writer": "fable",
 		"debugger": "sonnet", "deep-worker": "sonnet", "devops": "sonnet", "executor": "sonnet",
 		"frontend-specialist": "sonnet", "perf-engineer": "sonnet", "tester": "sonnet", "ux-validator": "sonnet",
-		"validator": "sonnet", "explorer": "haiku", "annotator": "haiku",
+		"validator": "sonnet", "explorer": "haiku", "annotator": "haiku", "reverse-engineer": "haiku",
 	}
 )
 

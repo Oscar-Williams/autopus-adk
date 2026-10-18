@@ -85,7 +85,7 @@ func TestQualityComposeForms_ClaudeAgentApplyGeneratesThePreview(t *testing.T) {
 
 	require.NoError(t, err, out)
 	claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, plainComposeHeaders(composeRenderedTable(t, out, composeFormPreviewMarker)))
-	assert.Equal(t, 16, claudeMarks)
+	assert.Equal(t, 17, claudeMarks)
 	assert.Zero(t, codexMarks)
 	assert.Equal(t, composeTableClaudeCell{model: "opus", effort: "high"}, readComposeTableClaudeProfile(t, dir, "executor"))
 	assert.Equal(t, composeTableClaudeCell{model: "sonnet", effort: "medium"}, readComposeTableClaudeProfile(t, dir, "validator"))
@@ -106,7 +106,9 @@ func TestQualityComposeForms_SubstituteIsLabelledPreviewedAndGenerated(t *testin
 	assert.Contains(t, out, "3. 6-sol · xhigh (대체)  [opus]\n")
 	preview := composeRenderedTable(t, out, composeFormPreviewMarker)
 	assert.Equal(t, "6-sol · xhigh (대체)*", preview["planner"]["Codex (개별 설정: codex-custom)"])
-	assert.Contains(t, out, "Codex catalog: 읽음 · 대체 4칸\n")
+	// The four design agents and reverse-engineer, which the custom binding
+	// takes off its placement, run on the substitute.
+	assert.Contains(t, out, "Codex catalog: 읽음 · 대체 5칸\n")
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6-sol", Effort: "xhigh"}, readComposeCodexProfile(t, dir, "planner"))
 }
 

@@ -17,7 +17,9 @@ import "github.com/insajin/autopus-adk/pkg/config"
 // verbatim and reports it as unverified: Fallback is false while Reason stays
 // config.CodexResolutionCatalogUnknown and CatalogError says why. Every other
 // profile — Ultra, a hand-edited tier, a non-canonical agent — keeps the
-// ordered availability fallback of config.ResolveCodexProfile.
+// ordered availability fallback of config.ResolveCodexProfile. The one
+// exception is reverse-engineer's analysis rung (config.CodexReaAnalysisFallback):
+// a read catalog that lacks it leaves the agent on the session model.
 func ResolveAgentProfile(
 	quality config.QualityConf,
 	snapshot []byte,
@@ -25,7 +27,13 @@ func ResolveAgentProfile(
 ) (config.CodexProfileResolution, error) {
 	requested := quality.CodexAgentProfile(agentName, fallbackTier, declaredEffort)
 	if _, placed := quality.NativeBalancedAgentCandidate(config.QualityProviderCodex, agentName); placed {
-		return resolveCodexPlacement(requested, snapshot)
+		resolution, err := resolveCodexPlacement(requested, snapshot)
+		if err != nil && quality.CodexReaAnalysisFallback(agentName, resolution) {
+			// SPEC-REA-001: the analysis rung inherits the session model
+			// instead of refusing the whole Codex surface.
+			return config.CodexSessionModelResolution(requested), nil
+		}
+		return resolution, err
 	}
 	return config.ResolveCodexProfile(requested, snapshot), nil
 }

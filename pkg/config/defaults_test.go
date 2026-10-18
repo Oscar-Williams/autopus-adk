@@ -67,6 +67,7 @@ func TestDefaultFullConfig_QualityPresets(t *testing.T) {
 		"annotator": "sonnet", "devops": "sonnet", "explorer": "sonnet",
 		"frontend-specialist": "sonnet", "perf-engineer": "sonnet",
 		"tester": "sonnet", "ux-validator": "sonnet", "validator": "sonnet",
+		"reverse-engineer": "opus",
 	}, balanced.Agents)
 }
 
@@ -83,7 +84,7 @@ func TestDefaultFullConfig_QualityUltraUsesFableAndOpus(t *testing.T) {
 	for _, tier := range ultra.Agents {
 		counts[tier]++
 	}
-	assert.Equal(t, map[string]int{"fable": 7, "opus": 9}, counts)
+	assert.Equal(t, map[string]int{"fable": 7, "opus": 10}, counts)
 	for _, agent := range []string{
 		"architect", "debugger", "deep-worker", "planner", "reviewer", "security-auditor", "spec-writer",
 	} {

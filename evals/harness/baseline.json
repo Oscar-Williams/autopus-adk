@@ -1,7 +1,7 @@
 {
   "schema_version": "harness_eval_baseline.v1",
   "set_version": "1",
-  "set_digest": "5cc3d5004a9c09465f1b0b436aed892b96fa97b3fa93712da1c753b8972fd3a2",
+  "set_digest": "d42052fbc2367851d952e1efff0345b4e65456a83bd67127ba857faf6ec161a5",
   "rows": [
     {
       "id": "GT-AGENT-A01",
@@ -99,7 +99,7 @@
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "3707dde3f292276dfa595381ea231f0d473fed4ec83a3385db8501bfd59c54c5"
+      "expectation_digest": "968360b647fedfbcb7bdc6dbfbb88935908266be8d045876d9436f634f238007"
     },
     {
       "id": "GT-HOOK-ARCH-GATE-ON",
@@ -254,42 +254,42 @@
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "a9cc37b9adecee2315e862a868f0ee3112d93dd4241b4ef61809d48cef7af314"
+      "expectation_digest": "a40451dfe90f2de647036d60729ee788a6ec19e5c23ece503a4679d7ee97d004"
     },
     {
       "id": "GT-ROUTE-ANTIGRAVITY-DETAILS",
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "f0f42b28108e917bdc7b0f2e961c8e028bccf1731ac15ad8e48bb3fd83b84de4"
+      "expectation_digest": "59e4e7a327d72150f29fca393fe5a33e35c8a4f70e5d7efae990e11697a4b813"
     },
     {
       "id": "GT-ROUTE-CLAUDE-DETAILS",
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "36c60833260465b1393808ffb42a524edf8153ab5eb1f25a5cf14cbce526340e"
+      "expectation_digest": "7f6f7239e18589f283a223656b21494dfbef9d575c1f01e08639fb9a15519b59"
     },
     {
       "id": "GT-ROUTE-CODEX-SKILL-NAMES",
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "f4562e471e4e5d8d52c8c4f892b5f1f35205e7f47936bb8d0e23b15d15271d63"
+      "expectation_digest": "f4283446c1ed0fd76e7d05fc73decb00888363d8dcd1949041f13f3314b39977"
     },
     {
       "id": "GT-ROUTE-OMP-EXACT-MAP",
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "dbcac541e91e43f9449ebafb294f5eb63915533dc7631dd795650177ad7e7ac3"
+      "expectation_digest": "10b81ab6fc9334ad3de91b98af0dc121e916eb98eefeb4c709e2460f788f7df0"
     },
     {
       "id": "GT-ROUTE-OPENCODE-DETAILS",
       "kind": "surface",
       "state": "active",
       "result": "pass",
-      "expectation_digest": "a0652f93ca268087f06747bd103356543fa77da4c264c2b4ade84fecdf0a0494"
+      "expectation_digest": "12db7ff5387fa1810b4fcab43ee0cb46af59f8f7211c892538bf35808c602643"
     },
     {
       "id": "GT-SETTINGS-MCP-SERVERS",

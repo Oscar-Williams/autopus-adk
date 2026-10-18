@@ -97,6 +97,7 @@ type HarnessConfig struct {
 // FeaturesConf holds feature-flag namespaces.
 type FeaturesConf struct {
 	CC21 CC21FeaturesConf `yaml:"cc21,omitempty"`
+	Rea  ReaFeaturesConf  `yaml:"rea,omitempty"`
 }
 
 // CC21FeaturesConf holds Claude Code 2.1 integration flags. The retired

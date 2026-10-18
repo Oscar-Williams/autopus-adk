@@ -28,14 +28,17 @@ func TestTransformAgentForGemini_ProjectsKnownNativeToolsAndOmitsUnsupported(t *
 	rendered := content.TransformAgentForGemini(source)
 	frontmatter, body := decodeGeminiAgent(t, rendered)
 
+	// agy 1.4 refuses to construct an agent that lists Gemini CLI's glob,
+	// replace, or run_shell_command, so the projection uses agy's names.
 	assert.Equal(t, []string{
 		"read_file",
 		"write_file",
-		"replace",
+		"edit_file",
 		"grep_search",
-		"glob",
-		"run_shell_command",
+		"find_by_name",
+		"run_command",
 	}, frontmatter.Tools)
+	assert.False(t, frontmatter.InheritMCP, "only a REA grant opts into the session's MCP servers")
 	assert.Equal(t, source.Meta.Skills, frontmatter.Skills)
 	assert.Equal(t, strings.TrimSpace(source.Body), strings.TrimSpace(body))
 	assert.NotContains(t, rendered, "TodoWrite")
@@ -76,9 +79,10 @@ func TestShippedSkillContent_CarriesNoCredentialsOrHostPaths(t *testing.T) {
 }
 
 type geminiAgentFrontmatter struct {
-	Name   string   `yaml:"name"`
-	Skills []string `yaml:"skills"`
-	Tools  []string `yaml:"tools"`
+	Name       string   `yaml:"name"`
+	Skills     []string `yaml:"skills"`
+	Tools      []string `yaml:"tools"`
+	InheritMCP bool     `yaml:"inheritMcp"`
 }
 
 func decodeGeminiAgent(t *testing.T, rendered string) (geminiAgentFrontmatter, string) {

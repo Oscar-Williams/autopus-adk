@@ -76,7 +76,8 @@ Do not use an isolated batch to hide a dependency edge.
 - If integration fails, stop the next wave and report the exact OMP lifecycle error.
 - Never bypass a failed patch/branch integration with destructive git commands.
 - A correction is a new explicitly named task with freshly declared ownership and context.
-- Cancel still-running jobs through `hub` with top-level `i`; preserve user-owned changes and unrelated jobs.
+- Cancel still-running jobs with `write proc://<id>/kill` (OMP 18.3+) or `hub` with top-level `i` (older
+  OMP); preserve user-owned changes and unrelated jobs.
 
 ## Receipt Verification
 

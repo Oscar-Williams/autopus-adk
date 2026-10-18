@@ -43,7 +43,7 @@ func TestUpdateCompose_InteractiveKeepPathsLeaveTheConfigByteIdentical(t *testin
 				"model = ", `model = "gpt-5.5"`)
 			before := composeSessionHash(t, dir)
 
-			out, err := runComposeUpdate(t, strings.NewReader(tc.input), "--dir", dir)
+			out, err := runComposeUpdate(t, reaEnter(strings.NewReader(tc.input)), "--dir", dir)
 
 			require.NoError(t, err, out)
 			assert.Equal(t, before, composeSessionHash(t, dir))
@@ -164,7 +164,7 @@ func TestUpdateCompose_GroupEditGeneratesTheApprovedTable(t *testing.T) {
 	dir, _ := composeSessionProject(t, "D")
 	run := newComposeUpdateRun(t, true, "")
 
-	out, err := runComposeUpdate(t, strings.NewReader("g\n\n3\n\n4\ny\n"), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(strings.NewReader("g\n\n3\n\n4\ny\n")), "--dir", dir)
 
 	require.NoError(t, err, out)
 	assert.Contains(t, out, "구성을 적용했습니다.\n")
@@ -175,8 +175,8 @@ func TestUpdateCompose_GroupEditGeneratesTheApprovedTable(t *testing.T) {
 	assert.Equal(t, composeTableK, written.Presets["custom"].Agents)
 
 	claudeMarks, codexMarks := assertGeneratedEqualsTable(t, dir, composeRenderedTable(t, out, "미리보기 (아직 바뀌지 않음)"))
-	assert.Equal(t, 16, claudeMarks)
-	assert.Equal(t, 4, codexMarks)
+	assert.Equal(t, 17, claudeMarks)
+	assert.Equal(t, 5, codexMarks)
 	assert.Equal(t, composeTableClaudeCell{model: "sonnet", effort: "medium"}, readComposeTableClaudeProfile(t, dir, "debugger"))
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6-luna", Effort: "max"}, readComposeCodexProfile(t, dir, "debugger"))
 }
@@ -194,7 +194,7 @@ func TestUpdateCompose_RefusedWriteWarnsOnceAndUpdateContinues(t *testing.T) {
 	rewriteComposeFile(t, path, "planner: fable", "planner: *tier")
 	before := composeSessionHash(t, dir)
 
-	out, err := runComposeUpdate(t, strings.NewReader("g\n\n3\n\n4\ny\n"), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(strings.NewReader("g\n\n3\n\n4\ny\n")), "--dir", dir)
 
 	require.NoError(t, err, out)
 	assert.Equal(t, before, composeSessionHash(t, dir))
@@ -212,7 +212,7 @@ func TestUpdateCompose_ConfirmedWriteSurvivesTheSupervisorMigrationSave(t *testi
 	dir := writeLegacySupervisorUpdateFixture(t, true)
 	run := newComposeUpdateRun(t, true, "")
 
-	out, err := runComposeUpdate(t, strings.NewReader("g\n\n3\n\n4\ny\n"), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(strings.NewReader("g\n\n3\n\n4\ny\n")), "--dir", dir)
 
 	require.NoError(t, err, out)
 	assert.Contains(t, out, "구성을 적용했습니다.\n")

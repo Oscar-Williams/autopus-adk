@@ -11,13 +11,13 @@
       "kind": "contains",
       "platform": "omp",
       "path": ".omp/skills/auto/SKILL.md",
-      "needle": "Route to exactly one matching detail skill from this exact map: `auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`."
+      "needle": "Route to exactly one matching detail skill from this exact map: `auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`, `auto-reverse`."
     },
     {
       "kind": "contains",
       "platform": "omp",
       "path": ".omp/commands/auto.md",
-      "needle": "Route to exactly one matching detail skill from this exact map: `auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`."
+      "needle": "Route to exactly one matching detail skill from this exact map: `auto-setup`, `auto-status`, `auto-goal`, `auto-update`, `auto-plan`, `auto-go`, `auto-fix`, `auto-review`, `auto-sync`, `auto-idea`, `auto-map`, `auto-why`, `auto-verify`, `auto-secure`, `auto-test`, `auto-qa`, `auto-dev`, `auto-canary`, `auto-doctor`, `auto-reverse`."
     },
     {
       "kind": "contains",
@@ -136,6 +136,12 @@
     {
       "kind": "contains",
       "platform": "omp",
+      "path": ".omp/commands/auto-reverse.md",
+      "needle": "Load exact detail skill `auto-reverse`; this is the same target selected by `/auto reverse ...`."
+    },
+    {
+      "kind": "contains",
+      "platform": "omp",
       "path": ".omp/skills/auto-setup/SKILL.md",
       "needle": "name: auto-setup\n"
     },
@@ -246,6 +252,12 @@
       "platform": "omp",
       "path": ".omp/skills/auto-doctor/SKILL.md",
       "needle": "name: auto-doctor\n"
+    },
+    {
+      "kind": "contains",
+      "platform": "omp",
+      "path": ".omp/skills/auto-reverse/SKILL.md",
+      "needle": "name: auto-reverse\n"
     }
   ],
   "provenance": {

@@ -2,7 +2,7 @@
 
 **Status**: implemented
 **Created**: 2026-10-12
-**Revised**: 2026-10-13 (review round 1 F-001–F-020, round 2 F-002·F-008·F-013·F-021·F-022, round 3 F-002·F-008·F-023, round 4 F-002; 구현 리뷰 뒤 S21 NO catalog 판정을 provider 단위 degrade로 정정; 2026-10-14 S17 smoke 뒤 OMP 탭 멀티프로바이더·프로필 없는 pin: REQ-MUX3-13 개정, REQ-MUX3-22, 23 추가)
+**Revised**: 2026-10-13 (review round 1 F-001–F-020, round 2 F-002·F-008·F-013·F-021·F-022, round 3 F-002·F-008·F-023, round 4 F-002; 구현 리뷰 뒤 S21 NO catalog 판정을 provider 단위 degrade로 정정; 2026-10-14 S17 smoke 뒤 OMP 탭 멀티프로바이더·프로필 없는 pin: REQ-MUX3-13 개정, REQ-MUX3-22, 23 추가; 2026-10-17 OMP 18 도구 이름: OMP Agent File Contract의 browser 역할에 `eval` 추가)
 **Domain**: MODELUX
 **Module**: autopus-adk
 **Release**: v0.50.126. 작업 branch는 `feat/modelux-003`이고 기준은 `v0.50.125`(dd6d6ea2, origin/main)다. v0.50.125는 SPEC-MODELUX-001·002로 이미 발행됐다.
@@ -229,7 +229,7 @@ WHEN the operator applies an OMP tab edit over a profile-based policy in autopus
 | frontmatter | 값 |
 |---|---|
 | `name`, `description` | 정규 에이전트 이름, `content/agents/<agent>.md`의 description(`OMPYAMLScalar`) |
-| `tools` | `61f72bb0^` 규칙: portable 도구 map(TodoWrite 제외), MCP 이름 유지, 역할별 native 도구(debugger·executor·reviewer·validator `lsp`, frontend-specialist `browser`·`inspect_image`·`lsp`, ux-validator `browser`·`inspect_image`), 정렬 |
+| `tools` | `61f72bb0^` 규칙: portable 도구 map(TodoWrite 제외), MCP 이름 유지, 역할별 native 도구(debugger·executor·reviewer·validator `lsp`, frontend-specialist `browser`·`eval`·`inspect_image`·`lsp`, ux-validator `browser`·`eval`·`inspect_image`), 정렬. browser 역할은 두 세대 이름을 함께 쓴다: omp/17.2.7은 `browser`·`inspect_image` 도구, 18.x는 `eval`의 browser prelude와 `read`의 이미지 읽기이고, OMP는 spawn할 때 실행 중인 release에 없는 이름을 뺀다(fake provider로 17.2.7·18.1.13·18.6.1 실측) |
 | `thinkingLevel` | 이번 생성의 `task.agentModelOverrides`가 그 이름을 담지 않을 때만 선언 effort(`max`, `high`, `medium`) |
 | `output` | reviewer만: golden과 같다 |
 | `model`, `spawns` | 쓰지 않는다 |

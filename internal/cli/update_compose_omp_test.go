@@ -78,7 +78,7 @@ func TestUpdateCompose_OMPPinSurvivesTheDetectionSaveAndGeneration(t *testing.T)
 	usePlatformOMPModelRunner(t, &ompModelDoctorE2ERunner{catalog: ompCLIProfileNativeCatalogJSON()})
 	dir := writeNativeComposeFixture(t, "claude-code", "codex", "omp")
 
-	out, err := runComposeUpdate(t, formInput("2\n", "4\n", "4\n", "1\n", "5\n", "2\n", "1\n", "\n", "2\n", "\n"), "--dir", dir)
+	out, err := runComposeUpdate(t, reaEnter(formInput("2\n", "4\n", "4\n", "1\n", "5\n", "2\n", "1\n", "\n", "2\n", "\n")), "--dir", dir)
 
 	require.NoError(t, err, out)
 	assert.Contains(t, out, "  + 새 플랫폼 감지: opencode\n")

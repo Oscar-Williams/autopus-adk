@@ -2,6 +2,7 @@ package omp
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -80,7 +81,8 @@ func projectOMPIntegrationAgents(
 			continue
 		}
 		if route.Required && route.DegradedAction != ompRuntimeDefaultAction {
-			err := fmt.Errorf("required_route_unresolved: %s: %s", resolution.Agent, resolution.Reason)
+			err := fmt.Errorf("required_route_unresolved: %s: %s%s",
+				resolution.Agent, resolution.Reason, ompUnavailableCandidatesDetail(resolution))
 			if hint := ompLoginHint(ompUnavailableCandidateProviders(catalog, route)); hint != "" {
 				err = fmt.Errorf("%w (%s)", err, hint)
 			}
@@ -113,4 +115,18 @@ func projectOMPIntegrationAgents(
 		result = append(result, projection)
 	}
 	return result, nil
+}
+
+// ompUnavailableCandidatesDetail names the candidates a required route tried
+// with the code the CLI plan reports for the same condition, so a generation
+// that stops on a missing model says which one (SPEC-REA-001 S11).
+func ompUnavailableCandidatesDetail(resolution OMPModelRouteResolution) string {
+	if len(resolution.FallbackAttempts) == 0 {
+		return ""
+	}
+	attempts := make([]string, 0, len(resolution.FallbackAttempts))
+	for _, attempt := range resolution.FallbackAttempts {
+		attempts = append(attempts, attempt.Selector+" "+attempt.Reason)
+	}
+	return " (omp_profile_candidate_unavailable: " + strings.Join(attempts, ", ") + ")"
 }

@@ -22,12 +22,12 @@ var (
 	// huh forms when it reports true, the SPEC-MODELUX-001 line driver
 	// otherwise.
 	composeFormsProbe = composeFormsTerminal
-	// composeRunForm runs one composition form on the command's streams.
-	// huh's NewForm writes to os.Stderr unless told otherwise, so both
-	// streams are bound explicitly and `auto update 2>err.log` keeps the
-	// form on the terminal.
-	composeRunForm = func(cmd *cobra.Command, form *huh.Form) error {
-		return form.WithInput(cmd.InOrStdin()).WithOutput(cmd.OutOrStdout()).Run()
+	// composeRunForm runs one composition form with its navigation frame on
+	// the command's streams (SPEC-TUIUX-001 REQ-TUX-16). huh's NewForm
+	// writes to os.Stderr unless told otherwise, so both streams are bound
+	// explicitly and `auto update 2>err.log` keeps the form on the terminal.
+	composeRunForm = func(cmd *cobra.Command, form *huh.Form, frame tui.NavFrame) error {
+		return tui.RunNav(form, frame, cmd.InOrStdin(), cmd.OutOrStdout())
 	}
 	// composeOutputTerminal reports whether w is a file attached to a
 	// terminal.
@@ -65,6 +65,7 @@ type composeOption[T comparable] struct {
 // values. The title, the note, and every label pass through terminalSafe:
 // huh draws them as they are, and preset names, descriptions, and catalog
 // text come from files the operator may not have written (REQ-MUX2-02).
+// tui.NavSelect opens the field on its first option, the cursor on def.
 func composeSelect[T comparable](
 	cmd *cobra.Command,
 	title, note string,
@@ -76,7 +77,7 @@ func composeSelect[T comparable](
 	for _, option := range options {
 		choices = append(choices, huh.NewOption(terminalSafe(option.label), option.value))
 	}
-	field := huh.NewSelect[T]().Title(terminalSafe(title)).Options(choices...).Value(&value)
+	field := tui.NavSelect(choices, &value).Title(terminalSafe(title))
 	if note != "" {
 		field = field.Description(terminalSafe(note))
 	}
@@ -98,10 +99,12 @@ func composeConfirm(cmd *cobra.Command, title string) (bool, error) {
 
 // runComposeForm builds the one form of field with the wizard's theme and no
 // fixed width, so huh uses the terminal's: a label naming real models is
-// wider than the wizard's 50 cells. Ctrl+C becomes errComposeInterrupted.
+// wider than the wizard's 50 cells. Its frame is the step's position, run
+// line by line where huh's own rule (TERM=dumb) asks for it. Ctrl+C becomes
+// errComposeInterrupted; Esc returns tui.ErrNavBack to the caller.
 func runComposeForm(cmd *cobra.Command, field huh.Field) error {
 	form := huh.NewForm(huh.NewGroup(field)).WithTheme(tui.AutopusTheme())
-	if err := composeRunForm(cmd, form); err != nil {
+	if err := composeRunForm(cmd, form, composeFormFrame(cmd)); err != nil {
 		if errors.Is(err, huh.ErrUserAborted) {
 			return errComposeInterrupted
 		}

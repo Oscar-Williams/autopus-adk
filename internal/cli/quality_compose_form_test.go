@@ -91,7 +91,7 @@ func TestComposeRunForm_DefaultBindsTheCommandStreams(t *testing.T) {
 		huh.NewSelect[string]().Title("pick").Options(huh.NewOptions("a", "b")...).Value(&value),
 	)).WithAccessible(true)
 
-	require.NoError(t, composeRunForm(cmd, form))
+	require.NoError(t, composeRunForm(cmd, form, tui.NavFrame{Accessible: true}))
 
 	assert.Equal(t, "b", value)
 	assert.Contains(t, out.String(), "2. b")

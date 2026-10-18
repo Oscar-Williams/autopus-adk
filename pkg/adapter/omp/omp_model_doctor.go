@@ -93,6 +93,8 @@ func projectOMPModelDoctorRoles(resolutions []OMPModelRouteResolution) []OMPMode
 			status = "supported"
 		case "degraded":
 			status = "degraded"
+		case OMPReaSessionModelStatus:
+			status = OMPReaSessionModelStatus
 		}
 		familyStatus := resolution.FamilyDiversity.Status
 		if familyStatus == "" {
@@ -130,6 +132,8 @@ func ompModelDoctorRoleSummary(rows []OMPModelDoctorRoleRow) (string, string) {
 		if row.Status == "degraded" {
 			status, reason = "degraded", "role_degraded"
 		}
+		// OMPReaSessionModelStatus is the intended analysis-rung fallback:
+		// neither blocked nor degraded.
 	}
 	return status, reason
 }

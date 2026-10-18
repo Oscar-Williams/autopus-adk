@@ -23,10 +23,10 @@ func (runner *providerFreeReadinessRunner) Run(_ context.Context, executable str
 
 func TestProbeOMPReadiness_UsesOnlyProviderFreeMetadataAndRPCState(t *testing.T) {
 	runner := &providerFreeReadinessRunner{outputs: map[string][]byte{
-		"--version":                             []byte("omp/18.0.5\n"),
+		"--version":                             []byte("omp/18.6.1\n"),
 		"--help":                                []byte("--mode rpc --no-session --cwd --tools --no-extensions --no-rules --no-lsp --no-pty\n"),
 		"config get tools.intentTracing --json": []byte("true\n"),
-		"--mode rpc --no-session --cwd . --model openai-codex/gpt-5.6-sol --tools task,hub,todo --no-extensions --no-rules --no-lsp --no-pty": providerFreeRPCFixture(t),
+		"--mode rpc --no-session --cwd . --model openai-codex/gpt-5.6-sol --tools task,todo --no-extensions --no-rules --no-lsp --no-pty": providerFreeRPCFixture(t),
 	}}
 
 	report := ProbeOMPReadiness(context.Background(), OMPReadinessOptions{
@@ -168,9 +168,9 @@ func providerFreeRPCFixture(t *testing.T) []byte {
 		{"id": "readiness-state", "type": "response", "command": "get_state", "success": true, "data": map[string]any{
 			"sessionId": "provider-free-readiness", "isStreaming": false, "isCompacting": false,
 			"messageCount": 0, "queuedMessageCount": 0,
+			// omp/18.6.1 dumps exactly the tools --tools enabled.
 			"dumpTools": []any{
-				map[string]any{"name": "task", "description": "spawn", "parameters": map[string]any{"type": "object", "properties": map[string]any{"context": map[string]any{"type": "string"}, "tasks": map[string]any{"type": "array"}}}},
-				map[string]any{"name": "hub", "description": "coordinate", "parameters": map[string]any{"type": "object"}},
+				map[string]any{"name": "task", "description": "spawn", "parameters": map[string]any{"type": "object", "properties": map[string]any{"context": map[string]any{"type": "string"}, "tasks": map[string]any{"type": "array"}, "model": map[string]any{"not": true}}}},
 				map[string]any{"name": "todo", "description": "progress", "parameters": map[string]any{"type": "object"}},
 			},
 		}},

@@ -71,11 +71,14 @@ func reportCodexRuntimeFallback(writer io.Writer, resolution config.CodexProfile
 			selected += "/" + resolution.Effective.Effort
 		}
 	}
+	// Model and effort come from autopus.yaml args and the codex catalog, so
+	// they reach the terminal through terminalSafe (SPEC-REVMODEL-001
+	// REQ-RVM-20); printable text is unchanged.
 	fmt.Fprintf(writer,
 		"Codex model fallback: requested=%s/%s selected=%s reason=%s\n",
-		strings.TrimSpace(resolution.Requested.Model),
-		strings.TrimSpace(resolution.Requested.Effort),
-		selected,
-		resolution.Reason,
+		terminalSafe(strings.TrimSpace(resolution.Requested.Model)),
+		terminalSafe(strings.TrimSpace(resolution.Requested.Effort)),
+		terminalSafe(selected),
+		terminalSafe(string(resolution.Reason)),
 	)
 }

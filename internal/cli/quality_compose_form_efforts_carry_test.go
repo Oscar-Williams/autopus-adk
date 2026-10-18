@@ -100,7 +100,7 @@ func TestComposeEffortsCarry_NewCustomCarriesTheBindingsEfforts(t *testing.T) {
 
 	out, preview := runComposeCarryForms(t, dir, "2\n", "1\n", "\n", "\n", "5\n", "\n", "\n", "2\n", "\n")
 
-	assert.Contains(t, out, "  quality.presets.custom 새로 씀 (16개 에이전트)\n  quality.presets.custom.efforts 옮겨 씀 (1개 에이전트)\n")
+	assert.Contains(t, out, "  quality.presets.custom 새로 씀 (17개 에이전트)\n  quality.presets.custom.efforts 옮겨 씀 (1개 에이전트)\n")
 	assert.Equal(t, "fable · high", preview["planner"]["Claude Code"])
 	assert.Equal(t, "6-astra · high", preview["planner"]["Codex"])
 	assert.Equal(t, map[string]string{"planner": "high"}, composeBindLoad(t, dir).Quality.Presets["custom"].Efforts)

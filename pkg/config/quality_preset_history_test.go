@@ -23,8 +23,10 @@ func TestHistoricalQualityPresets_RowsMatchShippedLayouts(t *testing.T) {
 		"HB2": {preset: "balanced", commit: "c21f7316", runtimeStandard: true, agents: shippedBalancedHB2},
 		"HB4": {preset: "balanced", commit: "aaeae52d", agents: shippedBalancedHB4},
 		"HB5": {preset: "balanced", commit: "001830fd", runtimeStandard: true, agents: shippedBalancedHB5},
+		"HB6": {preset: "balanced", commit: "fbe502c0", runtimeStandard: true, agents: shippedBalancedHB6},
 		"HU1": {preset: "ultra", commit: "c95806e2", agents: shippedUltraHU1},
 		"HU2": {preset: "ultra", commit: "aaeae52d", agents: shippedUltraHU2},
+		"HU3": {preset: "ultra", commit: "001830fd", agents: shippedUltraHU3},
 	}
 	require.Len(t, historicalQualityPresets, len(want))
 	for _, row := range historicalQualityPresets {
@@ -106,12 +108,12 @@ func TestClassifyBuiltinQualityPreset_ExactMatchIgnoringDescription(t *testing.T
 	}{
 		{name: "description-only edit of HB2", preset: "balanced",
 			value:     QualityPreset{Description: "my words", Agents: maps.Clone(shippedBalancedHB2)},
-			wantClass: BuiltinQualityPresetHistorical, wantRow: "HB2", wantStd: true, wantDiffers: 11},
+			wantClass: BuiltinQualityPresetHistorical, wantRow: "HB2", wantStd: true, wantDiffers: 12},
 		{name: "HU1 without devops", preset: "ultra", value: QualityPreset{Agents: ultraWithout("devops")},
-			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 12},
+			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 13},
 		{name: "HU1 with an invalid tester tier", preset: "ultra",
 			value:     QualityPreset{Agents: func() map[string]string { a := maps.Clone(shippedUltraHU1); a["tester"] = "gpt"; return a }()},
-			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 12},
+			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 13},
 		{name: "current balanced missing one agent", preset: "balanced",
 			value:     QualityPreset{Agents: currentWith("balanced", "annotator", "")},
 			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 1},
@@ -126,14 +128,14 @@ func TestClassifyBuiltinQualityPreset_ExactMatchIgnoringDescription(t *testing.T
 			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 0},
 		{name: "balanced written with an ultra row", preset: "balanced",
 			value:     QualityPreset{Agents: maps.Clone(shippedUltraHU2)},
-			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 16},
+			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 17},
 		{name: "ultra written with a balanced row", preset: "ultra",
 			value:     QualityPreset{Agents: maps.Clone(shippedBalancedHB4)},
-			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 15},
-		{name: "unshipped executor promotion", preset: "balanced", value: QualityPreset{Agents: executorPromotion},
-			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 12},
-		{name: "preset without agents", preset: "balanced", value: QualityPreset{Description: "empty"},
 			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 16},
+		{name: "unshipped executor promotion", preset: "balanced", value: QualityPreset{Agents: executorPromotion},
+			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 13},
+		{name: "preset without agents", preset: "balanced", value: QualityPreset{Description: "empty"},
+			wantClass: BuiltinQualityPresetCustomized, wantDiffers: 17},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -213,9 +215,9 @@ presets:
 		got[name] = status
 	}
 	assert.Equal(t, BuiltinQualityPresetStatus{
-		Class: BuiltinQualityPresetHistorical, Row: "HB2", RuntimeStandard: true, Differs: 11,
+		Class: BuiltinQualityPresetHistorical, Row: "HB2", RuntimeStandard: true, Differs: 12,
 	}, got["balanced"])
 	assert.Equal(t, BuiltinQualityPresetStatus{
-		Class: BuiltinQualityPresetHistorical, Row: "HU1", Differs: 11,
+		Class: BuiltinQualityPresetHistorical, Row: "HU1", Differs: 12,
 	}, got["ultra"])
 }

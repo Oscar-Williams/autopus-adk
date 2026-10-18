@@ -9,7 +9,16 @@ import (
 	"github.com/insajin/autopus-adk/pkg/orchestra"
 )
 
+// filterInstalledProviders keeps the providers whose binary is installed and
+// warns on stderr about every other one, in the runtime wording of auto spec
+// review and the doctor smoke.
 func filterInstalledProviders(all []orchestra.ProviderConfig) []orchestra.ProviderConfig {
+	return filterInstalledProvidersWith(all, warnMissingProviderBinary)
+}
+
+// filterInstalledProvidersWith keeps the providers whose binary is installed
+// and hands every other one, with the binary it looked for, to missing.
+func filterInstalledProvidersWith(all []orchestra.ProviderConfig, missing func(orchestra.ProviderConfig, string)) []orchestra.ProviderConfig {
 	var available []orchestra.ProviderConfig
 	for _, provider := range all {
 		binary := provider.Binary
@@ -20,9 +29,16 @@ func filterInstalledProviders(all []orchestra.ProviderConfig) []orchestra.Provid
 			available = append(available, provider)
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "경고: %s 바이너리를 찾을 수 없습니다 (건너뜀)\n", binary)
+		missing(provider, binary)
 	}
 	return available
+}
+
+// warnMissingProviderBinary is the runtime warning. The binary comes from
+// autopus.yaml and reaches the terminal, so it passes through terminalSafe
+// (SPEC-REVMODEL-001 REQ-RVM-20).
+func warnMissingProviderBinary(_ orchestra.ProviderConfig, binary string) {
+	fmt.Fprintf(os.Stderr, "경고: %s 바이너리를 찾을 수 없습니다 (건너뜀)\n", terminalSafe(binary))
 }
 
 func configureSpecReviewProviders(providers []orchestra.ProviderConfig) []orchestra.ProviderConfig {

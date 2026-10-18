@@ -44,8 +44,8 @@ func TestGeneratePreviewMappings_OMPResolvesToAdapter(t *testing.T) {
 		}
 	}
 	assert.Equal(t, 14, surfaces["rules"], "omp preview must plan 14 rules")
-	assert.Equal(t, 16, surfaces["agents"], "the default source plans one definition per canonical agent")
-	assert.Equal(t, 20, surfaces["commands"], "omp preview must plan 20 commands")
+	assert.Equal(t, 17, surfaces["agents"], "the default source plans one definition per canonical agent")
+	assert.Equal(t, 21, surfaces["commands"], "omp preview must plan 21 commands, reverse included")
 
 	_, unknownErr := generatePreviewMappings(context.Background(), t.TempDir(), ompDispatchConfig("omp"), "not-a-platform")
 	require.Error(t, unknownErr, "the unknown-platform branch must still reject a bogus identifier")
