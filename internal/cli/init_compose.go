@@ -17,7 +17,8 @@ const initComposeStart = "balanced"
 type initStageOutcome int
 
 const (
-	initStageDone initStageOutcome = iota
+	// initStageDone, the zero value, is a stage that finished normally.
+	_ initStageOutcome = iota
 	// initStageBack is Esc on the form menu: init goes back to its wizard.
 	initStageBack
 	// initStageCancelled is Ctrl+C in a composition form.

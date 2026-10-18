@@ -163,7 +163,7 @@ func runNavTUI(t *testing.T, form *huh.Form, frame NavFrame, size tea.WindowSize
 	for _, keys := range writes {
 		run.write(keys)
 	}
-	run.wait()
+	_ = run.wait() // callers read the result through run.wait() again
 	return run
 }
 

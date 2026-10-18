@@ -45,10 +45,6 @@ func assertCommonJSONEnvelope(t *testing.T, payload map[string]any, wantCommand 
 	require.NoError(t, err)
 }
 
-func executeRoot(t *testing.T, workdir string, args ...string) ([]byte, error) {
-	return executeRootWithEnv(t, workdir, nil, args...)
-}
-
 func executeRootWithEnv(t *testing.T, workdir string, env []string, args ...string) ([]byte, error) {
 	t.Helper()
 
