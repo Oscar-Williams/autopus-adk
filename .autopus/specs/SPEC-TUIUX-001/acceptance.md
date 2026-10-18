@@ -9,7 +9,7 @@ fixture는 모두 temp 부모 디렉터리 아래 이름이 `p`인 project 안�
 - CAT-A, CAT-B: SPEC-MODELUX-001 `acceptance.md`와 같다(CAT-B는 CAT-A에서 `gpt-6.1-sol`을 빼고 `gpt-6-sol`을 넣었다). 따로 적지 않으면 CAT-A다. "첫 진입 CAT-A, 둘째 진입 CAT-B"는 Codex catalog probe seam이 첫 호출에 CAT-A, 둘째 호출에 CAT-B를 돌려준다는 뜻이다.
 - IN: 빈 project `p`에서 `auto init --dir <DIR> --platforms claude-code,codex`, `composeTTYProbe` true, PATH에 provider CLI 없음, HOME·XDG는 temp. `runInitWizard` seam은 호출과 opts를 기록하고 W를 돌려준다. W = {UsageProfile developer, CommentsLang en, CommitsLang ko, AILang ko, Quality balanced, ReviewGate false, Rea true, Methodology tdd}. W_rg는 W의 Quality가 `role-groups`, W_none은 Methodology가 `none`인 값이다. IR은 seam이 W_rg를 돌려주는 IN이다.
 - NPD(normalized project digest): project 아래 모든 파일의 경로와 SHA-256 목록이다. 계산 전에 adapter manifest(`pkg/adapter/manifest.go:75`, `:103`)의 `generated_at` 값을 `<T>`로, `.autopus/backup/<timestamp>/` 경로의 timestamp를 `<TS>`로 바꾼다. T1이 기준을 두 번 돌려 더 찾은 시간 field가 있으면 research `### NPD 정규화`에 적힌 대로 함께 바꾼다. 그 밖의 bytes는 그대로 비교한다.
-- 대조 run: 같은 fixture에 마지막 답만 바로 준 run이다(뒤로와 다시 답하기를 뺀 입력). "대조와 같다"는 NPD가 같다는 뜻이다. base golden은 `evidence/base-goldens/`(stdout은 `<DIR>` 치환, NPD)이고 같은 release tree에서 TUIUX 소스 변경만 뺀 tree의 출력이다. T1이 b08ea644에서 만들었고, v0.50.126 RC에서는 SPEC-TEAMAUTO-001이 생성 skill 두 개를 바꿔 NPD를 RC에서 TUIUX를 뺀 tree에서 다시 기록했다(`evidence/base-goldens-recapture.md`).
+- 대조 run: 같은 fixture에 마지막 답만 바로 준 run이다(뒤로와 다시 답하기를 뺀 입력). "대조와 같다"는 NPD가 같다는 뜻이다. base golden은 `evidence/base-goldens/`(stdout은 `<DIR>` 치환, NPD)이고 같은 release tree에서 TUIUX 소스 변경만 뺀 tree의 출력이다. T1이 b08ea644에서 만들었고, v0.50.126에서는 TUIUX 밖 변경(TEAMAUTO·agy·REA·ledger)이 생성 파일을 바꿔 NPD를 release tree에서 TUIUX를 뺀 tree에서 다시 기록했다(`evidence/base-goldens-recapture.md`).
 
 ### S1: wizard 뒤로, 미리 선택, 값
 Priority: Must
