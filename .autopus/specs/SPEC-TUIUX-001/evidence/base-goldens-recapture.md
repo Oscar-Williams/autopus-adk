@@ -1,4 +1,6 @@
-# base golden 재기록 (2026-10-17, v0.50.126 RC)
+# base golden 재기록 (2026-10-17, v0.50.126)
+
+1–3절은 RC(8a0da3a1)의 첫 재기록이고, 지금 golden은 5절의 release/v0.50.126(9fe18fc2) 재기록이다.
 
 - 증상: RC `rc/v0.50.126`(8a0da3a1)에서 `TestTUIUXBaseGoldens_FormlessPlacesKeepTheBaseOutput`의 init-yes, update-yes, update-ci, init-pipe, init-in과 `TestInitReview_S6ShowsTheSettingsBeforeAnyWrite`가 NPD 차이로 실패했다. 단언하는 stdout golden은 모두 같았다.
 - 환경: go1.27.0 darwin/arm64. 모든 run은 test harness(`tuiux_env_test.go`의 temp HOME·XDG·PATH, `LANG=ko_KR.UTF-8`, CAT-A)로 돌렸고 `-run` filter만 썼다.
@@ -59,6 +61,43 @@ NPD 차이는 init 흐름마다 4줄, update 흐름마다 8줄이다. 추가되�
 
 RC에 TUIUX 밖의 생성 내용 변경이 더 들어오면 golden은 다시 깨진다. 그때는 아래 순서를 따른다.
 
-1. RC에서 TUIUX를 뺀 tree에서도 같은 test가 같은 흐름으로 실패하는지 본다. 실패하지 않으면 TUIUX 회귀이므로 golden을 고치지 않는다.
-2. 그 tree는 81cda519에 TUIUX 밖 branch를 RC와 같은 순서로 merge해 만든다. 다른 branch가 TUIUX 소스 파일을 바꿨다면 이 구성이 맞지 않으므로 그 변경을 따로 본다.
-3. 그 tree에서 writer를 돌려 나온 파일을 가져온다. RC에서 writer를 직접 돌리지 않는다.
+1. 같은 tree에서 TUIUX를 뺀 tree에서도 같은 test가 같은 흐름으로 실패하는지 본다. 실패하지 않으면 TUIUX 회귀이므로 golden을 고치지 않는다.
+2. 그 tree는 81cda519에 TUIUX 밖 변경을 원래 순서로 merge해 만든다. TUIUX가 든 tree에서 갈라진 branch(RC 뒤의 fix branch)는 commit을 그대로 merge하면 그 history의 TUIUX가 다시 들어온다. 그래서 `git merge-tree --write-tree --merge-base=<그 merge의 merge base>`로 branch 자신의 변경만 얹는다. 대조로 tip에서 TUIUX 범위를 되돌린 tree(5절)를 만들어 두 tree가 문서 밖에서 같은지 본다. TUIUX가 아닌 변경이 TUIUX 소스 파일에서 충돌하면 그 변경을 따로 본다.
+3. 그 tree에서 writer를 돌려 나온 파일을 가져온다. 검사 대상 tree에서 writer를 직접 돌리지 않는다.
+
+## 5. 최종 재기록 (release/v0.50.126 9fe18fc2)
+
+- 증상: fix branch를 모두 합친 tip에서 같은 다섯 흐름과 S6이 NPD 차이로 실패했다. 단언하는 stdout은 같았다. 853a9a5c에서 한 번 기록한 뒤 tip이 9fe18fc2로 옮겨(teamline a1e5e460·537dab36·580d7ef3, REA dd2df735와 증거 commit) 9fe18fc2에서 다시 기록했다.
+- 뺄 TUIUX: SPEC-TUIUX-001(`81cda519..78191e1a`)과 fix/v0126-sel의 229962e0(`NavSelect`, `composeSelect`, 그 test). agy, reasave, omphub, ledger, teamtop은 base에 넣는다.
+- 첫 번째 방법(정방향): 3절 tree 63b711d7에 release의 fix merge를 같은 순서로 얹었다. 각 merge에는 그 merge의 merge base를 `--merge-base`로 줬다.
+  - agy 714634fa(8a0da3a1), reasave d26839b6(8a0da3a1), omphub 384439a8(8a0da3a1), ledger caeba74a(8a0da3a1), ledger 보안 d8c7b9dc(caeba74a), omphub 리뷰 c6d588d9(384439a8), teamtop f7d98506(8a0da3a1), agy 후속 1a031ec0(714634fa), 그다음 `853a9a5c..9fe18fc2`(`--merge-base=853a9a5c`). sel 80823212는 넣지 않았다.
+  - 충돌은 문서에서만 났다(`CHANGELOG.md`, `SPEC-REA-001/spec.md`, `SPEC-TUIUX-001/research.md`). TUIUX와 reasave·agy 후속이 함께 바꾼 `internal/cli/rea_run.go`는 충돌 없이 합쳐졌다.
+- 두 번째 방법(되돌리기): `git merge-tree --write-tree --merge-base=78191e1a 9fe18fc2 81cda519`로 SPEC-TUIUX-001을 되돌리고, `--merge-base=229962e0 <그 결과> 8a0da3a1`로 229962e0을 되돌렸다. 결과 tree는 f974358638af4a36b9d1b3bfaeedfcdbefd92b72다.
+- 두 tree는 문서(`CHANGELOG.md`, `SPEC-REA-001/spec.md`, SPEC-TUIUX-001 문서·golden)와 harness 머리 주석 밖에서 같다. 그래서 두 번째 tree로 기록했다.
+- tree 확인:
+  - tip과 base tree의 차이는 문서 밖에서 TUIUX 파일과 정확히 같다(TUIUX가 아닌 경로 0, 같은 TUIUX 파일 0).
+  - `rea_run.go`에서 tip→base 차이는 TUIUX를 되돌리는 hunk뿐이다.
+  - `quality_compose_form.go`에서 tip→base 차이는 TUIUX를 되돌리는 hunk와 `NavSelect` 줄뿐이다.
+  - base tree에는 `tui/nav.go`, `tui/nav_select.go`, `init_review.go`가 없다.
+- tip golden(80823212 + caeba74a의 `.gitignore` 줄)을 base tree에 대 보면 같은 다섯 흐름이 실패한다. 실패는 TUIUX 코드에서 온 것이 아니다.
+- writer 결과: committed golden과 다른 것은 NPD 다섯 개다(init 흐름 10줄씩, update 흐름 20줄씩). stdout 일곱 개는 b08ea644 기록 그대로다. 같은 writer를 tip에서 돌린 출력과 비교하면 단언하는 파일은 모두 같고, 다른 것은 단언하지 않는 `init-in.stdout`(TUIUX 확인 화면)뿐이다.
+- 3절 tree에서 이 base tree까지 바뀐 생성 파일과 그 출처는 아래와 같다. 생성 파일에서 더하거나 뺀 줄은 모두 소스 diff(`8a0da3a1..9fe18fc2`)에 그대로 있다.
+
+| 생성 파일 | 소스 | 줄의 commit(`git blame`) |
+|---|---|---|
+| `.gitignore` | `internal/cli/init_helpers.go:70-73` `permissionLedgerRel` | caeba74a(ledger) |
+| `.claude/agents/autopus/reverse-engineer.md`, `.codex/agents/reverse-engineer.toml` | `content/agents/reverse-engineer.md`, 2줄 | a4031069(agy) |
+| `.claude/rules/autopus/deferred-tools.md` | `content/rules/deferred-tools.md`, 6줄 | 2ceb6a0a(teamtop) |
+| `.claude/skills/agent-teams/SKILL.md` | `content/skills/agent-teams.md`, 37줄 | 2ceb6a0a 36줄, 85161370 1줄(teamtop) |
+| `.claude/skills/auto-go/SKILL.md` | `templates/claude/commands/auto-workflows.md.tmpl`, 36줄과 7줄 | 2ceb6a0a(teamtop) 36줄, 580d7ef3 4줄·a1e5e460 3줄(teamline) |
+| `.codex/config.toml` | `pkg/reamcp/shape_codex.go:14` `codexTimeoutLine`(`startup_timeout_sec = 30` → `120`) | dd2df735(REA) |
+
+- manifest와 journal:
+  - claude-code manifest는 위 Claude 파일 네 entry의 checksum만, codex manifest는 `reverse-engineer.toml`과 `config.toml` checksum만 다르다.
+  - journal은 그 entry의 `after_checksum`만 다르다.
+  - `.gitignore` 줄은 caeba74a가 golden에 손으로 고친 값과 base tree 출력이 같다.
+- teamtop branch가 f7d98506에서 TUIUX가 든 tree로 다시 쓴 NPD는 release merge에서 HEAD 쪽을 남겨 쓰지 않았다. 이 재기록이 둘을 대신한다.
+- 검증:
+  - fix/v0126-gold(9fe18fc2 + 이 golden)에서 두 test가 통과한다.
+  - 음성 대조: `content/skills/agent-teams.md`에 한 줄을 더하면 다섯 흐름이 실패한다.
+  - `go test ./internal/cli/` 전체를 돌렸다. 853a9a5c 기록은 `-timeout 60m`에서 3511.7초로 통과해 한도에 가까웠으므로, 9fe18fc2에서는 `-timeout 90m`으로 돌렸다(결과는 이 재기록 commit 메시지에 적는다).

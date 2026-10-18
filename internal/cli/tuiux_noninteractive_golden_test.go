@@ -4,13 +4,19 @@ package cli
 // form opens, the stdout and the normalized project digest stay those of the
 // base, the same tree without any TUIUX source change. The goldens under
 // evidence/base-goldens were written at b08ea644, the branch base of the
-// implementation (8ec13935 with the merged SPEC-REVMODEL-001 implementation);
-// on the v0.50.126 RC the NPD files were written again on the RC without
-// TUIUX (evidence/base-goldens-recapture.md). TUIUX_WRITE_GOLDENS=1 writes
-// them again: every flow then runs twice more than a second apart, and any
-// difference between the two runs, such as a time field outside the NPD
-// normalization, fails the write. It runs on a tree without TUIUX, never on
-// the tree under test.
+// implementation (8ec13935 with the merged SPEC-REVMODEL-001 implementation).
+// The NPD files were written again on the v0.50.126 release tree without
+// TUIUX: SPEC-TEAMAUTO-001 and its team fixes changed the generated auto-go
+// and agent-teams skills and the deferred-tools rule, the agy fix changed the
+// reverse-engineer agent, the REA fix raised the startup timeout of the Codex
+// REA entry in .codex/config.toml, and the permission ledger fix added a
+// managed .gitignore pattern. Only those files and the manifest, journal, and
+// backup digests that follow from them changed, and the stdout goldens are
+// still those of b08ea644 (evidence/base-goldens-recapture.md).
+// TUIUX_WRITE_GOLDENS=1 writes them again: every flow then runs twice more
+// than a second apart, and any difference between the two runs, such as a
+// time field outside the NPD normalization, fails the write. It runs on a
+// tree without TUIUX, never on the tree under test.
 
 import (
 	"os"
