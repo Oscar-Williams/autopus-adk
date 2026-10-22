@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **adkchannel: 채널 receiver가 저장소의 새 소유자 이름 `autopus-ai/autopus-adk`도 받는다** (2026-10-23): 저장소가
+  `Insajin`에서 `autopus-ai`로 옮겨졌지만 receiver는 서명된 문서의 `repository` 필드를 `Insajin/autopus-adk` 한 문자열과만
+  대조했다. 데스크톱이 채널 문서를 새 이름으로 발행하면 `adk-channel-receive.yml`이 `repository must be`로 멈추고 아무것도
+  게시되지 않는다. `VerifyUpdate`는 지금 게시된 문서도 같은 대조로 검증하므로 이름을 바꿔 끼우면 풀리지 않는다. 이제
+  `verify`, `verify-update`, `verify-rotation`, `verify-rotation-historical`이 정확히 두 이름(`autopus-ai/autopus-adk`,
+  `Insajin/autopus-adk`)만 받는다. 대소문자 접기와 접두·접미 일치는 쓰지 않으므로 `autopus-ai/autopus-adk-x`나
+  `insajin/autopus-adk`는 계속 거부된다. 서명, key id, 스키마, 만료, 단조 증가 버전 규칙은 그대로다. receiver는 default
+  branch에서 실행 시점에 소스로 빌드되므로 main에 합치는 것으로 반영되고 릴리스나 태그는 필요 없다.
 - **v0.50.126: release canary가 production이 쓰는 context window를 선언하고 `ADK_RELEASE_MODEL_CONTEXT_WINDOW`를 받는다**
   (2026-10-20): canary가 선언한 window는 evidence의 provider authority digest에 들어간다. production은 그 window로
   digest를 다시 계산해 일치할 때만 managed active history를 허용한다. 그런데 `release-prep.sh`는 window를
