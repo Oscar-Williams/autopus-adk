@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Go 표준 라이브러리 `crypto/x509` 취약점 대응** (2026-10-23): toolchain을 Go `1.26.10`으로 올려 침해된 중간 인증서를
+  신뢰 대상에서 빼는 `GO-2026-6809`(`crypto/x509`, `Certificate.Verify`) 수정을 받는다. `a2a.Transport.Connect`가
+  `websocket.Dialer.DialContext`로 TLS 연결을 열 때 이 함수를 호출하므로 go1.26.9로 빌드한 바이너리는 영향권이고,
+  `Dependency Vulnerability Check`(govulncheck)도 이 경로를 호출되는 취약점으로 보고해 실패했다. `go.mod`의 `toolchain`,
+  `.goreleaser.yaml`의 `GOTOOLCHAIN`, release prep과 candidate build 스크립트의 `expected_go_toolchain`, 이를 고정하는
+  oracle·hardening test를 한꺼번에 옮겼다. goreleaser post-hook이 candidate build와 release binary의 digest가 같기를
+  요구하므로 둘은 같은 toolchain이어야 한다. 모든 workflow의 `setup-go`는 `go-version-file: go.mod`로 같은 줄을 읽는다.
+  `go.mod`의 `go 1.26` 지시문과 의존성은 그대로다.
 - **adkchannel: 채널 receiver가 저장소의 새 소유자 이름 `autopus-ai/autopus-adk`도 받는다** (2026-10-23): 저장소가
   `Insajin`에서 `autopus-ai`로 옮겨졌지만 receiver는 서명된 문서의 `repository` 필드를 `Insajin/autopus-adk` 한 문자열과만
   대조했다. 데스크톱이 채널 문서를 새 이름으로 발행하면 `adk-channel-receive.yml`이 `repository must be`로 멈추고 아무것도

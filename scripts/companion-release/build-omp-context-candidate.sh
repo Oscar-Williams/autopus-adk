@@ -8,7 +8,7 @@ fail() { printf 'OMP context candidate build: %s\n' "$1" >&2; exit 1; }
 readonly output=$1
 readonly expected_tag='v0.50.126'
 readonly expected_version='0.50.126'
-readonly expected_go_toolchain='go1.26.9'
+readonly expected_go_toolchain='go1.26.10'
 [[ "${COMPANION_RELEASE_TAG:-}" == "$expected_tag" ]] || fail 'release tag is not exact A36'
 [[ "${GITHUB_SHA:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'source commit is malformed'
 [[ "${COMPANION_SOURCE_TREE:-}" =~ ^[0-9a-f]{40}$ ]] || fail 'source tree is malformed'
