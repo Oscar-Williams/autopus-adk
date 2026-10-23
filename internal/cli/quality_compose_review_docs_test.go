@@ -1,7 +1,7 @@
 package cli
 
 // SPEC-REVMODEL-001 T10 (REQ-RVM-18; acceptance S14): the three helps, both
-// READMEs, and the v0.50.126 CHANGELOG entry document the review tab, the
+// READMEs, and the v0.50.127 CHANGELOG entry document the review tab, the
 // three keys it writes, the live check's most model calls, the CLI backend
 // models, and that orchestra commands and --multi keep every provider.
 
@@ -32,7 +32,7 @@ func TestReviewDocs_S14HelpsReadmesAndChangelog(t *testing.T) {
 		{"auto quality --help", newQualityCmd().Long, composeReviewTextEN.Tab},
 		{"README.md", readRepoFile(t, "README.md"), composeReviewTextEN.Tab},
 		{"docs/README.ko.md", readRepoFile(t, "docs", "README.ko.md"), composeReviewTextKO.Tab},
-		{"CHANGELOG.md v0.50.126", unreleased, composeReviewTextKO.Tab},
+		{"CHANGELOG.md v0.50.127", unreleased, composeReviewTextKO.Tab},
 	}
 	for _, doc := range docs {
 		assertComposeFormDocs(t, doc.name, doc.text, append([]string{doc.tab, "SPEC-REVMODEL-001"}, reviewDocWants...)...)

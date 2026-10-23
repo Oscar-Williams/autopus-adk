@@ -6,7 +6,7 @@ import "fmt"
 // Autopus agents as generated .omp/agents files, and every bundled agent but
 // task is disabled. Native restores the v0.50.125
 // surface, where every role collapses onto the five bundled agents. Native is
-// kept for v0.50.126 only and is removed in v0.50.127.
+// kept for v0.50.127 only and is removed in v0.50.128.
 const (
 	OMPAgentSourceAutopus = "autopus"
 	OMPAgentSourceNative  = "native"

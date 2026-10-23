@@ -1,7 +1,7 @@
 package cli
 
 // SPEC-TUIUX-001 T11 (REQ-TUX-18; acceptance S19): the three helps, README.md,
-// and the v0.50.126 CHANGELOG entry document Esc back, the accessible token,
+// and the v0.50.127 CHANGELOG entry document Esc back, the accessible token,
 // the first-step notice, the frame, and the init review with what it leaves
 // out. The strings come from the code that prints them.
 
@@ -41,7 +41,7 @@ func TestTUIUXDocs_S19HelpsReadmeAndChangelog(t *testing.T) {
 		{"auto quality --help", newQualityCmd().Long, append(en, "b, back, or 뒤로", "quality · Model composition › edit the composition › Codex")},
 		{"README.md", readRepoFile(t, "README.md"), append(append(en, "`b`, `back`, or `뒤로`", "Proceed with these settings?",
 			"init · 4/6 Review Gate", "Answers", "Changed settings", "REA MCP: on · add", "orchestra normalization"), review...)},
-		{"CHANGELOG.md v0.50.126", unreleased, append(append(ko, "지금까지 고른 값", "이대로 진행할까요?", "orchestra 정규화"), review...)},
+		{"CHANGELOG.md v0.50.127", unreleased, append(append(ko, "지금까지 고른 값", "이대로 진행할까요?", "orchestra 정규화"), review...)},
 	} {
 		text := flowText(doc.text)
 		for _, want := range doc.wants {

@@ -79,7 +79,7 @@ func TestComposeEffortForms_ClaudeGroupEffortIsWrittenAndGenerated(t *testing.T)
 		"  claude-custom은 balanced 표준 배치를 받지 않음\n"+
 		"  "+composeToolBlockNotice+"\n"+
 		"  quality.providers는 v0.50.88보다 오래된 auto가 읽지 않습니다\n"+
-		"  quality.presets.*.efforts는 v0.50.126보다 오래된 auto가 읽지 못합니다\n"+
+		"  quality.presets.*.efforts는 v0.50.127보다 오래된 auto가 읽지 못합니다\n"+
 		"적용할까요? \n")
 	assert.Equal(t, composeEfforts("xhigh", composeDesignAgents...), composeBindLoad(t, dir).Quality.Presets["claude-custom"].Efforts)
 	assertGeneratedEqualsTable(t, dir, plainComposeHeaders(preview))
@@ -143,12 +143,12 @@ func TestComposeEffortForms_KeepAndBackToAutomatic(t *testing.T) {
 	assert.Equal(t, composeEfforts("high", composeDesignAgents...), composeBindLoad(t, dir).Quality.Presets["codex-custom"].Efforts)
 	assert.Equal(t, "opus", composeBindLoad(t, dir).Quality.Presets["codex-custom"].Agents["executor"])
 	assert.NotContains(t, tier, ".efforts ")
-	assert.NotContains(t, tier, "v0.50.126")
+	assert.NotContains(t, tier, "v0.50.127")
 
 	automatic := runQualityEffortForms(t, dir, "CAT-E", "2\n", "3\n", "2\n", "2\n", "\n", "5\n", "1\n", "2\n", "\n")
 	assert.Contains(t, automatic, "planner effort \n1. 그대로 — 6.1-sol · high\n2. 6.1-sol · low\n3. 6.1-sol · medium\n4. 6.1-sol · high\n5. 6.1-sol · xhigh (자동)\n")
 	assert.Contains(t, automatic, "  quality.presets.codex-custom.efforts 고쳐 씀 (3개 에이전트)\n")
-	assert.NotContains(t, automatic, "v0.50.126")
+	assert.NotContains(t, automatic, "v0.50.127")
 	assert.Equal(t, composeEfforts("high", "architect", "security-auditor", "spec-writer"),
 		composeBindLoad(t, dir).Quality.Presets["codex-custom"].Efforts)
 	assert.Equal(t, config.CodexProfile{Model: "gpt-6.1-sol", Effort: "xhigh"}, readComposeCodexProfile(t, dir, "planner"))
@@ -223,7 +223,7 @@ func TestComposeEffortForms_InitSavesAndGeneratesTheEfforts(t *testing.T) {
 
 	require.NoError(t, err, out)
 	assert.NotContains(t, out, composeToolBlockNotice, "init rewrites no file")
-	assert.Contains(t, out, "  quality.presets.*.efforts는 v0.50.126보다 오래된 auto가 읽지 못합니다\n")
+	assert.Contains(t, out, "  quality.presets.*.efforts는 v0.50.127보다 오래된 auto가 읽지 못합니다\n")
 	assert.Equal(t, composeEfforts("xhigh", composeDesignAgents...), composeBindLoad(t, dir).Quality.Presets["claude-custom"].Efforts)
 	assert.Equal(t, composeTableClaudeCell{model: "opus", effort: "xhigh"}, readComposeTableClaudeProfile(t, dir, "planner"))
 }

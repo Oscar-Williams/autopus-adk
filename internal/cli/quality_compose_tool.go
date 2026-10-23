@@ -30,7 +30,7 @@ var composeToolTexts = map[string]composeToolText{
 		effortsNew:     "quality.presets.%s.efforts 새로 씀 (%d개 에이전트)",
 		effortsRewrite: "quality.presets.%s.efforts 고쳐 씀 (%d개 에이전트)",
 		effortsRemoved: "quality.presets.%s.efforts 지움",
-		effortReaders:  "quality.presets.*.efforts는 v0.50.126보다 오래된 auto가 읽지 못합니다",
+		effortReaders:  "quality.presets.*.efforts는 v0.50.127보다 오래된 auto가 읽지 못합니다",
 	},
 	"en": {
 		provider:       "quality.providers.%s %s → %s",
@@ -40,7 +40,7 @@ var composeToolTexts = map[string]composeToolText{
 		effortsNew:     "quality.presets.%s.efforts written (%d agents)",
 		effortsRewrite: "quality.presets.%s.efforts rewritten (%d agents)",
 		effortsRemoved: "quality.presets.%s.efforts removed",
-		effortReaders:  "auto older than v0.50.126 cannot read quality.presets.*.efforts",
+		effortReaders:  "auto older than v0.50.127 cannot read quality.presets.*.efforts",
 	},
 }
 
@@ -166,7 +166,7 @@ func (t composeToolText) effortsLine(name string, before, after map[string]strin
 }
 
 // composeQualityHasEfforts reports whether any preset stores an efforts
-// mapping, which auto older than v0.50.126 cannot read.
+// mapping, which auto older than v0.50.127 cannot read.
 func composeQualityHasEfforts(quality config.QualityConf) bool {
 	for _, preset := range quality.Presets {
 		if len(preset.Efforts) > 0 {

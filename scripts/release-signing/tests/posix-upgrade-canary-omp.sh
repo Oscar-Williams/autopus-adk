@@ -3,10 +3,10 @@
 # generates. It uses that script's fail, assert_contains, MODE, NEW_VERSION,
 # and PROJECT.
 
-# From v0.50.126 the default autopus mode generates these agent definitions
+# From v0.50.127 the default autopus mode generates these agent definitions
 # again (SPEC-MODELUX-003); v0.50.118 through v0.50.125 reused OMP's bundled
 # agents and generated none.
-AUTOPUS_AGENTS_SINCE=0.50.126
+AUTOPUS_AGENTS_SINCE=0.50.127
 AUTOPUS_AGENTS='annotator architect debugger deep-worker devops executor explorer frontend-specialist
 perf-engineer planner reviewer security-auditor spec-writer tester ux-validator validator'
 
@@ -38,7 +38,7 @@ candidate_generates_agents() {
 # agent but task under a claim, not the retired marker policy. A name the
 # installed omp does not bundle is an inert entry.
 assert_autopus_agent_surface() {
-    python3 - "$PROJECT" "$AUTOPUS_AGENTS" <<'PY' || fail 'the Autopus OMP agent surface is not the v0.50.126 shape'
+    python3 - "$PROJECT" "$AUTOPUS_AGENTS" <<'PY' || fail 'the Autopus OMP agent surface is not the v0.50.127 shape'
 import json
 import pathlib
 import sys

@@ -1,5 +1,11 @@
 # Release v0.50.126 (A36)
 
+> **BURNED 2026-10-23.** `v0.50.126` was tagged and pushed but never
+> published: the protected release job was approved only after its one-day
+> evidence artifact and its K3 attestation had expired. A36 is now `v0.50.127`;
+> see [release-v0.50.127.md](release-v0.50.127.md). This page is history, so do
+> not run its `--apply` steps.
+
 Status: coordinate advanced, not published. A36 is `v0.50.126`; nothing in
 this change creates a tag, an evidence object, a release, or a tap commit.
 
