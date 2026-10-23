@@ -130,7 +130,7 @@ Clarification Ledger unavailable. 입력은 planning context의 사용자 결정
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
 | ~~CD-1 plain 세션 발견·reviewer 대체·disabled 숨김(live)~~ | REQ-MUX3-07, 10의 런타임 증거 | 닫힘: 2026-10-15 S17 PASS, `evidence/manual-smoke-003.txt` |
-| CD-2 이름별 override dispatch와 `/review` verdict(live) | REQ-MUX3-08, 11의 런타임 증거 | S23 PASS 기록(모델 호출, 사용자 동의)  — v0.50.126 발행 시점에 열린 채로 남는다 |
+| CD-2 이름별 override dispatch와 `/review` verdict(live) | REQ-MUX3-08, 11의 런타임 증거 | S23 PASS 기록(모델 호출, 사용자 동의)  — v0.50.127 발행(v0.50.126은 소각) 시점에 열린 채로 남는다 |
 
 결정적 부분(golden, 설정 되읽기, 생성 파일)은 test가 닫는다. 위 두 행은 기록이 남기 전까지 debt이고 blocker나 생략도 PASS로 닫지 않는다.
 ## Evolution Ideas

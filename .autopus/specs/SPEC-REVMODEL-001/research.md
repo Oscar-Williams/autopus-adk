@@ -148,7 +148,7 @@ sequenceDiagram
 
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1 실제 터미널 smoke(S15): 두 확인 요청의 결과, gemini 전환, doctor readiness 줄 | REQ-RVM-19, Outcome Lock의 "실제로 답하는지" | `evidence/manual-smoke-revmodel.txt` 기록(사용자 동의, model 호출 보통 6회·최대 18회). blocker나 생략은 PASS가 아니다 |
+| CD-1 실제 터미널 smoke(S15): 두 확인 요청의 결과, gemini 전환, doctor readiness 줄 | REQ-RVM-19, Outcome Lock의 "실제로 답하는지" | `evidence/manual-smoke-revmodel.txt` 기록(사용자 동의, model 호출 보통 6회·최대 18회). blocker나 생략은 PASS가 아니다. **closed** 2026-10-17: S15 PASS, 편차 D-1(gemini 전환은 judge 변경으로 대신) 기록, `evidence/manual-smoke-revmodel.txt`. v0.50.127로 발행 |
 
 ## Evolution Ideas
 These are optional improvements and do not block sync completion.
