@@ -9,7 +9,7 @@ LDFLAGS := -ldflags "-s -w -X github.com/insajin/autopus-adk/pkg/version.version
 GOPATH      ?= $(shell go env GOPATH)
 INSTALL_DIR ?= $(GOPATH)/bin
 
-.PHONY: build test test-unit test-integration test-e2e test-all update-golden lint clean install generate-templates
+.PHONY: build test test-unit test-integration test-e2e test-all test-cli-shard update-golden lint clean install generate-templates
 
 build:
 	go build $(LDFLAGS) -o bin/$(BINARY) ./cmd/auto
@@ -21,6 +21,8 @@ build:
 # 로컬 진입점만 깨진 상태로 오래 남아 있었다. UNIT_TIMEOUT과
 # INTEGRATION_TIMEOUT은 ci.yaml 공유 레인(-race, ./...)의 45m를 따른다.
 # internal/cli 하나가 그 레인에서 1709초를 넘겨 썼기 때문이다(2026-10-12).
+# CI는 그 뒤 internal/cli를 test-cli shard로 나눠 병렬로 돌린다 (아래
+# test-cli-shard). 로컬 `make test`는 여전히 한 프로세스라 CI보다 오래 걸린다.
 UNIT_TIMEOUT        ?= 45m
 INTEGRATION_TIMEOUT ?= 45m
 ISOLATED_TIMEOUT    ?= 10m
@@ -72,6 +74,17 @@ test-unit:
 test-integration:
 	go test -race -count=1 -timeout=$(INTEGRATION_TIMEOUT) -tags integration -skip '$(PROCESS_HEAVY_TESTS)' ./...
 	go test -race -count=1 -timeout=$(ISOLATED_TIMEOUT) -tags integration -p 1 -run '$(PROCESS_HEAVY_TESTS)' ./...
+
+# CI는 internal/cli를 이름 해시로 나눈 shard로 돌린다 (ci.yaml 의 test-cli,
+# scripts/ci/testshard). 실패한 job 은 "test-cli (3/5)" 로 보이고, 같은 shard 는
+#   make test-cli-shard SHARD=3/5
+# 로 그대로 재현된다. 숫자는 job 이름의 것을 쓴다: 나뉘는 방식이 전체 shard 수에
+# 달려 있어 다른 수를 주면 다른 테스트 묶음이 돈다.
+test-cli-shard:
+	@[ -n "$(SHARD)" ] || { echo "usage: make test-cli-shard SHARD=3/5 (the numbers in the failing job's name)"; exit 2; }
+	@set -e; shard='$(SHARD)'; number=$${shard%/*}; total=$${shard#*/}; \
+	expr="$$(go test -list . ./internal/cli | go run ./scripts/ci/testshard plan -lane unit -total "$$total" -index "$$((number - 1))" -skip '$(PROCESS_HEAVY_TESTS)')"; \
+	go test -race -count=1 -timeout=$(UNIT_TIMEOUT) -skip '$(PROCESS_HEAVY_TESTS)' -run "$$expr" ./internal/cli
 
 test-e2e: build
 	AUTOPUS_TEST_BINARY=./bin/auto go test -race -count=1 -timeout=$(INTEGRATION_TIMEOUT) -tags e2e ./e2e/...

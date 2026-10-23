@@ -14,12 +14,24 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
-    name: test
+  # The unit gate is split across runners instead of one 54-minute job. The
+  # internal/cli package alone ran 2474s of its 2700s per-binary budget under
+  # -race with coverage (main push run 39884824784), so it is cut into shards
+  # by scripts/ci/testshard and the rest of the work runs in parallel jobs:
+  #
+  #   build           compile, cross-compile, benchmark contracts, vet
+  #   test-isolated   process-heavy tests, one package at a time (-p 1)
+  #   test-packages   every package except internal/cli, race + coverage
+  #   test-cli        internal/cli shards, race + coverage, then the
+  #                   integration-tagged lane for the same shard
+  #   test            aggregator: every job above passed, the shards cover
+  #                   internal/cli exactly, merged coverage meets the threshold
+  #
+  # The job named `test` stays the single check that means "unit gate passed".
+  build:
+    name: build
     runs-on: ubuntu-latest
-    # About 12 minutes of steps run before the shared coverage lane, so the
-    # job holds them, the lane's 45m per-binary timeout, and vet.
-    timeout-minutes: 60
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -50,6 +62,22 @@ jobs:
       - name: Vet Windows intake tests
         run: GOOS=windows GOARCH=amd64 go vet ./pkg/harneval/intake/
 
+      - name: Vet
+        run: go vet ./...
+
+  test-isolated:
+    name: test-isolated
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
       # 프로세스 중량 테스트 목록은 Makefile 의 PROCESS_HEAVY_TESTS 가 단일
       # 출처다. CI 가 정규식을 복사해 두면 로컬 게이트와 CI 게이트가 조용히
       # 갈라지므로, 값을 그대로 읽어 오고 파싱 실패는 즉시 에러로 만든다.
@@ -77,28 +105,253 @@ jobs:
             -run "$PROCESS_HEAVY_TESTS" \
             -coverprofile=coverage-isolated.out ./...
 
-      # 공유 레인은 격리 레인과 정확히 같은 집합을 건너뛴다. 건너뛴 테스트의
-      # 커버리지는 격리 레인이 남긴 프로파일에 그대로 있으므로 두 프로파일을
-      # 합쳐 총계를 유지한다 - 임계값은 건드리지 않는다.
-      - name: Test with Coverage
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-isolated
+          path: coverage-isolated.out
+          if-no-files-found: error
+          retention-days: 3
+
+  test-packages:
+    name: test-packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve process-heavy test selector
         shell: bash
         run: |
           set -euo pipefail
-          # internal/cli alone ran 1709s of this budget on main (run
-          # 38315371841, 2026-10-12) and reached the earlier 30m timeout at
-          # 1800s on the SPEC-MODELUX-003 branch (runs 38352421138 through
-          # 38561909086), where pkg/adapter/omp also grew from 484s to about
-          # 1000s. The per-binary timeout must stay above a healthy run of the
-          # slowest package, and the job budget above must hold it.
+          selector="$(sed -n 's/^PROCESS_HEAVY_TESTS ?= //p' Makefile)"
+          [[ -n "$selector" ]]
+          printf 'PROCESS_HEAVY_TESTS=%s\n' "$selector" >> "$GITHUB_ENV"
+
+      # 공유 레인은 격리 레인과 정확히 같은 집합을 건너뛴다. 건너뛴 테스트의
+      # 커버리지는 격리 레인이 남긴 프로파일에 있고, 집계 job 이 두 프로파일을
+      # 합쳐 총계를 유지한다 - 임계값은 건드리지 않는다.
+      #
+      # internal/cli is the one package left out: test-cli runs it in shards,
+      # and the count check below fails if it ever stops being listed exactly
+      # once, so it cannot fall out of both jobs.
+      - name: Test every package except internal/cli with Coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_package="$(go list ./internal/cli)"
+          all_packages="$(go list ./...)"
+          packages=()
+          cli_matches=0
+          while IFS= read -r package; do
+            if [[ "$package" == "$cli_package" ]]; then
+              cli_matches=$((cli_matches + 1))
+            else
+              packages+=("$package")
+            fi
+          done <<<"$all_packages"
+          ((cli_matches == 1))
+          ((${#packages[@]} > 0))
+          # The per-binary timeout must stay above a healthy run of the slowest
+          # package here (pkg/adapter/omp ran 1081s on main run 39884824784),
+          # and the job budget above must hold it.
           go test -race -count=1 -timeout=45m \
             -skip "$PROCESS_HEAVY_TESTS" \
-            -coverprofile=coverage-shared.out ./...
-          mode="$(head -n 1 coverage-shared.out)"
-          [[ "$mode" == "$(head -n 1 coverage-isolated.out)" ]]
+            -coverprofile=coverage-packages.out "${packages[@]}"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-packages
+          path: coverage-packages.out
+          if-no-files-found: error
+          retention-days: 3
+
+  # Each leg owns the internal/cli tests whose name hashes to its index, runs
+  # them under -race with coverage, then runs the same shard of the
+  # integration-tagged lane. The partition comes from `go test -list`, so a new
+  # test lands in a shard on its own, and testshard fails the leg if any test
+  # would be left out or selected twice. SHARD_TOTAL is the matrix size, so
+  # adding a shard is one more matrix entry.
+  test-cli:
+    name: test-cli (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    env:
+      SHARD_INDEX: ${{ strategy.job-index }}
+      SHARD_TOTAL: ${{ strategy.job-total }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve process-heavy test selector
+        shell: bash
+        run: |
+          set -euo pipefail
+          selector="$(sed -n 's/^PROCESS_HEAVY_TESTS ?= //p' Makefile)"
+          [[ -n "$selector" ]]
+          printf 'PROCESS_HEAVY_TESTS=%s\n' "$selector" >> "$GITHUB_ENV"
+
+      # Listing with the lane's own -race and -coverprofile flags warms the
+      # build cache the test run reuses. The final comparison asks the real
+      # `go test` front end which tests the expression selects: it must be
+      # exactly the names this shard was assigned.
+      - name: Plan the unit shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          lane=unit
+          go test -race -count=1 -coverprofile="$RUNNER_TEMP/list-cover.out" -list . ./internal/cli > "$RUNNER_TEMP/cli-list-$lane.txt"
+          go run ./scripts/ci/testshard plan -lane "$lane" \
+            -total "$SHARD_TOTAL" -index "$SHARD_INDEX" -skip "$PROCESS_HEAVY_TESTS" \
+            -names "$RUNNER_TEMP/cli-names-$lane.txt" -manifest "$RUNNER_TEMP/manifest-$lane.txt" \
+            < "$RUNNER_TEMP/cli-list-$lane.txt" > "$RUNNER_TEMP/cli-run-$lane.expr"
+          selected="$(go test -list "$(<"$RUNNER_TEMP/cli-run-$lane.expr")" ./internal/cli | awk '/^(Test|Example|Fuzz)/' | LC_ALL=C sort)"
+          planned="$(LC_ALL=C sort "$RUNNER_TEMP/cli-names-$lane.txt")"
+          if [[ "$selected" != "$planned" ]]; then
+            echo "::error::go test -list selected a different set than the $lane shard plan; the shard would not run what it was assigned"
+            diff <(printf '%s\n' "$planned") <(printf '%s\n' "$selected") | head -20 || true
+            exit 1
+          fi
+
+      # @AX:REASON [AUTO]: A shard run must be bound to its planned expression and the same process-heavy skip as every other lane.
+      - name: Test internal/cli shard with Coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -race -count=1 -timeout=20m \
+            -run "$(<"$RUNNER_TEMP/cli-run-unit.expr")" \
+            -skip "$PROCESS_HEAVY_TESTS" \
+            -coverprofile=coverage-cli.out ./internal/cli
+
+      - name: Plan the integration shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          lane=integration
+          go test -count=1 -tags integration -list . ./internal/cli > "$RUNNER_TEMP/cli-list-$lane.txt"
+          go run ./scripts/ci/testshard plan -lane "$lane" \
+            -total "$SHARD_TOTAL" -index "$SHARD_INDEX" \
+            -names "$RUNNER_TEMP/cli-names-$lane.txt" -manifest "$RUNNER_TEMP/manifest-$lane.txt" \
+            < "$RUNNER_TEMP/cli-list-$lane.txt" > "$RUNNER_TEMP/cli-run-$lane.expr"
+          selected="$(go test -tags integration -list "$(<"$RUNNER_TEMP/cli-run-$lane.expr")" ./internal/cli | awk '/^(Test|Example|Fuzz)/' | LC_ALL=C sort)"
+          planned="$(LC_ALL=C sort "$RUNNER_TEMP/cli-names-$lane.txt")"
+          if [[ "$selected" != "$planned" ]]; then
+            echo "::error::go test -list selected a different set than the $lane shard plan; the shard would not run what it was assigned"
+            diff <(printf '%s\n' "$planned") <(printf '%s\n' "$selected") | head -20 || true
+            exit 1
+          fi
+
+      - name: Test internal/cli shard with the integration tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout=10m -tags integration \
+            -run "$(<"$RUNNER_TEMP/cli-run-integration.expr")" ./internal/cli
+
+      - name: Collect shard evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir shard-evidence
+          cp coverage-cli.out shard-evidence/
+          cp "$RUNNER_TEMP/manifest-unit.txt" "$RUNNER_TEMP/manifest-integration.txt" shard-evidence/
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-cli-${{ strategy.job-index }}
+          path: shard-evidence
+          if-no-files-found: error
+          retention-days: 3
+
+  # `if: !cancelled()` makes this job run, and fail, when an upstream job
+  # failed. Without it a failed `needs` would mark this check skipped, and a
+  # skipped check does not block a merge. The first step turns every
+  # non-success result into a failure of the check named `test`.
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build, test-isolated, test-packages, test-cli]
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Require every unit job to succeed
+        shell: bash
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          if ! jq -e 'length > 0 and all(.[]; .result == "success")' <<<"$NEEDS" >/dev/null; then
+            echo "::error::a unit job did not succeed, so the unit gate has not passed"
+            exit 1
+          fi
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: ci-coverage-*
+          path: coverage-artifacts
+
+      # Every shard of both internal/cli lanes must have reported, from the same
+      # universe of tests, and together they must own every test exactly once.
+      - name: Verify internal/cli shards cover every test
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          manifests=(coverage-artifacts/ci-coverage-cli-*/manifest-*.txt)
+          go run ./scripts/ci/testshard verify -lanes unit,integration "${manifests[@]}"
+
+      # Profiles from the isolated lane, the other packages, and every
+      # internal/cli shard overlap on blocks that more than one lane touches.
+      # `go tool cover` adds the counts of identical blocks, so the merged
+      # total is the coverage of the union of everything that ran.
+      - name: Merge coverage and enforce the threshold
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          profiles=(
+            coverage-artifacts/ci-coverage-isolated/coverage-isolated.out
+            coverage-artifacts/ci-coverage-packages/coverage-packages.out
+            coverage-artifacts/ci-coverage-cli-*/coverage-cli.out
+          )
+          cli_profiles=(coverage-artifacts/ci-coverage-cli-*/coverage-cli.out)
+          cli_manifests=(coverage-artifacts/ci-coverage-cli-*/manifest-unit.txt)
+          # Exactly one profile per reporting unit shard, and at least one shard.
+          ((${#cli_profiles[@]} > 0))
+          ((${#cli_profiles[@]} == ${#cli_manifests[@]}))
+          mode="$(head -n 1 "${profiles[0]}")"
+          for profile in "${profiles[@]}"; do
+            [[ -s "$profile" ]]
+            [[ "$(head -n 1 "$profile")" == "$mode" ]]
+          done
           {
             printf '%s\n' "$mode"
-            tail -n +2 coverage-shared.out
-            tail -n +2 coverage-isolated.out
+            for profile in "${profiles[@]}"; do
+              tail -n +2 "$profile"
+            done
           } > coverage.out
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Total coverage: ${COVERAGE}%"
@@ -109,9 +362,6 @@ jobs:
           fi
         env:
           COVERAGE_THRESHOLD: "85"
-
-      - name: Vet
-        run: go vet ./...
 
   lineage-integration:
     name: lineage-integration
@@ -145,22 +395,32 @@ jobs:
           exit 1
 
       # @AX:REASON [AUTO]: Keep the bounded GoReleaser warm-up off the shared package scheduler so its 30-minute budget is deterministic.
+      #
+      # internal/cli is left out as well: its integration lane ran 760s of this
+      # step's 900s per-binary budget on main run 39884824784, so test-cli runs
+      # it in shards. The count check fails if it ever stops being listed
+      # exactly once, so it cannot fall out of both jobs.
       - name: Test non-lineage integration packages
         shell: bash
         run: |
           set -euo pipefail
           lineage_package="$(go list -tags integration ./pkg/companionmanifest)"
+          cli_package="$(go list -tags integration ./internal/cli)"
           all_packages="$(go list -tags integration ./...)"
           packages=()
           lineage_matches=0
+          cli_matches=0
           while IFS= read -r package; do
             if [[ "$package" == "$lineage_package" ]]; then
               lineage_matches=$((lineage_matches + 1))
+            elif [[ "$package" == "$cli_package" ]]; then
+              cli_matches=$((cli_matches + 1))
             else
               packages+=("$package")
             fi
           done <<<"$all_packages"
           ((lineage_matches == 1))
+          ((cli_matches == 1))
           ((${#packages[@]} > 0))
           go test -count=1 -timeout=15m -tags integration "${packages[@]}"
 
