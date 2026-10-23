@@ -195,10 +195,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # The linter must be built with a Go at least as new as the go.mod
+      # toolchain line, and its bundled x/tools must read that toolchain's
+      # export data. v2.12.2 (go1.26.2) refuses a go1.27.3 target outright, and
+      # v2.13.0 through v2.13.2 fail to import "cmp" ("export data version 5 is
+      # greater than maximum supported version 4"). v2.14.0 is the first
+      # release that lints this module on go1.27.3 with zero issues.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v2.12.2
+          version: v2.14.0
           args: --timeout=5m
 
   static-contracts:

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Go toolchain을 현재 stable인 `1.27.3`으로 올린다** (2026-10-23): `go.mod`의 `toolchain`을 `go1.26.10`에서 `go1.27.3`으로
+  올린다. `GO-2026-6809`(`crypto/x509`)는 1.26.10과 1.27.3 두 계열에서 모두 고쳐져 있어 이 변경이 새 취약점을 닫는 것은 아니고, 같은 수정을 최신 계열에서 받는
+  것이다. `.goreleaser.yaml`의 `GOTOOLCHAIN`, release prep과 candidate build 스크립트의 `expected_go_toolchain`, 이를 고정하는
+  oracle·hardening test도 한꺼번에 옮겼다. 이 여섯 곳이 같은 toolchain을 가리키는지 `TestGoToolchainPinAgreesEverywhere`가 확인하므로(그 전에는
+  `go.mod`와 candidate build 스크립트를 지키는 test가 없었다) 일부만 올리면 release 단계가 아니라 CI에서 실패한다. `go.mod`의 `go 1.26` 지시문은
+  그대로라서 Go 1.26.x 도구로도 계속 빌드되고, Go 1.27에서 지시문에 묶인 기본값 변화(`x509sslcertoverrideplatform`, `tracebacklabels`)는
+  바이너리에 `=0`으로 남는다. CI의 golangci-lint는 `v2.12.2`(go1.26.2로 빌드)가 go1.27.3을 대상으로 거부하고 `v2.13.x`는 go1.27.3의 export
+  data(version 5)를 읽지 못해 `v2.14.0`으로 올렸다. 사용자에게 보이는 변화가 둘 있다. Go 1.27은 macOS 13(Ventura) 이상만 지원하므로 darwin 릴리스
+  바이너리의 최소 macOS가 12에서 13으로 올라가고(`CGO_ENABLED=0` 빌드의 `LC_BUILD_VERSION` minos 12.0 → 13.0), `encoding/json`이 v2
+  구현 위에서 돌아 중첩 필드 타입 오류의 구조체 이름, 일부 구문 오류 문구, 잘못된 UTF-8 문자열의 Marshal 출력이 달라진다(strict decoder의 unknown
+  field·trailing data 판정은 그대로다).
 - **Go 표준 라이브러리 `crypto/x509` 취약점 대응** (2026-10-23): toolchain을 Go `1.26.10`으로 올려 침해된 중간 인증서를
   신뢰 대상에서 빼는 `GO-2026-6809`(`crypto/x509`, `Certificate.Verify`) 수정을 받는다. `a2a.Transport.Connect`가
   `websocket.Dialer.DialContext`로 TLS 연결을 열 때 이 함수를 호출하므로 go1.26.9로 빌드한 바이너리는 영향권이고,
