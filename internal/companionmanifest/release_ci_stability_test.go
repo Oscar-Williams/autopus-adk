@@ -59,7 +59,7 @@ func TestCIWorkflow_StableChecksHaveBoundedTimeouts(t *testing.T) {
 	}
 	linter := ciStep(t, workflow.Jobs["lint"], "golangci-lint")
 	if linter.Uses != "golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20" ||
-		linter.With["version"] != "v2.12.2" {
+		linter.With["version"] != "v2.14.0" {
 		t.Fatalf("golangci-lint gate drifted: uses=%q version=%v", linter.Uses, linter.With["version"])
 	}
 
