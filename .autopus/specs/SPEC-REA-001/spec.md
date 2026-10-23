@@ -1,6 +1,6 @@
 # SPEC-REA-001: REA 역공학 MCP 통합 — 프로젝트 범위 등록, reverse-engineer 에이전트, `/auto reverse`
 
-**Status**: implemented
+**Status**: completed
 **Created**: 2026-10-15
 **Revised**: 2026-10-17 (S18 Codex cold 시작이 부하 중 30초를 넘어 `startup_timeout_sec`를 120으로 올리고 깨진 npx cache 복구 안내를 더함; v0.50.126 smoke: agy 1.4 — Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고 Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침; update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA

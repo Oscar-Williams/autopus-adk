@@ -132,7 +132,7 @@ planning context의 표다(2026-10-16). 셀은 근거로만 요약했고 지시�
 ## Completion Debt
 | Item | Blocks | Required resolution |
 |------|--------|---------------------|
-| CD-1: init과 update의 실제 터미널 smoke(S18)가 아직 없다 | REQ-TUX-19, Outcome Lock의 "실제 터미널" | T12가 S18 순서로 돌리고 `evidence/manual-smoke-tuiux.txt`를 남긴다. accessible test로 대신하지 않는다 |
+| CD-1: init과 update의 실제 터미널 smoke(S18)가 아직 없다 | REQ-TUX-19, Outcome Lock의 "실제 터미널" | T12가 S18 순서로 돌리고 `evidence/manual-smoke-tuiux.txt`를 남긴다. accessible test로 대신하지 않는다. **closed** 2026-10-17: S18 PASS, `evidence/manual-smoke-tuiux.txt`. v0.50.127로 발행 |
 
 ## Evolution Ideas
 These are optional improvements and do not block sync completion.
