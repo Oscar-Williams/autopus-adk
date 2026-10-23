@@ -1,7 +1,12 @@
 # Release v0.50.127 (A36)
 
-Status: coordinate re-bound, not published. A36 is `v0.50.127`; nothing in
-this change creates a tag, an evidence object, a release, or a tap commit.
+Status: published 2026-10-23. A36 is `v0.50.127`, immutable release `421737046`
+(Latest, 15 assets, published 2026-10-23T22:53:17Z) from Release run
+`39942813399`; the environment approval landed well inside the attestation
+window (expires_at 2026-10-24T10:57:01Z). Evidence tag
+`omp-context-evidence-v0.50.127` (object `7f7a8451`, commit `510d462b`),
+ruleset `25699619` sealed, Homebrew Cask `e92f7e19`, Upgrade Canary
+`40036612584` passed.
 
 > **PREDECESSOR ATTEMPT BURNED 2026-10-23.** `v0.50.126` is failed release
 > history. The R2-signed tag object `3fed15013ae753af224b15b97efd28dfa7db3bcc`
