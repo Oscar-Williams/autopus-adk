@@ -96,12 +96,12 @@ func TestFormulaRecoveryWorkflow_ManualExactA36LeastPrivilege(t *testing.T) {
 		}
 	}
 	for _, version := range regexp.MustCompile(`v?[0-9]+\.[0-9]+\.[0-9]+`).FindAllString(raw, -1) {
-		if version != "v0.50.126" && version != "v4.1.2" && version != "v3.1.2" {
+		if version != "v0.50.127" && version != "v4.1.2" && version != "v3.1.2" {
 			t.Fatalf("recovery workflow references non-A36 version %q", version)
 		}
 	}
-	if strings.Count(raw, "v0.50.126") != 2 {
-		t.Fatalf("recovery workflow must name v0.50.126 only in invocation guidance and exact job guard")
+	if strings.Count(raw, "v0.50.127") != 2 {
+		t.Fatalf("recovery workflow must name v0.50.127 only in invocation guidance and exact job guard")
 	}
 }
 
@@ -154,7 +154,7 @@ func TestFormulaRecoveryWorkflow_RequiresExactSealedTagAuthorityBeforeTapToken(t
 	}
 	ruleset := readReleaseFile(t, "scripts/companion-release/verify-release-tag-ruleset.sh")
 	for _, required := range []string{
-		`readonly release_ref='refs/tags/v0.50.126'`, `--sealed-runtime) mode=sealed-runtime`,
+		`readonly release_ref='refs/tags/v0.50.127'`, `--sealed-runtime) mode=sealed-runtime`,
 		`elif $mode == "sealed-runtime"`, `(.bypass_actors == [] or .bypass_actors == null)`,
 		`if [[ "$mode" != 'sealed-runtime' ]]`, `["creation","deletion","update"]`,
 	} {
