@@ -53,14 +53,52 @@ changes a value:
   the coordinates file to the end of `verify-public-key-lineage-pins.sh`,
   right after A22's pins. `verify-public-key-lineage.sh` sources the pins
   helper before the coordinates helper, so every phase still sees the same
-  variables. Coordinates is now at 297 and pins at 219. Sourcing both helpers
-  for every tag before and after the move produced byte-identical pins and
-  prior coordinates.
+  variables. Coordinates is now at 297 and pins at 219.
 
-A37 does not fit as-is: it adds 5 lines to `validate-source.sh` and 15 to the
-coordinates file. Before the next move, shrink `validate-source.sh` (the
-per-phase ancestor `elif` chain is the largest repeated block) and give the
-coordinates file room again.
+Proof that the move changed no value:
+
+- The moved block is the same 16 lines byte for byte (sha256
+  `3f36626af0032350dbf6198c503ab9d844503b42fb5faa49795ddf6c204a3b8b`), and
+  the old pins file is an exact prefix of the new one.
+- Sourcing both helpers and dumping every `A*` pin and `release_phase` /
+  `prior_*` value, right before and right after the move, gave byte-identical
+  output for all 39 tags: A0..A36, the burned `v0.50.124`, and an unknown tag.
+- Across the whole change, `3f2d4e0b` to this commit, all 38 tags that existed
+  before resolve to the same values and failure codes. This compares
+  everything except the 14 names the change adds: `A35_REPOSITORY`, the eleven
+  A35 pins, `A36_TAG`, and `A36_VERSION`. No name was removed. `v0.50.126`
+  failed closed before and now resolves to A36 with the A35 pins.
+
+To re-run the last check against the A36 = v0.50.126 commit `793418f8` (the coordinate later moved to v0.50.127 in `410522ba`), run this from the repository root:
+
+```bash
+bash <<'EOF'
+dump() {  # REVISION TAG
+  local dir; dir=$(mktemp -d)
+  for f in pins coordinates; do
+    git show "${1}:scripts/companion-release/verify-public-key-lineage-$f.sh" >"$dir/$f.sh"
+  done
+  (fail() { printf 'FAIL %s\n' "$1"; exit 0; }; require_environment() { :; }
+   GITHUB_REF_NAME=$2; source "$dir/pins.sh"; source "$dir/coordinates.sh"
+   set | grep -E '^(A[0-9]+_[A-Z0-9_]+|release_phase|prior_[a-z0-9_]+)=') |
+    grep -vE '^(A35_(REPOSITORY|RELEASE_ID|COMMIT_SHA|TREE_SHA|TAG_OBJECT_SHA|CHECKSUMS_SHA256|(LINUX_)?(AMD|ARM)64_ARCHIVE_SHA256|(AMD|ARM)64_MANIFEST_SHA256)|A36_(TAG|VERSION))='
+  rm -rf -- "$dir"
+}
+for tag in $(awk -F')' '/^  v0\.50\.[0-9]+\) release_phase=/ { gsub(/ /, "", $1); print $1 }' \
+    scripts/companion-release/validate-source.sh) v0.50.124 v0.50.999; do
+  [[ "$tag" == v0.50.126 ]] && continue
+  diff <(dump 3f2d4e0b "$tag") <(dump 793418f8 "$tag") >/dev/null || echo "differs: $tag"
+done
+EOF
+```
+
+It prints nothing when every tag matches.
+
+A37 needs a structural split before it can land. It adds 5 lines to
+`validate-source.sh`, which is at its limit, and 15 to the coordinates file,
+which has 3 to spare. Shrink `validate-source.sh` first (the per-phase
+ancestor `elif` chain is the largest repeated block), then split the
+coordinates file or its pin blocks so the next phase has room.
 
 The `v0.50.124` burn records are unchanged: `burned_A35_tag_124` in both
 lineage contracts, `v0.50.124` forbidden in the release workflow contract,
