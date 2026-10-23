@@ -66,7 +66,7 @@ offers low, medium, high, xhigh, and max and leaves haiku agents out, Codex
 offers the levels the catalog reports for the agents' models, and the
 automatic level is marked (automatic) and stores nothing. Chosen efforts are
 written to quality.presets.<provider>-custom.efforts, which auto older than
-v0.50.126 cannot read; a file without efforts generates exactly as before.
+v0.50.127 cannot read; a file without efforts generates exactly as before.
 
 OMP serves the 17 Autopus agents from .omp/agents by default and disables
 every bundled agent but task (scout, security-reviewer, sonic, designer,
@@ -83,7 +83,7 @@ confirmation: unchanged agents and task keep their routes, and an ultra
 profile stops following quality.presets.ultra. Native mode, the OMP line
 editor, and auto platform omp profile apply keep profiles;
 role_model_policy.agent_source: native keeps the five bundled agents during
-v0.50.126 (removal planned in v0.50.127).
+v0.50.127 (removal planned in v0.50.128).
 
 The tool tab ends with Multi-provider review while spec.review_gate is
 enabled, autopus.yaml holds at least two orchestra.providers entries, and CI

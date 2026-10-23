@@ -40,7 +40,7 @@ var composeFormTextKO = composeFormText{
 	OMPReloadFailed: "OMP 설정은 적용됐지만 다시 읽지 못했습니다: %s",
 	OMPSessionKeep:  "OMP 세션 모델 그대로", OMPSessionModel: "OMP 세션 모델", OMPFollowPlanner: "planner를 따름",
 	OMPAttestedOnly: "설치된 OMP catalog에 family·capability 정보가 없어 Autopus가 증명할 수 있는 model만 보입니다",
-	OMPOldBinary:    "프로필 없는 role_model_policy.agents는 v0.50.126보다 오래된 auto가 읽지 못합니다",
+	OMPOldBinary:    "프로필 없는 role_model_policy.agents는 v0.50.127보다 오래된 auto가 읽지 못합니다",
 	OMPConvert:      "OMP 프로필 %s의 route를 에이전트별 지정으로 옮깁니다. 바꾸지 않은 에이전트의 route는 그대로입니다.",
 	OMPProfileUnattested: "이 catalog에서는 Autopus가 증명할 수 없는 model이라 그대로 두면 적용이 막힙니다: %s. " +
 		"프로필 그대로 고치려면 줄 OMP 편집기나 auto platform omp profile apply를 쓰세요",
@@ -66,7 +66,7 @@ var composeFormTextEN = composeFormText{
 	OMPReloadFailed: "OMP settings were applied but could not be re-read: %s",
 	OMPSessionKeep:  "keep the OMP session model", OMPSessionModel: "OMP session model", OMPFollowPlanner: "follow planner",
 	OMPAttestedOnly: "The installed OMP catalog has no family or capability metadata; only models Autopus can attest are listed",
-	OMPOldBinary:    "auto older than v0.50.126 cannot read role_model_policy.agents without a profile",
+	OMPOldBinary:    "auto older than v0.50.127 cannot read role_model_policy.agents without a profile",
 	OMPConvert:      "Moving the routes of OMP profile %s to per-agent pins; unchanged agents keep their routes.",
 	OMPProfileUnattested: "Autopus cannot attest these models on this catalog, so applying with them unchanged is blocked: %s; " +
 		"the OMP line editor or auto platform omp profile apply keeps editing the profile",

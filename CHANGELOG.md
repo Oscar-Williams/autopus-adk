@@ -31,14 +31,14 @@ All notable changes to this project will be documented in this file.
   `Insajin/autopus-adk`)만 받는다. 대소문자 접기와 접두·접미 일치는 쓰지 않으므로 `autopus-ai/autopus-adk-x`나
   `insajin/autopus-adk`는 계속 거부된다. 서명, key id, 스키마, 만료, 단조 증가 버전 규칙은 그대로다. receiver는 default
   branch에서 실행 시점에 소스로 빌드되므로 main에 합치는 것으로 반영되고 릴리스나 태그는 필요 없다.
-- **v0.50.126: release canary가 production이 쓰는 context window를 선언하고 `ADK_RELEASE_MODEL_CONTEXT_WINDOW`를 받는다**
+- **v0.50.127: release canary가 production이 쓰는 context window를 선언하고 `ADK_RELEASE_MODEL_CONTEXT_WINDOW`를 받는다**
   (2026-10-20): canary가 선언한 window는 evidence의 provider authority digest에 들어간다. production은 그 window로
   digest를 다시 계산해 일치할 때만 managed active history를 허용한다. 그런데 `release-prep.sh`는 window를
   `~/.codex/config.toml`에서 읽었다. v0.50.125는 1050000을 묶었고, production은 그 값을 읽지 않고 기본값 262144를
   쓰므로 active history가 한 번도 허용될 수 없었다. 이제 window는 production 기본값과 같아야 하고, pinned OMP
   catalog가 그 모델에 주는 window를 넘을 수 없다. `ADK_RELEASE_MODEL_CONTEXT_WINDOW`가 있으면 `~/.codex`보다 먼저
   쓰므로 사용자 설정을 고치지 않아도 된다. 맞지 않으면 release-prep이 sudo 전에 내보낼 값을 알려 주고 멈춘다.
-- **v0.50.126: release canary의 OMP pin을 17.2.7에서 18.12.3으로 올린다** (2026-10-20): v0.50.126 canary는 call 4에서
+- **v0.50.127: release canary의 OMP pin을 17.2.7에서 18.12.3으로 올린다** (2026-10-20): v0.50.126 canary는 call 4에서
   `managed active OMP usage delta is empty`로 멈췄다. gpt-5.6-sol에 서로 다른 단일 turn 요청을 연달아 보내 보니 네 번째가
   `Codex is at capacity, please try again later (code=turn_rate_limit_exceeded)`로 끝났다. canary의 call 4가 바로 약 10초 안의
   네 번째 turn이다. gateway 18.2.10은 이 오류를 content 없고 usage 0인 stop으로 바꿨고, OMP 17.2.7은 그 빈 응답을 다시
@@ -46,22 +46,22 @@ All notable changes to this project will be documented in this file.
   한도에 걸리지 않았지만 17.2.7 catalog에 없다. 그래서 `advance-omp-pin.sh 18.12.3 --measure`로 pin을 옮긴다.
   managed RPC 경로는 코드 변경 없이 18.12.3에서 동작한다. 18.12.3은 아직 reduction floor를 재지 않은 버전이므로, 다음
   `release-prep.sh --apply`의 40 call cohort가 그 측정이다.
-- **v0.50.126: Antigravity 플러그인 MCP 파일에 고정 버전 rea 항목이 이미 있으면 "등록하지 않았습니다"를 내지 않는다** (2026-10-17):
+- **v0.50.127: Antigravity 플러그인 MCP 파일에 고정 버전 rea 항목이 이미 있으면 "등록하지 않았습니다"를 내지 않는다** (2026-10-17):
   Autopus가 쓴 `.agents/plugins/autopus/mcp_config.json`에 사용자가 주석을 달면 엄격한 JSON이 아니어서 user-owned로 남는데,
   agy는 그 안의 `rea-agents@6.5.0` 항목을 그대로 띄운다. 그런데도 REA가 켜진 update마다 등록하지 않았다는 안내가 찍히고
   doctor가 경고했다. 이 경우 add의 안내·미리보기 skip 줄·doctor 경고를 내지 않고 파일은 그대로 둔다.
-- **v0.50.126: REA의 Codex 시작 제한을 120초로 올리고 깨진 npx cache 복구법을 적는다** (2026-10-17): 실제 터미널 S18을
+- **v0.50.127: REA의 Codex 시작 제한을 120초로 올리고 깨진 npx cache 복구법을 적는다** (2026-10-17): 실제 터미널 S18을
   새 HOME으로 다시 재니 rea-agents 첫 다운로드가 한가할 때 26초였고, 부하 중에는 Codex가 30초 시간 초과(`timed out after 30 seconds`)로
   rea 시작을 끊었다. 끊긴 설치는 `~/.npm/_npx/<hash>`를 깨진 채 남겨, 같은 HOME의 이후 시작이 `connection closed`로
   계속 실패했다.
   - Codex managed 항목의 `startup_timeout_sec`를 30에서 120으로 올렸다. REA는 이번 릴리즈에서 처음 나가므로 30초 항목을 가진
     프로젝트는 없다.
   - README에 `npm cache npx ls`·`npm cache npx rm <key>` 복구 절차를 적었다.
-- **v0.50.126: auto-go가 `Agent Team:` 판단 줄을 바꿔 쓰지 않고 그대로 한 줄로 출력하게 한다** (2026-10-17): 실제 터미널
+- **v0.50.127: auto-go가 `Agent Team:` 판단 줄을 바꿔 쓰지 않고 그대로 한 줄로 출력하게 한다** (2026-10-17): 실제 터미널
   S15에서 lead가 판단 JSON의 `line`을 "분류기가 subagent를 골랐습니다" 같은 문장으로 풀어 쓰고, 완료 보고의 `topology:`
   줄에도 `Agent Team:`을 한 번 더 적었다. 경로 판단은 맞았다. 생성 auto-go에 "출력"은 JSON 문자열을 번역·요약 없이 그대로
   한 줄로 옮기는 것이고 완료 보고를 포함해 다른 곳에는 `Agent Team:`을 쓰지 않는다는 문장을 더했다.
-- **v0.50.126: Antigravity CLI(agy) 1.4에서 Autopus 에이전트가 시작되지 않던 도구 이름을 고친다** (2026-10-17): Antigravity
+- **v0.50.127: Antigravity CLI(agy) 1.4에서 Autopus 에이전트가 시작되지 않던 도구 이름을 고친다** (2026-10-17): Antigravity
   에이전트 파일의 `tools:`가 Gemini CLI 도구 이름(`glob`, `replace`, `run_shell_command`)을 담아, agy 1.4.0은
   `agy --agent auto-agent-<이름>`과 subagent 호출 모두 `failed to construct executor: failed to resolve components: unknown
   component: tool "glob" not found in registry`로 끝났고 17개 에이전트 중 시작되는 것이 없었다.
@@ -86,7 +86,7 @@ All notable changes to this project will be documented in this file.
     에이전트를 읽지 않았다), 쓰지 않는 것은 에이전트 본문과 agy의 명령 승인이 맡는다.
   - 같은 내용을 쓰는 `.gemini/agents/autopus/*.md`는 agy도 Gemini CLI 0.52(`.gemini/agents/*.md`만 읽는다)도 읽지 않는
     사본이다. agy가 읽는 것은 `.agents/plugins/autopus/agents/*.md`다.
-- **v0.50.126: OMP 18.3 이후 호환 — doctor RPC 검사, 조율 안내, browser 도구 이름** (2026-10-17): OMP 18.3.0이
+- **v0.50.127: OMP 18.3 이후 호환 — doctor RPC 검사, 조율 안내, browser 도구 이름** (2026-10-17): OMP 18.3.0이
   `hub` 도구를 없애고 `wait`·`write`·`proc://`로 나눴고, 18.x는 `browser`·`inspect_image` 도구도 없다. 그래서
   omp/18.6.1에서 doctor 검사가 `Unknown tool in --tools: hub.`로 RPC 전에 끝나 `rpc.*` 다섯 항목이 모두
   `exit_nonzero` FAIL이었고, 생성된 skill은 없는 `hub`를 부르라고 안내했다.
@@ -106,7 +106,7 @@ All notable changes to this project will be documented in this file.
   - 그대로: `task` 스키마 검사, 다섯 RPC frame, bootstrap model `openai-codex/gpt-5.6-sol`(OMP가 내장 catalog에서 찾고
     없으면 종료한다. 17.2.7에는 gpt-6.x가 없다). omp/17.2.7은 `dumpTools`에 parameters가 없어
     `rpc.dump_tools_pre_intent`가 전과 같이 unsupported다.
-- **v0.50.126: Claude permission ledger가 clone과 Windows의 두 번째 `auto update`를 막지 않고 `.gitignore` 대상이 된다**
+- **v0.50.127: Claude permission ledger가 clone과 Windows의 두 번째 `auto update`를 막지 않고 `.gitignore` 대상이 된다**
   (2026-10-17): v0.50.124부터 transaction rewrite가 파일의 기존 mode를 지켜서, git이 0644로 꺼낸
   `.autopus/claude-code-permissions.json`을 claim한 update가 그 파일을 0600으로 줄이지 않았다. 그래서 다음 update가
   `permission ledger must be an owner-only regular file`로 끝났다(v0.50.124·v0.50.125, ledger를 커밋한 모든 저장소의 새 clone).
@@ -130,7 +130,7 @@ All notable changes to this project will be documented in this file.
     transaction 확인은 그대로 둔다. Windows에서는 저장소가 함께 커밋한 위조 ledger·manifest·journal을 믿게 되지만, clean이
     deny를 거두지 않으므로 그 ledger가 deny를 약하게 만들 수는 없다. Windows 동작은 platform을 주입한 unit test와
     `GOOS=windows GOARCH=amd64 go build ./...`로만 확인했고 Windows 기계에서는 돌려 보지 않았다.
-- **v0.50.126: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
+- **v0.50.127: 설정 TUI의 뒤로 가기, 고른 값 요약, 단계 표시** (2026-10-16, SPEC-TUIUX-001): wizard는 단계마다 따로
   폼을 돌려 뒤로 갈 수 없었고, 앞에서 고른 값과 지금 위치(구성 단계와 그 탭)가 보이지 않았다.
   - 뒤로: `auto init` wizard(REA 단계 포함), `auto init`·`auto update`·`auto quality` 구성 단계(모든 탭), init 확인
     화면의 폼에서 Esc가 한 폼 뒤로 가고 다시 보인 폼은 앞 답을 고른 채다. 역할 그룹·에이전트별 편집은 바로 앞에 물은
@@ -153,7 +153,7 @@ All notable changes to this project will be documented in this file.
     들어가면 Codex catalog를 다시 읽고 마지막 진입의 표대로 생성한다.
   - 그대로: 쓰는 값·key·기본값·폼이 열리는 조건, `--yes`·TTY가 아닌 입력·CI update·줄 질문의 출력은 이전과 bytes가
     같다.
-- **v0.50.126: 구성 UI의 멀티프로바이더 리뷰 탭** (2026-10-16, SPEC-REVMODEL-001): `auto spec review`의
+- **v0.50.127: 구성 UI의 멀티프로바이더 리뷰 탭** (2026-10-16, SPEC-REVMODEL-001): `auto spec review`의
   provider·model·judge는 autopus.yaml을 손으로 고쳐야만 바뀌었고, catalog에 있는 model이 실제로 답하는지(예:
   `google-antigravity/gemini-3.1-pro:high`의 HTTP 404) 확인할 길이 없었다.
   - 탭: `auto init`·`auto update`·`auto quality`의 구성 편집 tool tab 마지막에 `멀티프로바이더 리뷰`가 나온다.
@@ -185,7 +185,7 @@ All notable changes to this project will be documented in this file.
     저장하지 않는다. 이름에 터미널 제어 문자가 있는 provider가 있으면 요청 전에 막고, OMP review backend의 stderr
     진단 두 줄, Codex fallback 진단 줄의 model·effort, 없는 binary 경고의 이름은 `terminalSafe`를 거친다. `--yes`,
     터미널이 아닌 입력, CI에는 탭이 없다.
-- **v0.50.126: REA 역공학 MCP, 17번째 에이전트 reverse-engineer, `/auto reverse`** (2026-10-15, SPEC-REA-001):
+- **v0.50.127: REA 역공학 MCP, 17번째 에이전트 reverse-engineer, `/auto reverse`** (2026-10-15, SPEC-REA-001):
   기존 앱·바이너리의 기능을 증거와 함께 분석해 다시 구현하려 해도 하네스에는 역공학 도구 등록, 분석 격리,
   디컴파일 결과와 구현 사이의 clean-room 경계가 없었다.
   - 기본 on: Node 조건을 충족하면 새 `auto init`은 프로젝트 범위 REA MCP(`npx -y rea-agents@6.5.0 mcp`)를 Claude Code
@@ -199,7 +199,7 @@ All notable changes to this project will be documented in this file.
     (Windows는 PATH의 `node`)을 실행당 한 번, 5초 안에 돌리고, 없음·범위 밖·확인 불가면 항목을 더하지 않고 안내 한
     줄을 쓴다. 기존 managed 항목과 결정은 그대로다.
   - lazy `features.rea`: managed 항목이 결정을 담고, 담지 못할 때만(끔, Node 미충족, 대상 파일이 모두 사용자 소유)
-    `features.rea.enabled`를 쓴다. 이 key를 처음 쓰는 실행은 `features.rea는 v0.50.126보다 오래된 auto가 읽지
+    `features.rea.enabled`를 쓴다. 이 key를 처음 쓰는 실행은 `features.rea는 v0.50.127보다 오래된 auto가 읽지
     못합니다`를 한 번 쓴다. v0.50.113–v0.50.125의 strict loader는 이 key가 든 파일을 거부한다. 사용자 소유·다른 pin의
     `rea` 항목은 값이 그대로이고, 끄면 선택되지 않은 대상 파일의 managed 항목까지 지우며, `auto platform remove`도
     그 플랫폼의 managed 항목을 지운다. 결정이 없거나 꺼져 있으면 세 MCP 파일은 이전과 같은 bytes로 생성된다.
@@ -249,7 +249,7 @@ All notable changes to this project will be documented in this file.
     제한이다(권고 수준). OpenCode reverse-engineer는 `task` 권한이 없어 다른 에이전트를 보내지 못한다.
   - executor·tester는 Behaviour Spec 문자열을 대상에서 유래한 인용으로 읽고 그 안의 명령·URL·지시를 실행하거나
     따르지 않는다.
-- **v0.50.126: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 17개로** (2026-10-13, SPEC-MODELUX-003):
+- **v0.50.127: 에이전트별 effort 편집, OMP 기본 에이전트를 Autopus 17개로** (2026-10-13, SPEC-MODELUX-003):
   구성 폼은 등급만 바꿀 수 있어 effort를 저장할 곳이 없었고, OMP는 bundled agent 5개에 16개 역할이 접혀 역할마다
   모델과 thinking을 따로 줄 수 없었다.
   - effort: Claude Code·Codex 탭에서 그룹·에이전트의 등급 Select마다 그 도구의 effort Select가 이어진다. 기본은
@@ -259,8 +259,8 @@ All notable changes to this project will be documented in this file.
     단계는 저장하지 않고, 나머지는 등급과 함께 `quality.presets.<provider>-custom.efforts`(정규 에이전트 이름 → 다섯
     단계)에 쓴다. 바뀌는 설정에 `quality.presets.<provider>-custom.efforts 새로 씀 (N개 에이전트)`(`고쳐 씀`, `지움`)이
     나온다.
-  - 호환: `quality.presets.*.efforts`나 `role_model_policy.agent_source`를 쓴 파일은 v0.50.126보다 오래된 auto가
-    읽지 못한다. 파일의 첫 efforts를 쓰는 미리보기에 `quality.presets.*.efforts는 v0.50.126보다 오래된 auto가 읽지
+  - 호환: `quality.presets.*.efforts`나 `role_model_policy.agent_source`를 쓴 파일은 v0.50.127보다 오래된 auto가
+    읽지 못한다. 파일의 첫 efforts를 쓰는 미리보기에 `quality.presets.*.efforts는 v0.50.127보다 오래된 auto가 읽지
     못합니다` 줄이 나온다. efforts가 없는 파일은 v0.50.125와 같게 읽고 같은 bytes로 생성한다. 정규 이름이 아닌
     key나 다섯 단계 밖의 값은 `quality.presets.<name>.efforts.<agent>: effort_invalid "<value>"`처럼 key 경로와 값을
     담은 오류로 로드에 실패한다.
@@ -291,7 +291,7 @@ All notable changes to this project will be documented in this file.
     model(`provider/model`)을 고르고, thinking은 고른 model이 보고한 단계만 보인다. metadata가 없는 catalog는 built-in
     선언에 있는 설치 model만 안내 1줄과 함께 보인다. 결과는 프로필 없는 pin(`role_model_policy: {version: v1, agents:
     …}`)이고 `task`는 자기 pin이 없으면 planner를 따른다(`planner를 따름`). 미리보기에 `프로필 없는
-    role_model_policy.agents는 v0.50.126보다 오래된 auto가 읽지 못합니다` 줄이 나온다. 프로필 설정 위에서 적용하면
+    role_model_policy.agents는 v0.50.127보다 오래된 auto가 읽지 못합니다` 줄이 나온다. 프로필 설정 위에서 적용하면
     `OMP 프로필 <name>의 route를 에이전트별 지정으로 옮깁니다. …` 줄과 확인 뒤 pin으로 옮긴다. 바꾸지 않은 에이전트와 `task`는
     route가 그대로이고, `scout`·`security-reviewer`·`sonic` key는 펼친 뒤 지우며, ultra 프로필의 `quality.presets.ultra`
     연동은 끝난다. native mode, 줄 OMP 편집기, `auto platform omp profile apply`는 그대로 프로필을 쓴다. pin 없는
@@ -315,12 +315,12 @@ All notable changes to this project will be documented in this file.
     ledger가 `.omp/config.yml`을 놓은 뒤에는 그 파일의 백업을 지우되, ledger를 놓은 가장 최근 committed
     transaction의 rollback artifact 하나는 다음 release까지 `.autopus/backup/` 아래 남겨 release를 손으로 되돌릴 수
     있게 한다. `auto clean`은 검증된 preimage로 복원하므로 config의 rollback artifact를 남기지 않는다.
-  - 되돌리기: `role_model_policy.agent_source: native`가 v0.50.126 동안 bundled 5개 방식을 되살린다(생성 파일
-    prune, `task.disabledAgents` 복원). key와 native 경로는 v0.50.127에서 제거할 예정이고, 다른 값은
+  - 되돌리기: `role_model_policy.agent_source: native`가 v0.50.127 동안 bundled 5개 방식을 되살린다(생성 파일
+    prune, `task.disabledAgents` 복원). key와 native 경로는 v0.50.128에서 제거할 예정이고, 다른 값은
     `role_model_policy.agent_source_invalid`다. 바이너리를 내리는 것은 되돌리기가 아니다. v0.50.125는 새 agent
     surface 필드가 든 project ownership ledger(`.autopus/omp-model-project-ownership-v1.json`)를 거부한다.
   - 알려진 동작: 폼 시작 때의 OSC 11 배경색 query(SPEC-MODELUX-002 항목)는 그대로다.
-- **v0.50.126: `/auto go`가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행** (2026-10-15,
+- **v0.50.127: `/auto go`가 조건이 맞을 때 Phase 2를 native Agent Team으로 자동 실행** (2026-10-15,
   SPEC-TEAMAUTO-001): 지금까지 native Agent Team은 `--team`을 줘야만 썼다. 이제 Claude Code에서 topology flag
   없이 돌린 `/auto go`가 Phase 2에 들어갈 때 한 번 판단해, 대화형 세션에
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`이 있고 실행 중인 Claude Code가 2.1.246 이상이며 plan에 owned paths가
