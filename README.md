@@ -1824,6 +1824,14 @@ make lint       # Run go vet
 make coverage   # Generate coverage report
 ```
 
+CI runs the unit gate as parallel jobs and splits the `internal/cli` tests into
+name-hash shards. A failing shard job is named like `test-cli (3/5)`; rerun
+exactly that shard locally with the numbers from its name:
+
+```bash
+make test-cli-shard SHARD=3/5
+```
+
 ---
 
 <div align="center">

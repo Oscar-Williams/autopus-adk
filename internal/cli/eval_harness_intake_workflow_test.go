@@ -65,7 +65,7 @@ func windowsIntakeTests(t *testing.T) []string {
 }
 
 // TestEvalHarnessIntakeWorkflow_S10_WindowsRefusalsAreVettedAndRun is the
-// static contract of T13: the ubuntu test job vets the //go:build windows
+// static contract of T13: the ubuntu build job vets the //go:build windows
 // tests, and the windows-runtime job lists them, holds a floor no higher than
 // the tests a Windows build has, runs them verbose, and compares the PASS set
 // with the list. Neither step adds an action or sits in omp-native-smoke.
@@ -73,9 +73,9 @@ func TestEvalHarnessIntakeWorkflow_S10_WindowsRefusalsAreVettedAndRun(t *testing
 	t.Parallel()
 	raw, workflow := readHarnessWorkflow(t)
 
-	test := workflow.Jobs["test"]
-	assert.Equal(t, "ubuntu-latest", test.RunsOn)
-	vet := harnessWorkflowStepNamed(t, test, intakeVetStepName)
+	build := workflow.Jobs["build"]
+	assert.Equal(t, "ubuntu-latest", build.RunsOn)
+	vet := harnessWorkflowStepNamed(t, build, intakeVetStepName)
 	assert.Equal(t, "GOOS=windows GOARCH=amd64 go vet ./pkg/harneval/intake/", strings.TrimSpace(vet.Run))
 	assert.Empty(t, vet.Uses)
 

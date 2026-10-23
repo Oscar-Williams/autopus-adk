@@ -1669,6 +1669,14 @@ make lint       # go vet 실행
 make coverage   # 커버리지 리포트 생성
 ```
 
+CI는 단위 테스트 게이트를 병렬 job으로 나누고 `internal/cli` 테스트를 이름 해시
+shard로 돌립니다. 실패한 shard job은 `test-cli (3/5)`처럼 보이며, 이름의 숫자로 같은
+shard를 로컬에서 그대로 재현합니다:
+
+```bash
+make test-cli-shard SHARD=3/5
+```
+
 ---
 
 <div align="center">
