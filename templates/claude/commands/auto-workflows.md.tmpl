@@ -1550,7 +1550,7 @@ Display: `권한 모드: {bypass | safe}`
 WHEN `.autopus/learnings/pipeline.jsonl` exists, THE SYSTEM SHALL query for entries matching the current SPEC's file paths, packages, or domain keywords:
 
 ```bash
-auto learn query --spec {SPEC_ID}
+auto learn query --spec {SPEC_ID} --top 5 --mark-reused
 ```
 
 If the command fails or is unavailable, read `.autopus/learnings/pipeline.jsonl` directly, parse JSON entries, and match by:
@@ -1558,7 +1558,7 @@ If the command fails or is unavailable, read `.autopus/learnings/pipeline.jsonl`
 2. Package names from SPEC requirements
 3. Domain keywords from SPEC title
 
-Inject the top 5 matching entries (max 2000 tokens) into the planner prompt as a `## Previous Learnings` section. Display:
+`--top 5` prints the five best matches and `--mark-reused` counts them as injected, which feeds the sync summary's top patterns. When the fallback below reads the file directly, nothing counts the reuse. Inject those entries (max 2000 tokens) into the planner prompt as a `## Previous Learnings` section. Display:
 
 ```
 💡 관련 학습 패턴 {N}개 주입됨
@@ -2373,7 +2373,7 @@ Escalate to `/auto plan` when the fix touches an auth, billing, data, migration,
 WHEN `.autopus/learnings/pipeline.jsonl` exists, THE SYSTEM SHALL query for entries matching the error context (file path, package, error pattern):
 
 ```bash
-auto learn query --files {affected_files} --keywords "{error_description}"
+auto learn query --files {affected_files} --keywords "{error_description}" --top 5 --mark-reused
 ```
 
 If matching entries found, display:
@@ -2788,18 +2788,18 @@ If the command fails (including `eval_links_unreadable`), report the failure and
 Display a learning summary BEFORE the completion bar:
 
 ```bash
-auto learn summary --since-last-sync
+auto learn summary --top 3
 ```
 
-If the command fails, generate from the JSONL file directly:
+The summary covers the whole store: there is no per-sync window. If the command fails, generate the same figures from the JSONL file directly:
 ```
 🐙 학습 요약 ────────────────────────
-  신규 기록: {N}개 (gate_fail: {n}, review_issue: {n}, ...)
+  전체 기록: {N}개 (gate_fail: {n}, review_issue: {n}, ...)
   반복 패턴 Top 3:
     1. "{pattern}" — {reuse_count}회 주입됨
     2. "{pattern}" — {reuse_count}회
     3. "{pattern}" — {reuse_count}회
-  개선 영역: {이전 sync 대비 줄어든 실패 유형}
+  개선 영역: {기록이 2개 이상인 package}
 ```
 
 WHERE no learning entries exist, display: `학습 요약: 신규 항목 없음 ✓`

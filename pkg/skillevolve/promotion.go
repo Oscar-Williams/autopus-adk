@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 var requiredPromotionChecks = []string{"template_parity", "go test ./..."}
@@ -79,6 +80,9 @@ func promotionTargets(projectDir string, candidate CandidateBundle) ([]promotion
 		if !isADKSourceOfTruthPath(file.Path) {
 			return nil, errors.New("candidate proposes non-ADK source-of-truth path")
 		}
+		if isPlaceholderProposal(file.Content) {
+			return nil, fmt.Errorf("candidate proposes placeholder content for %q; write the skill edit before promotion", file.Path)
+		}
 		rel := cleanRelPath(file.Path)
 		if _, exists := seen[rel]; exists {
 			return nil, fmt.Errorf("candidate proposes duplicate target %q", rel)
@@ -103,6 +107,13 @@ func promotionTargets(projectDir string, candidate CandidateBundle) ([]promotion
 		})
 	}
 	return targets, nil
+}
+
+// isPlaceholderProposal reports a proposal that still carries the generator's
+// stub. The generator writes no skill text and the stub passes the static
+// safety gate, so promoting it unchanged overwrote a real skill with the stub.
+func isPlaceholderProposal(content string) bool {
+	return strings.Contains(content, placeholderProposalHeading)
 }
 
 func applyPromotionTargets(targets []promotionTarget) error {

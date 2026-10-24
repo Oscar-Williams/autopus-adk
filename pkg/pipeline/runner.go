@@ -95,7 +95,7 @@ func (r *SequentialRunner) runPhaseWithRetry(ctx context.Context, phase Phase, p
 	for attempt := 0; ; attempt++ {
 		resp, err := r.backend.Execute(ctx, PhaseRequest{Prompt: prompt, PhaseID: phase.ID})
 		if err != nil {
-			learnHookExecutorError(cfg.LearnStore, phase.ID, err)
+			learnHookExecutorError(cfg.LearnStore, cfg.SpecID, phase.ID, err)
 			return PhaseResult{}, fmt.Errorf("phase %s: %w", phase.ID, err)
 		}
 
@@ -104,10 +104,10 @@ func (r *SequentialRunner) runPhaseWithRetry(ctx context.Context, phase Phase, p
 			return PhaseResult{PhaseID: phase.ID, Output: resp.Output, Verdict: verdict}, nil
 		}
 
-		learnHookGateFail(cfg.LearnStore, phase.ID, phase.Gate, resp.Output, attempt)
+		learnHookGateFail(cfg.LearnStore, cfg.SpecID, phase.ID, phase.Gate, resp.Output, attempt)
 
 		if cfg.CoverageThreshold > 0 {
-			learnHookCoverageGap(cfg.LearnStore, resp.Output, cfg.CoverageThreshold)
+			learnHookCoverageGap(cfg.LearnStore, cfg.SpecID, resp.Output, cfg.CoverageThreshold)
 		}
 
 		if phase.Gate == GateReview {
@@ -115,7 +115,7 @@ func (r *SequentialRunner) runPhaseWithRetry(ctx context.Context, phase Phase, p
 		}
 
 		if attempt >= maxRetries {
-			learnHookGateFail(cfg.LearnStore, phase.ID, phase.Gate, resp.Output, attempt)
+			learnHookGateFail(cfg.LearnStore, cfg.SpecID, phase.ID, phase.Gate, resp.Output, attempt)
 			return PhaseResult{}, fmt.Errorf("phase %s: max retries (%d) exceeded", phase.ID, maxRetries)
 		}
 	}

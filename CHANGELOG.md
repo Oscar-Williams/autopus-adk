@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **learn 저장소의 끊긴 고리 네 개를 잇고, skillevolve가 자리표시 텍스트로 skill을 덮어쓰지 못하게 막는다** (2026-10-24):
+  - `auto learn query`가 모든 결과의 점수를 `1.00`으로 찍던 것을 실제 순위 점수로 바꿨다. `--top N`과 `--mark-reused`를 더했다. `/auto go`와 `/auto fix`가 prompt에 넣는 항목만 `reuse_count`를 올리므로, 늘 0이던 sync 요약의 반복 패턴 순위가 실제 재사용을 센다.
+  - `/auto sync` 템플릿이 존재하지 않는 `auto learn summary --since-last-sync`를 불러 늘 대체 경로로 떨어지던 것을 `--top 3`으로 고쳤다. 요약은 sync 구간이 아니라 저장소 전체를 센다고 문구도 맞췄다.
+  - pipeline hook이 review issue를 뺀 기록에 SPEC ID를 남기지 않았고, 어떤 기록에도 파일을 남기지 않았다. 그래서 `auto learn query --spec`·`--files`로 찾을 수 없었다. 이제 모든 hook 기록이 실행 중인 SPEC ID를 남기고, review finding은 `path:line`으로 인용한 파일을 남긴다.
+  - `auto skill evolve promote`가 생성기의 자리표시 내용(`# Skill Evolution Candidate`)을 그대로 승격하면 실제 skill을 덮어썼다. 그 내용은 정적 safety gate를 통과했다. 이제 dry run에서도 거부한다.
+  - OMP 규칙 변환의 주석을 omp/18.12.3 동작에 맞췄다. 설명만 있는 규칙은 본문이 아니라 한 줄 목록으로 들어가고 본문은 `rule://`로 필요할 때 읽힌다.
 - **OMP `/review`가 Autopus reviewer에게서 verdict를 받는다** (2026-10-24): SPEC-MODELUX-003 S23을 omp/18.12.3에서 실제 모델로
   돌린 결과, 이름별 override dispatch는 맞았다(planner `openai-codex/gpt-6.1-sol:low`, reviewer `openai-codex/gpt-6-astra:max`).
   그런데 v0.50.127이 생성한 `.omp/agents/reviewer.md`는 `/review`에 `overall_correctness`와 `confidence` 없이
