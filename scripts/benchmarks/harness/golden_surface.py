@@ -81,7 +81,9 @@ def build_command(generator_version: str, binary: Path) -> list:
 def telemetry_off(home: Path) -> None:
     """Seed Go telemetry mode "off" under a fresh HOME. Telemetry has no environment switch, only this
     file; without it the go command leaves a detached child writing counters into HOME after it exits,
-    which races whoever removes that HOME next (a session cleanup, a test's temporary directory)."""
+    which races whoever removes that HOME next (a session cleanup, a test's temporary directory). Only
+    the trusted download HOME gets it: the build root's HOME is the driver run's HOME later, which must
+    stay empty so no seeded file can answer a probe."""
     home = Path(home)
     config = home / 'Library' / 'Application Support' if sys.platform == 'darwin' else home / '.config'
     mode = config / 'go' / 'telemetry' / 'mode'
@@ -149,7 +151,6 @@ def build_driver(root: Path, generator_version: str, modcache: Path, scratch: Pa
         shutil.copyfile(DRIVER, package / 'main.go')
         for name in ('home', 'tmp', 'gopath', 'gocache'):
             (root / name).mkdir(exist_ok=True)
-        telemetry_off(root / 'home')
     except (OSError, ValueError) as error:
         raise SurfaceError('build', f'driver package: {error}') from error
     download_modules(tree, Path(modcache), go, Path(scratch), proxy)
