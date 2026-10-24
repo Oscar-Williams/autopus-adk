@@ -21,7 +21,7 @@ func newTestStore(t *testing.T) *learn.Store {
 func TestLearnHookGateFail_NilStore(t *testing.T) {
 	t.Parallel()
 	// Should not panic.
-	learnHookGateFail(nil, PhaseValidate, GateValidation, "FAIL output", 0)
+	learnHookGateFail(nil, "", PhaseValidate, GateValidation, "FAIL output", 0)
 }
 
 // TestLearnHookGateFail_Records verifies gate fail entries are written.
@@ -29,7 +29,7 @@ func TestLearnHookGateFail_Records(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	learnHookGateFail(store, PhaseValidate, GateValidation, "FAIL output", 0)
+	learnHookGateFail(store, "", PhaseValidate, GateValidation, "FAIL output", 0)
 
 	entries, err := store.Read()
 	require.NoError(t, err)
@@ -44,7 +44,7 @@ func TestLearnHookGateFail_SeverityEscalation(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	learnHookGateFail(store, PhaseValidate, GateValidation, "FAIL", defaultMaxRetries)
+	learnHookGateFail(store, "", PhaseValidate, GateValidation, "FAIL", defaultMaxRetries)
 
 	entries, err := store.Read()
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestLearnHookGateFail_SeverityEscalation(t *testing.T) {
 // TestLearnHookCoverageGap_NilStore verifies that a nil store is a no-op.
 func TestLearnHookCoverageGap_NilStore(t *testing.T) {
 	t.Parallel()
-	learnHookCoverageGap(nil, "coverage: 62.5% of statements", 85.0)
+	learnHookCoverageGap(nil, "", "coverage: 62.5% of statements", 85.0)
 }
 
 // TestLearnHookCoverageGap table-driven tests.
@@ -99,7 +99,7 @@ func TestLearnHookCoverageGap(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			store := newTestStore(t)
-			learnHookCoverageGap(store, tc.output, tc.threshold)
+			learnHookCoverageGap(store, "", tc.output, tc.threshold)
 			entries, err := store.Read()
 			require.NoError(t, err)
 			if tc.wantEntry {
@@ -176,7 +176,7 @@ func TestLearnHookReviewIssue(t *testing.T) {
 // TestLearnHookExecutorError_NilStore verifies that a nil store is a no-op.
 func TestLearnHookExecutorError_NilStore(t *testing.T) {
 	t.Parallel()
-	learnHookExecutorError(nil, PhaseImplement, errors.New("backend down"))
+	learnHookExecutorError(nil, "", PhaseImplement, errors.New("backend down"))
 }
 
 // TestLearnHookExecutorError_Records verifies executor error entries are written.
@@ -184,7 +184,7 @@ func TestLearnHookExecutorError_Records(t *testing.T) {
 	t.Parallel()
 	store := newTestStore(t)
 
-	learnHookExecutorError(store, PhaseImplement, errors.New("timeout"))
+	learnHookExecutorError(store, "", PhaseImplement, errors.New("timeout"))
 
 	entries, err := store.Read()
 	require.NoError(t, err)

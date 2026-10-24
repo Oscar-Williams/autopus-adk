@@ -225,6 +225,17 @@ func checkVerbatim(entry LearningEntry) error {
 
 // UpdateReuseCount increments reuse_count for the entry with the given ID.
 func (s *Store) UpdateReuseCount(id string) error {
+	return s.MarkReused([]string{id})
+}
+
+// MarkReused increments reuse_count once for every distinct listed entry in one
+// rewrite. It is what `auto learn query --mark-reused` calls for the entries a
+// workflow injects into a prompt, so the summary's top patterns count real
+// reuse. An unknown ID fails the whole call and changes nothing.
+func (s *Store) MarkReused(ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -233,16 +244,20 @@ func (s *Store) UpdateReuseCount(id string) error {
 		return err
 	}
 
-	found := false
+	want := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		want[id] = false
+	}
 	for i := range entries {
-		if entries[i].ID == id {
+		if _, ok := want[entries[i].ID]; ok {
 			entries[i].ReuseCount++
-			found = true
-			break
+			want[entries[i].ID] = true
 		}
 	}
-	if !found {
-		return fmt.Errorf("entry not found: %s", id)
+	for id, found := range want {
+		if !found {
+			return fmt.Errorf("entry not found: %s", id)
+		}
 	}
 
 	return rewriteStore(s, entries, skips)

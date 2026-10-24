@@ -101,3 +101,11 @@ RC에 TUIUX 밖의 생성 내용 변경이 더 들어오면 golden은 다시 깨
   - fix/v0126-gold(9fe18fc2 + 이 golden)에서 두 test가 통과한다.
   - 음성 대조: `content/skills/agent-teams.md`에 한 줄을 더하면 다섯 흐름이 실패한다.
   - `go test ./internal/cli/` 전체를 돌렸다. 853a9a5c 기록은 `-timeout 60m`에서 3511.7초로 통과해 한도에 가까웠으므로, 9fe18fc2에서는 `-timeout 90m`으로 돌렸다(결과는 이 재기록 commit 메시지에 적는다).
+
+## 6. learn 저장소 수정 재기록 (fix/learn-store-defects, 2026-10-24)
+
+- 증상: PR #214 CI에서 같은 다섯 흐름과 S6이 NPD 차이로 실패했다. 단언하는 stdout은 같았다.
+- 원인: PR #214가 `templates/claude/commands/auto-workflows.md.tmpl`의 learn 명령 세 곳을 바꿨다. `/auto go` Phase 0.8 query에 `--top 5 --mark-reused`, `/auto fix` Step 0 query에 같은 flag, `/auto sync` summary를 `--top 3`으로 바꾸고 그 대체 문구를 고쳤다.
+- 기록: TUIUX는 v0.50.126에 이미 들어갔고 5절이 보였듯 형식 없는 흐름의 NPD에 TUIUX 코드가 닿지 않으므로, 이 branch tip에서 `TUIUX_WRITE_GOLDENS=1`로 기록했다. writer가 다시 쓴 stdout golden 일곱 개는 `git checkout`으로 되돌려 b08ea644 기록 그대로 두었다.
+- 차이(init 흐름과 update 흐름): `.claude/skills/auto-go/SKILL.md`, `auto-fix/SKILL.md`, `auto-sync/SKILL.md`의 checksum, claude-code manifest의 그 세 entry checksum, claude-code journal의 그 entry `after_checksum`, update 흐름의 backup 사본. 다른 경로는 바뀌지 않았다.
+- 검증: 두 test가 이 golden으로 통과한다.
