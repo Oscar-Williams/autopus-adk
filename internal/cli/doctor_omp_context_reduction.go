@@ -15,8 +15,17 @@ import "strings"
 // The 18.1.x line emits "snapcompact would not reduce context locally." and
 // declines; the string is absent from 17.2.7 and present in 18.1.2, 18.1.5 and
 // 18.1.10.
+//
+// Measured 2026-10-23 by the signed v0.50.127 release canary, same v1 oracle,
+// model gpt-6.1-sol (17.2.7 ran gpt-5.6-sol), context window 262144:
+//
+//	omp/18.12.3  10 compactions, median reduction 3429 bp / 2000
+//
+// 18.12.3 is the pin production ships. 17.2.7, the pin it replaced, stays: the
+// row reports what this repository measured for the installed version, not
+// which version is pinned, and 17.2.7 was measured clearing the floor.
 var (
-	ompContextReductionVerified = []string{"omp/17.2.7"}
+	ompContextReductionVerified = []string{"omp/17.2.7", "omp/18.12.3"}
 	ompContextReductionZero     = []string{"omp/18.1."}
 )
 

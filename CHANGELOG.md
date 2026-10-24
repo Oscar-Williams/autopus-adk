@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **omp/18.12.3을 실측을 마친 사용 중 pin으로 기록한다** (2026-10-24): 2026-10-23의 v0.50.127 release canary(GitHub release
+  `421737046`)가 omp/18.12.3, `gpt-6.1-sol`, context window 262144로 40 call cohort를 돌려 14개 gate를 모두 통과했고, 그
+  report는 서명 evidence `omp-context-evidence-v0.50.127`(tag object `7f7a8451`, commit `510d462b`)에 남았다. compaction
+  10회(`multi-compaction-admission` 10/20), median reduction 3429 bp(`token-reduction` 3429, 기준 2000)다. 17.2.7은
+  v0.50.125에서 8회·2334 bp였지만 모델도 `gpt-5.6-sol`에서 바뀌었으므로 이 차이를 OMP만의 차이로 읽지 않는다. 이제
+  `advance-omp-pin.sh`는 18.12.3을 `--measure` 없이 받아들이고(전에는 측정되지 않은 버전이라며 거부했다), `auto doctor`의
+  `compaction.measured_reduction`은 omp/18.12.3에서 `reduction_unmeasured` 대신 `measured_reduction_verified`를 낸다.
+  17.2.7도 측정을 통과한 버전이므로 두 곳에 그대로 남아 되돌아가는 길이 열려 있다. doctor 목록의 버전마다 pin script를
+  실제로 돌려 받아들이는지 보는 test를 더해, 두 표가 어긋나면 CI에서 실패한다. v0.50.126 시도의 18.12.3 cohort도
+  2026-10-20에 같은 값으로 통과했지만, 그 evidence는 승인을 기다리는 동안 만료돼 좌표와 함께 소각됐다.
 - **Go toolchain을 현재 stable인 `1.27.3`으로 올린다** (2026-10-23): `go.mod`의 `toolchain`을 `go1.26.10`에서 `go1.27.3`으로
   올린다. `GO-2026-6809`(`crypto/x509`)는 1.26.10과 1.27.3 두 계열에서 모두 고쳐져 있어 이 변경이 새 취약점을 닫는 것은 아니고, 같은 수정을 최신 계열에서 받는
   것이다. `.goreleaser.yaml`의 `GOTOOLCHAIN`, release prep과 candidate build 스크립트의 `expected_go_toolchain`, 이를 고정하는

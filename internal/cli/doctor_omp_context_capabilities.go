@@ -23,8 +23,9 @@ func ompContextDoctorCapabilities(input ompContextDoctorInput, receiptUsable boo
 		ompContextDoctorCapabilityRow("memory.interception", receiptUsable && receipt.Capabilities.MemoryInterception, memory, "memory_interception_proved", "memory_interception_unproved"),
 		// The probe rows above all pass on omp/18.1.x, and the compaction
 		// benefit is still absent: a standalone cohort measured 0 basis points
-		// of median context reduction there against 2000 required, while the
-		// pinned omp/17.2.7 cleared the floor on the identical workload.
+		// of median context reduction there against 2000 required, while
+		// omp/17.2.7, the pin at the time, cleared the floor on the identical
+		// workload. omp/18.12.3, the pin since 2026-10-20, measured 3429 bp.
 		//
 		// Reporting only what the handshake proves would tell an operator that
 		// context compaction is healthy while it silently does nothing. This row
