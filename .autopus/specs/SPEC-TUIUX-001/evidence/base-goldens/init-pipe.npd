@@ -2,7 +2,7 @@
 .agents/plugins/
 .agents/plugins/marketplace.json 7bac9f0f7c15eecf46023308f334e2122d112d03aa7b498f9e01adabd48ac03c
 .autopus/
-.autopus/claude-code-manifest.json 10aece979407853d359a53c13b92b996dd1d27ec3064fb48522fee2e3f112916
+.autopus/claude-code-manifest.json 4ea5ad9d8419bcd20f6274c0e3dbc16fe3f465da206fbe3b25d27beb45e7b052
 .autopus/claude-code-permissions.json b9fd4dd0824fb98d4ff3403c011a56b0b66f398788f2dfb24220c1aed87df4e8
 .autopus/codex-manifest.json b439e9f543a3057dab91097f599647b7a3b97de9385c92aee63e109cf576052c
 .autopus/context/
@@ -16,7 +16,7 @@
 .autopus/plugins/auto/skills/auto/SKILL.md 5404914d8ab7f5a0e4560439b365b85e60813e14304d4565dd8893830b165595
 .autopus/txns/
 .autopus/txns/<TX>-claude-code/
-.autopus/txns/<TX>-claude-code/journal.json a2e2bb6cbeb925419f73be88c2439cc472288bf5ad4534ef36d5eb61ceacfda3
+.autopus/txns/<TX>-claude-code/journal.json 93ca887e346c0bff5b6737e7ca2d9cccde7d276429914cdf25d169795bebd461
 .autopus/txns/<TX>-codex/
 .autopus/txns/<TX>-codex/journal.json e9e8684b0b7d8c461b0a3d50517e6d069027c136fe18cc89d50e906930cba72b
 .claude/
@@ -87,9 +87,9 @@
 .claude/skills/auto-doctor/
 .claude/skills/auto-doctor/SKILL.md 9796d1b85cf212c04b25af789c6b67febd53a933c791b78e22d9b83b713443ee
 .claude/skills/auto-fix/
-.claude/skills/auto-fix/SKILL.md 37fce77edf77937f4b2d2afd581fcecc3d069cec7d93d083ce02499b7849eca5
+.claude/skills/auto-fix/SKILL.md bf8569e605c2c6da37807e857d8dac54fd9136c49cdf94cbe5dadef0956bd6e0
 .claude/skills/auto-go/
-.claude/skills/auto-go/SKILL.md d440a3c9c2852d22aceeaabcfcff381ecfdcdf85e97e23ffc2d72edf111ba581
+.claude/skills/auto-go/SKILL.md 90b5b015faaf4f6a797d408b9bb26936f9e781a1161a46b15e98b232959c472c
 .claude/skills/auto-goal/
 .claude/skills/auto-goal/SKILL.md 0dd992f5eb6c27cd5f9f16b678344c5c7f7224a1e42cb95dd26ba221f5ce1ec8
 .claude/skills/auto-idea/
@@ -111,7 +111,7 @@
 .claude/skills/auto-status/
 .claude/skills/auto-status/SKILL.md aa9f5ab281455e4ec4668632c5a78acac58c533b130b8fc0399be399101589d7
 .claude/skills/auto-sync/
-.claude/skills/auto-sync/SKILL.md b77bc16a8d343dc2e818e7ac1980f40d93d12fe47ef848ff6f2a6526f3edd8ef
+.claude/skills/auto-sync/SKILL.md 15d01b314aa4ff478d1fcca8d3928afa9fd6d47898918a18b57f2cb3d5d30b50
 .claude/skills/auto-test/
 .claude/skills/auto-test/SKILL.md 445da6559703ef3710d702001589625d141b8cf11d9c115ae5ea37abd2a2054b
 .claude/skills/auto-update/

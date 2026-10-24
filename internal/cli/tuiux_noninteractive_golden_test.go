@@ -12,7 +12,8 @@ package cli
 // REA entry in .codex/config.toml, and the permission ledger fix added a
 // managed .gitignore pattern. Only those files and the manifest, journal, and
 // backup digests that follow from them changed, and the stdout goldens are
-// still those of b08ea644 (evidence/base-goldens-recapture.md).
+// still those of b08ea644 (evidence/base-goldens-recapture.md). Later NPD
+// re-records for generated-file changes are listed in its numbered sections.
 // TUIUX_WRITE_GOLDENS=1 writes them again: every flow then runs twice more
 // than a second apart, and any difference between the two runs, such as a
 // time field outside the NPD normalization, fails the write. It runs on a
