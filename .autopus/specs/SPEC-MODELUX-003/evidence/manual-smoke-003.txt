@@ -24,7 +24,7 @@
 #   per routed agent (17, 4 at a time) though the argv carries only the selector. Now one session per distinct
 #   selector: this composition starts 4 sessions; measured rpc phase ~10s -> ~2s.
 #
-# S23 (live dispatch + /review): not run. Recorded as Completion Debt CD-2.
+# S23 (live dispatch + /review): run 2026-10-24 with the maintainer's consent; see the S23 section at the end.
 
 ## overlay /agents (operator screenshot, transcribed)
 annotator            project  openai-codex/gpt-6.1-sol:low
@@ -151,3 +151,43 @@ task:
     - sonic
     - designer
     - librarian
+
+## S23 live dispatch and /review (2026-10-24, omp 18.12.3, model calls with the maintainer's consent)
+# Binary: auto built from main d4c014f9 (v0.50.127) for dispatch; the /review fix below was built from
+#   fix/omp-reviewer-verdict. Scratch project <scratch>/proj: `auto init --platforms omp --yes --no-rea`, then
+#   role_model_policy {version v1, profile balanced, family openai, agents.planner: openai-codex/gpt-6.1-sol
+#   thinking low (family openai)} and `auto update --yes`. Every omp run: PI_CONFIG_FILES=<scratch>/proj/.autopus/runtime/
+#   omp-model-routing-v1.yml omp -p --mode json --auto-approve. Main session model: anthropic/claude-opus-5.
+#
+# Overlay task.agentModelOverrides (excerpt): planner openai-codex/gpt-6.1-sol:low, reviewer openai-codex/gpt-6-astra:max,
+#   task openai-codex/gpt-6.1-sol:low (task follows the planner pin).
+#
+# (1) Named dispatch -- PASS
+#   Prompt: delegate "propose a name for a function that subtracts two ints" to the agent named planner.
+#   Planner subagent session: model_change openai-codex/gpt-6.1-sol, thinking_level_change low; its one assistant
+#   message is provider openai-codex, model gpt-6.1-sol. Reply: "Name the function `subtractInts`."
+#   Equals the override planner = openai-codex/gpt-6.1-sol:low.
+#
+# (2) /review on a one-line diff (add.go: `return a + b` -> `return a - b` under a new "returns the sum" comment)
+#   The /review parent sends one task with agent "reviewer"; the project reviewer (agentSource project) ran on
+#   resolvedModel openai-codex/gpt-6-astra:max = override reviewer. Dispatch part PASS.
+#   Verdict, v0.50.127 reviewer: FAIL against REQ-MUX3-08. The result said "Verdict: REQUEST_CHANGES" with the
+#     right finding but no overall_correctness and no confidence.
+#   Cause: on omp 18.12.3 print mode the subagent gets no yield tool (tools: bash, glob, grep, read, wait, mcp...),
+#     so the job finalizes from the agent's text (widget state "fallback") and the frontmatter output schema is never
+#     filled. The bundled reviewer still reports a verdict because its body asks for the three fields; the Autopus
+#     body asked for TRUST 5 only. Baseline in a bare repo with the bundled reviewer (anthropic/claude-opus-5:high):
+#     the task text carried "overall_correctness: incorrect" and the parent printed "Reviewer confidence: 0.97";
+#     its state was "fallback" too.
+#   Fix (fix/omp-reviewer-verdict): the generated .omp/agents/reviewer.md body ends with an "OMP /review Verdict"
+#     section asking for overall_correctness, explanation, confidence. A first wording ("when the assignment names
+#     no other result format") was skipped: the /review parent writes its own acceptance format into the task.
+#     The unconditional wording passed:
+#       overall_correctness: incorrect
+#       explanation: The changed function subtracts despite its addition contract. Empirical execution confirmed
+#         incorrect results; restoring `return a + b` is the minimal correction.
+#       confidence: 1.0
+#     resolvedModel openai-codex/gpt-6-astra:max, resolvedThinkingLevel max. Verdict part PASS with the fix.
+#   Not observed: the literal "Patch is correct|incorrect" line. omp 18.12.3 print mode prints neither it nor a
+#     structured verdict for the bundled reviewer either, so S23 now judges the reviewer's task result. The
+#     interactive TUI rendering was not checked.

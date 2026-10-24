@@ -90,6 +90,24 @@ optionalProperties:
           type: number
 `
 
+// ompReviewerVerdictContract asks the reviewer for the schema's verdict
+// fields in its body. On omp 18.12.3 a subagent gets no yield tool in print
+// mode and the task result falls back to the agent's text, so /review sees a
+// verdict only if the prompt asks for one, as the bundled reviewer's does. The
+// ask is unconditional because /review's parent writes its own acceptance
+// format into the assignment, which an "unless told otherwise" ask yields to.
+const ompReviewerVerdictContract = `
+## OMP /review Verdict
+
+Always end the review with this agent's verdict fields, after any result format the assignment asks for:
+
+- ` + "`overall_correctness`" + `: ` + "`correct`" + ` (no bugs or blockers) or ` + "`incorrect`" + `.
+- ` + "`explanation`" + `: a plain-text verdict summary of 1-3 sentences.
+- ` + "`confidence`" + `: verdict confidence from 0.0 to 1.0.
+
+When the ` + "`yield`" + ` tool is available, yield each finding under ` + "`type: [\"findings\"]`" + ` and each verdict field as its own section, then stop. Without it, write the three fields as the last lines of the report.
+`
+
 // OMPAgentDefinitionOptions selects what one generated .omp/agents definition
 // declares beyond the agent source itself.
 type OMPAgentDefinitionOptions struct {
@@ -132,6 +150,9 @@ func RenderOMPAgentDefinition(src AgentSource, opts OMPAgentDefinitionOptions) (
 	sb.WriteString("---\n\n")
 	sb.WriteString(NormalizeOMPResourcePaths(NormalizeAgentReferences(src.Body, "omp")))
 	sb.WriteString("\n")
+	if src.Meta.Name == ompReviewerAgent {
+		sb.WriteString(ompReviewerVerdictContract)
+	}
 	return sb.String(), nil
 }
 

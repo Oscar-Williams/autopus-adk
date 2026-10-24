@@ -154,7 +154,7 @@ And (f) 뒤 `.omp/config.yml`은 `# team note`만 담고 ledger가 없으며, cl
 Priority: Must
 Given S17 project와 사용자의 모델 호출 동의, OMP 탭에서 planner thinking을 `low`로 pin한 상태가 있다
 When `PI_CONFIG_FILES`를 준 `omp`에서 planner에게 한 줄 작업을 보내고, 작은 diff에 `/review`를 한 번 실행한다
-Then planner subagent의 model과 thinking이 override `<selector>:low`와 같고, `/review` 출력에 `Patch is correct` 또는 `Patch is incorrect`와 confidence가 있다
+Then planner subagent의 model과 thinking이 override `<selector>:low`와 같고, `/review`가 보낸 reviewer task 결과에 `overall_correctness`(`correct` 또는 `incorrect`)와 `confidence`가 있으며 그 task의 model이 override reviewer 값과 같다. omp 18.12.3 print 모드는 번들 reviewer로도 `Patch is correct|incorrect` 줄을 출력하지 않으므로(2026-10-24 관찰) 그 줄로 판정하지 않는다
 And 결과를 `evidence/manual-smoke-003.txt`에 남긴다. 동의가 없거나 막히면 PASS로 닫지 않고 CD-2를 남긴다
 ### S24: 프로필과 섞인 상태의 사용자 `task.disabledAgents` 편집
 Priority: Must

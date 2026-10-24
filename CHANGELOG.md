@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **OMP `/review`가 Autopus reviewer에게서 verdict를 받는다** (2026-10-24): SPEC-MODELUX-003 S23을 omp/18.12.3에서 실제 모델로
+  돌린 결과, 이름별 override dispatch는 맞았다(planner `openai-codex/gpt-6.1-sol:low`, reviewer `openai-codex/gpt-6-astra:max`).
+  그런데 v0.50.127이 생성한 `.omp/agents/reviewer.md`는 `/review`에 `overall_correctness`와 `confidence` 없이
+  `REQUEST_CHANGES`만 돌려줬다. 18.12.3 print 모드의 subagent에는 `yield` 도구가 없어서 결과가 에이전트 텍스트로 대체되고,
+  frontmatter의 `output` schema는 채워지지 않는다. 번들 reviewer는 본문이 세 필드를 요구해서 이때도 verdict를 내지만,
+  Autopus 본문은 TRUST 5만 요구했다. 이제 생성되는 reviewer 본문 끝에 `overall_correctness`·`explanation`·`confidence`를 늘
+  쓰라는 절이 붙는다. "다른 형식이 없으면"이라는 조건을 단 첫 문구는 `/review`가 task에 자기 acceptance 형식을 써 넣는 바람에
+  무시됐다. 같은 smoke에서 조건 없는 문구는 `overall_correctness: incorrect`, `confidence: 1.0`을 냈다. 다른 에이전트의
+  생성 결과는 바뀌지 않는다. `auto update`를 다시 실행하면 반영된다.
 - **omp/18.12.3을 실측을 마친 사용 중 pin으로 기록한다** (2026-10-24): 2026-10-23의 v0.50.127 release canary(GitHub release
   `421737046`)가 omp/18.12.3, `gpt-6.1-sol`, context window 262144로 40 call cohort를 돌려 14개 gate를 모두 통과했고, 그
   report는 서명 evidence `omp-context-evidence-v0.50.127`(tag object `7f7a8451`, commit `510d462b`)에 남았다. compaction

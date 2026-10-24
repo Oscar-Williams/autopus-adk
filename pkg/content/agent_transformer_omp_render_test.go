@@ -102,6 +102,25 @@ func TestRenderOMPAgentDefinition_OnlyTheReviewerDeclaresTheVerdictSchema(t *tes
 	assert.NotContains(t, ompDefinitionFrontmatter(t, rendered), "output")
 }
 
+// The schema alone does not make the reviewer report a verdict: on omp 18.12.3
+// the task finalizes from the agent's text, and the canonical body asks for
+// TRUST 5 only (S23). The body therefore names the three verdict fields, and
+// only the reviewer's body does.
+func TestRenderOMPAgentDefinition_TheReviewerBodyAsksForTheVerdictFields(t *testing.T) {
+	t.Parallel()
+	rendered, err := content.RenderOMPAgentDefinition(ompAgentSource(t, "reviewer"), content.OMPAgentDefinitionOptions{})
+	require.NoError(t, err)
+	_, body, found := strings.Cut(strings.TrimPrefix(rendered, "---\n"), "\n---\n")
+	require.True(t, found)
+	for _, field := range []string{"`overall_correctness`", "`explanation`", "`confidence`", "`yield`"} {
+		assert.Contains(t, body, field)
+	}
+
+	rendered, err = content.RenderOMPAgentDefinition(ompAgentSource(t, "validator"), content.OMPAgentDefinitionOptions{})
+	require.NoError(t, err)
+	assert.NotContains(t, rendered, "overall_correctness")
+}
+
 // Scalars cannot close the frontmatter early, and an unknown thinking level is
 // refused instead of being written for OMP to reject at load.
 func TestRenderOMPAgentDefinition_EncodesScalarsAndRefusesUnknownThinking(t *testing.T) {
