@@ -18,6 +18,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 
 import grader
 import prepare_grader
@@ -77,6 +78,19 @@ def build_command(generator_version: str, binary: Path) -> list:
             './' + DRIVER_PACKAGE]
 
 
+def telemetry_off(home: Path) -> None:
+    """Seed Go telemetry mode "off" under a fresh HOME. Telemetry has no environment switch, only this
+    file; without it the go command leaves a detached child writing counters into HOME after it exits,
+    which races whoever removes that HOME next (a session cleanup, a test's temporary directory). Only
+    the trusted download HOME gets it: the build root's HOME is the driver run's HOME later, which must
+    stay empty so no seeded file can answer a probe."""
+    home = Path(home)
+    config = home / 'Library' / 'Application Support' if sys.platform == 'darwin' else home / '.config'
+    mode = config / 'go' / 'telemetry' / 'mode'
+    mode.parent.mkdir(parents=True, exist_ok=True)
+    mode.write_text('off')
+
+
 def build_env(root: Path, go: Path, modcache: Path) -> dict:
     """The whole sandboxed build environment: the toolchain alone on PATH, HOME, TMPDIR, GOPATH and GOCACHE
     in the build root, the session module cache, no network and no cgo, held to the arm's own go.mod and
@@ -102,6 +116,7 @@ def download_modules(tree: Path, modcache: Path, go: Path, scratch: Path, proxy:
     pinned = sums.read_bytes() if sums.is_file() else b''
     for path in (modcache, scratch / 'home', scratch / 'gopath', scratch / 'gocache'):
         path.mkdir(parents=True, exist_ok=True)
+    telemetry_off(scratch / 'home')
     env = {'PATH': str(go.parent), 'HOME': str(scratch / 'home'), 'GOPATH': str(scratch / 'gopath'),
            'GOCACHE': str(scratch / 'gocache'), 'GOMODCACHE': str(modcache), 'GOPROXY': proxy, 'GOSUMDB': 'off',
            'GOFLAGS': '-mod=mod', 'GOWORK': 'off', 'GOTOOLCHAIN': 'local', 'CGO_ENABLED': '0'}

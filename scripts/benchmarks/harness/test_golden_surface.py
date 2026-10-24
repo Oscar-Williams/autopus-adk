@@ -93,6 +93,22 @@ class DriverBuildTests(unittest.TestCase):
         self.assertIn('CGO_ENABLED=0', sandbox_argv[2:split])
         self.assertIn('GOPROXY=off', sandbox_argv[2:split])
 
+    @unittest.skipUnless(shutil.which('go'), 'go downloads the modules under the scratch HOME')
+    def test_the_module_download_leaves_no_telemetry_and_the_driver_home_stays_empty(self):
+        # A detached telemetry child used to keep writing into the scratch HOME after `go mod download`
+        # returned, so removing it failed with "Directory not empty: 'telemetry'" now and then.
+        config = ('Library', 'Application Support') if sys.platform == 'darwin' else ('.config',)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory).resolve()
+            elsewhere_tree(base / 'build')
+            with mock.patch.object(gs.grader, 'run_sandboxed', return_value={'exit_code': 0, 'timed_out': False}):
+                gs.build_driver(base / 'build', 'v0.50.123', base / 'modcache', base / 'download')
+            telemetry = (base / 'download' / 'home').joinpath(*config, 'go', 'telemetry')
+            self.assertEqual(sorted(path.name for path in telemetry.iterdir()), ['mode'])
+            self.assertEqual((telemetry / 'mode').read_text(), 'off')
+            # The build root's HOME is the driver run's HOME, documented empty; nothing is seeded there.
+            self.assertEqual(list((base / 'build' / 'home').iterdir()), [])
+
     @unittest.skipUnless(SANDBOXED, 'requires macOS sandbox-exec and the Go toolchain')
     def test_the_arm_driver_package_holds_only_this_checkout_driver(self):
         with tempfile.TemporaryDirectory() as directory:
