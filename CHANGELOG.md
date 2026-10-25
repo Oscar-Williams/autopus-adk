@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **worker: 아무것도 실행하지 않던 스케줄 폴링을 지운다** (2026-10-25): workspace ID가 있는 worker는 시작할 때와
+  그 뒤 60초마다 `GET /api/v1/workspaces/{id}/schedules`를 불렀다. 그런데 cron이 맞아도 `schedule triggered` 로그만
+  남기고 태스크는 실행하지 않았다(`pkg/worker/scheduler`). 호출마다 서버는 워크스페이스 멤버십 확인과 스케줄 목록
+  조회를 치렀다. 이 dispatcher와 cron 파서를 지운다. 실행되던 것이 없으므로 worker가 하는 일은 바뀌지 않고, 로그에서
+  `[scheduler] ...`와 `[worker] schedule triggered` 줄만 사라진다. 설정과 플래그는 그대로다. 스케줄을 worker에서
+  실행하려면 서버가 A2A `tasks/send`로 보내면 되고, worker는 그 경로로 받은 태스크를 이미 처리한다.
 - **autopus 모드가 omp 18.12.3이 번들하는 seance도 끈다** (2026-10-25): CI의 omp-native-smoke를 release canary가 pin한
   omp/18.12.3으로 올리자 agent surface smoke가 잡았다. 18.12.3은 reviewer·scout·seance·security-reviewer·sonic·task 여섯을
   번들하는데 `task.disabledAgents` claim은 seance를 몰라, 기본 autopus 모드의 task 도구가 Autopus 에이전트 17개와 task 외에

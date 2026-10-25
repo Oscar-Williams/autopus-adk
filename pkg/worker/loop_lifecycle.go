@@ -13,11 +13,10 @@ import (
 	"github.com/insajin/autopus-adk/pkg/worker/knowledge"
 	workerNet "github.com/insajin/autopus-adk/pkg/worker/net"
 	"github.com/insajin/autopus-adk/pkg/worker/reaper"
-	"github.com/insajin/autopus-adk/pkg/worker/scheduler"
 )
 
 // startServices initializes and starts all lifecycle services.
-// Startup order: audit -> auth -> knowledge -> scheduler -> net/poll.
+// Startup order: audit -> auth -> knowledge -> net/poll.
 func (wl *WorkerLoop) startServices(ctx context.Context) {
 	wl.lifecycleCtx, wl.lifecycleCancel = context.WithCancel(ctx)
 
@@ -77,22 +76,7 @@ func (wl *WorkerLoop) startServices(ctx context.Context) {
 		}
 	}
 
-	// 4. Scheduler dispatcher: enabled when WorkspaceID is set.
-	if wl.config.WorkspaceID != "" {
-		d := scheduler.NewDispatcher(
-			wl.config.BackendURL,
-			wl.config.AuthToken,
-			wl.config.WorkspaceID,
-			time.Now().Location(),
-			func(scheduleID, taskPayload string) {
-				log.Printf("[worker] schedule triggered: %s", scheduleID)
-			},
-		)
-		wl.schedulerDisp = d
-		go d.Start(wl.lifecycleCtx)
-	}
-
-	// 5. NetMonitor: always start to detect network topology changes.
+	// 4. NetMonitor: always start to detect network topology changes.
 	// When a Reconnector is available, use coordinated reconnect (token refresh + WS reconnect).
 	// Otherwise fall back to direct transport reconnect (API Key mode or no CredentialStore).
 	wl.netMonitor = workerNet.NewNetMonitor(
@@ -115,7 +99,7 @@ func (wl *WorkerLoop) startServices(ctx context.Context) {
 	)
 	wl.netMonitor.Start(wl.lifecycleCtx)
 
-	// 6. REST fallback poller: reuses the A2A dispatch path when WebSocket receive
+	// 5. REST fallback poller: reuses the A2A dispatch path when WebSocket receive
 	// is exhausted. This keeps fallback behavior aligned with normal task handling.
 	wl.server.SetRESTPoller(a2a.NewRESTPoller(a2a.RESTPollerConfig{
 		BackendURL: wl.config.BackendURL,
@@ -134,7 +118,7 @@ func (wl *WorkerLoop) startServices(ctx context.Context) {
 		},
 	}))
 
-	// 7. Zombie reaper: detect and reap zombie child processes (FR-PROC-04).
+	// 6. Zombie reaper: detect and reap zombie child processes (FR-PROC-04).
 	// @AX:NOTE[AUTO]: magic constant — 30s reaper interval matches reaper.go default; keep in sync if default changes
 	wl.zombieReaper = reaper.New(reaper.Config{Interval: 30 * time.Second})
 	wl.zombieReaper.Start(wl.lifecycleCtx) //nolint:errcheck
@@ -152,13 +136,10 @@ func (wl *WorkerLoop) updateAuthToken(token string) {
 	if wl.memorySearcher != nil {
 		wl.memorySearcher.SetAuthToken(token)
 	}
-	if wl.schedulerDisp != nil {
-		wl.schedulerDisp.SetAuthToken(token)
-	}
 }
 
 // stopServices gracefully stops all lifecycle services.
-// Context cancellation stops auth, knowledge, scheduler, and net.
+// Context cancellation stops auth, knowledge, and net.
 // Audit writer is closed explicitly to flush and release the file handle.
 func (wl *WorkerLoop) stopServices() {
 	if wl.lifecycleCancel != nil {

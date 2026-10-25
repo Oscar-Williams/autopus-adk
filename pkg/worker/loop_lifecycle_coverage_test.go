@@ -23,9 +23,8 @@ func (m *memCredStore) Load(service string) (string, error) {
 func (m *memCredStore) Delete(service string) error { m.val = ""; return nil }
 
 // lifecycleBackend answers every worker request. When seen is non-nil it
-// records the Authorization header per request path: startServices also runs
-// background pollers against this server, so a single shared slot would hold
-// whichever request landed last rather than the one under test.
+// records the Authorization header per request path, so an assertion reads the
+// request it made rather than whichever request landed last.
 func lifecycleBackend(t *testing.T, seen *sync.Map) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +59,6 @@ func TestStartServices_APIKeyModeSkipsRefresherAndUsesWorkDirAudit(t *testing.T)
 	assert.Nil(t, wl.authRefresher, "API key mode must not refresh tokens")
 	assert.Nil(t, wl.authReconnector)
 	assert.Nil(t, wl.memorySearcher, "memory searcher requires a workspace ID")
-	assert.Nil(t, wl.schedulerDisp, "scheduler requires a workspace ID")
 	assert.NotNil(t, wl.netMonitor, "net monitor starts in every auth mode")
 }
 
@@ -109,7 +107,7 @@ func TestStartServices_JWTWithoutStoreHasNoRefresher(t *testing.T) {
 }
 
 // Guards service gating on workspace/knowledge flags: knowledge search needs both
-// KnowledgeSync and WorkspaceID, while memory and scheduler need only WorkspaceID.
+// KnowledgeSync and WorkspaceID, while memory search needs only WorkspaceID.
 func TestStartServices_ServiceGatingByWorkspaceAndKnowledgeFlag(t *testing.T) {
 	srv := lifecycleBackend(t, nil)
 
@@ -124,7 +122,6 @@ func TestStartServices_ServiceGatingByWorkspaceAndKnowledgeFlag(t *testing.T) {
 
 	assert.Nil(t, withWorkspace.knowledgeSearcher, "knowledge search stays off without KnowledgeSync")
 	assert.NotNil(t, withWorkspace.memorySearcher)
-	assert.NotNil(t, withWorkspace.schedulerDisp)
 
 	syncOnly := NewWorkerLoop(LoopConfig{
 		BackendURL:    srv.URL,
