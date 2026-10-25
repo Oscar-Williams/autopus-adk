@@ -130,114 +130,47 @@ if [[ "$release_phase" == 'A2' || "$release_phase" == 'A3' ||
   expected_tag_headers="1:${GITHUB_SHA}"$'\t''1:commit'$'\t'"1:${GITHUB_REF_NAME}"
   [[ "$tag_header_identity" == "$expected_tag_headers" ]] ||
     fail "${release_phase} annotated tag object, type, or name headers differ"
-  if [[ "$release_phase" == 'A2' ]]; then
-    git merge-base --is-ancestor "$A2_A1_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A2 source does not contain the immutable A1 release'
-    git merge-base --is-ancestor "$A2_MAIN_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A2 source does not contain the integrated main base'
-  elif [[ "$release_phase" == 'A3' ]]; then
-    git merge-base --is-ancestor "$A3_A2_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A3 source does not contain the immutable A2 release'
-  elif [[ "$release_phase" == 'A4' ]]; then
-    git merge-base --is-ancestor "$A4_A3_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A4 source does not contain the immutable A3 release'
-  elif [[ "$release_phase" == 'A5' ]]; then
-    git merge-base --is-ancestor "$A5_A4_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A5 source does not contain the immutable A4 release'
-  elif [[ "$release_phase" == 'A6' ]]; then
-    git merge-base --is-ancestor "$A6_A5_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A6 source does not contain the immutable A5 release'
-  elif [[ "$release_phase" == 'A7' ]]; then
-    git merge-base --is-ancestor "$A7_A6_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A7 source does not contain the immutable A6 release'
-  elif [[ "$release_phase" == 'A8' ]]; then
-    git merge-base --is-ancestor "$A8_A7_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A8 source does not contain the immutable A7 release'
-  elif [[ "$release_phase" == 'A9' ]]; then
-    git merge-base --is-ancestor "$A9_A8_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A9 source does not contain the immutable A8 release'
-  elif [[ "$release_phase" == 'A10' ]]; then
-    git merge-base --is-ancestor "$A10_A9_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A10 source does not contain the immutable A9 release'
-  elif [[ "$release_phase" == 'A11' ]]; then
-    git merge-base --is-ancestor "$A11_A10_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A11 source does not contain the immutable A10 release'
-  elif [[ "$release_phase" == 'A12' ]]; then
-    git merge-base --is-ancestor "$A12_A11_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A12 source does not contain the immutable A11 release'
-  elif [[ "$release_phase" == 'A13' ]]; then
-    git merge-base --is-ancestor "$A13_A12_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A13 source does not contain the immutable A12 release'
-  elif [[ "$release_phase" == 'A14' ]]; then
-    git merge-base --is-ancestor "$A14_A13_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A14 source does not contain the immutable A13 release'
-  elif [[ "$release_phase" == 'A15' ]]; then
-    git merge-base --is-ancestor "$A15_A14_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A15 source does not contain the immutable A14 release'
-  elif [[ "$release_phase" == 'A16' ]]; then
-    git merge-base --is-ancestor "$A16_A15_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A16 source does not contain the immutable A15 release'
-  elif [[ "$release_phase" == 'A17' ]]; then
-    git merge-base --is-ancestor "$A17_A16_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A17 source does not contain the immutable A16 release'
-  elif [[ "$release_phase" == 'A18' ]]; then
-    git merge-base --is-ancestor "$A18_A17_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A18 source does not contain the immutable A17 release'
-  elif [[ "$release_phase" == 'A19' ]]; then
-    git merge-base --is-ancestor "$A19_A18_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A19 source does not contain the immutable A18 release'
-  elif [[ "$release_phase" == 'A20' ]]; then
-    git merge-base --is-ancestor "$A20_A19_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A20 source does not contain the immutable A19 release'
-  elif [[ "$release_phase" == 'A21' ]]; then
-    git merge-base --is-ancestor "$A21_A20_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A21 source does not contain the immutable A20 release'
-  elif [[ "$release_phase" == 'A22' ]]; then
-    git merge-base --is-ancestor "$A22_A21_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A22 source does not contain the immutable A21 release'
-  elif [[ "$release_phase" == 'A23' ]]; then
-    git merge-base --is-ancestor "$A23_A22_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A23 source does not contain the immutable A22 release'
-  elif [[ "$release_phase" == 'A24' ]]; then
-    git merge-base --is-ancestor "$A24_A23_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A24 source does not contain the immutable A23 release'
-  elif [[ "$release_phase" == 'A25' ]]; then
-    git merge-base --is-ancestor "$A25_A24_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A25 source does not contain the immutable A24 release'
-  elif [[ "$release_phase" == 'A26' ]]; then
-    git merge-base --is-ancestor "$A26_A25_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A26 source does not contain the immutable A25 release'
-  elif [[ "$release_phase" == 'A27' ]]; then
-    git merge-base --is-ancestor "$A27_A26_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A27 source does not contain the immutable A26 release'
-  elif [[ "$release_phase" == 'A28' ]]; then
-    git merge-base --is-ancestor "$A28_A27_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A28 source does not contain the immutable A27 release'
-  elif [[ "$release_phase" == 'A29' ]]; then
-    git merge-base --is-ancestor "$A29_A28_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A29 source does not contain the immutable A28 release'
-  elif [[ "$release_phase" == 'A30' ]]; then
-    git merge-base --is-ancestor "$A30_A29_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A30 source does not contain the immutable A29 release'
-  elif [[ "$release_phase" == 'A31' ]]; then
-    git merge-base --is-ancestor "$A31_A30_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A31 source does not contain the immutable A30 release'
-  elif [[ "$release_phase" == 'A32' ]]; then
-    git merge-base --is-ancestor "$A32_A31_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A32 source does not contain the immutable A31 release'
-  elif [[ "$release_phase" == 'A33' ]]; then
-    git merge-base --is-ancestor "$A33_A32_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A33 source does not contain the immutable A32 release'
-  elif [[ "$release_phase" == 'A34' ]]; then
-    git merge-base --is-ancestor "$A34_A33_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A34 source does not contain the immutable A33 release'
-  elif [[ "$release_phase" == 'A35' ]]; then
-    git merge-base --is-ancestor "$A35_A34_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A35 source does not contain the immutable A34 release'
-  else
-    git merge-base --is-ancestor "$A36_A35_ANCESTOR_SHA" "$GITHUB_SHA" \
-      >/dev/null 2>&1 || fail 'A36 source does not contain the immutable A35 release'
-  fi
+  # Every phase after A1 must contain its direct predecessor's immutable source
+  # commit; A2 also has to contain the integrated main base.
+  case "$release_phase" in
+    A2) git merge-base --is-ancestor "$A2_A1_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A2 source does not contain the immutable A1 release'
+      git merge-base --is-ancestor "$A2_MAIN_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A2 source does not contain the integrated main base' ;;
+    A3) git merge-base --is-ancestor "$A3_A2_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A3 source does not contain the immutable A2 release' ;;
+    A4) git merge-base --is-ancestor "$A4_A3_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A4 source does not contain the immutable A3 release' ;;
+    A5) git merge-base --is-ancestor "$A5_A4_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A5 source does not contain the immutable A4 release' ;;
+    A6) git merge-base --is-ancestor "$A6_A5_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A6 source does not contain the immutable A5 release' ;;
+    A7) git merge-base --is-ancestor "$A7_A6_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A7 source does not contain the immutable A6 release' ;;
+    A8) git merge-base --is-ancestor "$A8_A7_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A8 source does not contain the immutable A7 release' ;;
+    A9) git merge-base --is-ancestor "$A9_A8_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A9 source does not contain the immutable A8 release' ;;
+    A10) git merge-base --is-ancestor "$A10_A9_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A10 source does not contain the immutable A9 release' ;;
+    A11) git merge-base --is-ancestor "$A11_A10_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A11 source does not contain the immutable A10 release' ;;
+    A12) git merge-base --is-ancestor "$A12_A11_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A12 source does not contain the immutable A11 release' ;;
+    A13) git merge-base --is-ancestor "$A13_A12_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A13 source does not contain the immutable A12 release' ;;
+    A14) git merge-base --is-ancestor "$A14_A13_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A14 source does not contain the immutable A13 release' ;;
+    A15) git merge-base --is-ancestor "$A15_A14_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A15 source does not contain the immutable A14 release' ;;
+    A16) git merge-base --is-ancestor "$A16_A15_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A16 source does not contain the immutable A15 release' ;;
+    A17) git merge-base --is-ancestor "$A17_A16_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A17 source does not contain the immutable A16 release' ;;
+    A18) git merge-base --is-ancestor "$A18_A17_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A18 source does not contain the immutable A17 release' ;;
+    A19) git merge-base --is-ancestor "$A19_A18_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A19 source does not contain the immutable A18 release' ;;
+    A20) git merge-base --is-ancestor "$A20_A19_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A20 source does not contain the immutable A19 release' ;;
+    A21) git merge-base --is-ancestor "$A21_A20_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A21 source does not contain the immutable A20 release' ;;
+    A22) git merge-base --is-ancestor "$A22_A21_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A22 source does not contain the immutable A21 release' ;;
+    A23) git merge-base --is-ancestor "$A23_A22_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A23 source does not contain the immutable A22 release' ;;
+    A24) git merge-base --is-ancestor "$A24_A23_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A24 source does not contain the immutable A23 release' ;;
+    A25) git merge-base --is-ancestor "$A25_A24_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A25 source does not contain the immutable A24 release' ;;
+    A26) git merge-base --is-ancestor "$A26_A25_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A26 source does not contain the immutable A25 release' ;;
+    A27) git merge-base --is-ancestor "$A27_A26_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A27 source does not contain the immutable A26 release' ;;
+    A28) git merge-base --is-ancestor "$A28_A27_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A28 source does not contain the immutable A27 release' ;;
+    A29) git merge-base --is-ancestor "$A29_A28_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A29 source does not contain the immutable A28 release' ;;
+    A30) git merge-base --is-ancestor "$A30_A29_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A30 source does not contain the immutable A29 release' ;;
+    A31) git merge-base --is-ancestor "$A31_A30_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A31 source does not contain the immutable A30 release' ;;
+    A32) git merge-base --is-ancestor "$A32_A31_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A32 source does not contain the immutable A31 release' ;;
+    A33) git merge-base --is-ancestor "$A33_A32_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A33 source does not contain the immutable A32 release' ;;
+    A34) git merge-base --is-ancestor "$A34_A33_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A34 source does not contain the immutable A33 release' ;;
+    A35) git merge-base --is-ancestor "$A35_A34_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A35 source does not contain the immutable A34 release' ;;
+    A36) git merge-base --is-ancestor "$A36_A35_ANCESTOR_SHA" "$GITHUB_SHA" >/dev/null 2>&1 || fail 'A36 source does not contain the immutable A35 release' ;;
+    *) fail "${release_phase} predecessor ancestry pin is not provisioned" ;;
+  esac
   # A24 signs with R2 like its predecessors. An earlier commit removed it from
   # this list on the belief that R2 was destroyed; the key was found intact in
   # the operator's release-key store, so the guarantee continues unbroken.
