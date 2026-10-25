@@ -22,6 +22,11 @@ var ompReleaseBuiltinTools = map[string]string{
 		"find, lsp, checkpoint, rewind, context_notes, new_context, security_scan, task, wait, todo, " +
 		"web_search, write, memory_edit, retain, recall, reflect, learn, manage_skill, " +
 		"goal, init_experiment, run_experiment, log_experiment, update_notes",
+	// The release canary's pin; the CI omp-native-smoke job runs it.
+	"omp/18.12.3": "read, bash, edit, ast_grep, ast_edit, ask, debug, ida, eval, github, glob, grep, " +
+		"find, lsp, checkpoint, rewind, context_notes, new_context, security_scan, task, wait, todo, " +
+		"web_search, write, memory_edit, retain, recall, reflect, learn, manage_skill, " +
+		"goal, init_experiment, run_experiment, log_experiment, update_notes",
 }
 
 // Guards against enabling a tool one supported release lacks: hub exists only
