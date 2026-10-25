@@ -17,7 +17,6 @@ import (
 	"github.com/insajin/autopus-adk/pkg/worker/pidlock"
 	"github.com/insajin/autopus-adk/pkg/worker/reaper"
 	"github.com/insajin/autopus-adk/pkg/worker/routing"
-	"github.com/insajin/autopus-adk/pkg/worker/scheduler"
 	"github.com/insajin/autopus-adk/pkg/worker/setup"
 )
 
@@ -39,7 +38,7 @@ type LoopConfig struct {
 	AuditLogPath      string                // audit log file path (default: {WorkDir}/.autopus/audit.jsonl)
 	AuditMaxSize      int64                 // max log size before rotation (default: 10MB)
 	AuditMaxAge       time.Duration         // max age of rotated files (default: 7 days)
-	WorkspaceID       string                // workspace identifier for scheduler
+	WorkspaceID       string                // workspace identifier for registration and knowledge/memory search
 	MaxConcurrency    int                   // max parallel tasks (0 = default slot cap, 1 = sequential)
 	WorktreeIsolation bool                  // enable worktree isolation for parallel tasks
 	// WorktreeFallbackOverrideReason permits explicit root-worktree fallback when isolation is unavailable.
@@ -69,7 +68,6 @@ type WorkerLoop struct {
 	auditWriter       *audit.RotatingWriter
 	knowledgeSearcher *knowledge.KnowledgeSearcher
 	memorySearcher    *knowledge.MemorySearcher
-	schedulerDisp     *scheduler.Dispatcher
 	semaphore         *parallel.TaskSemaphore
 	worktreeManager   *parallel.WorktreeManager
 	auditLogger       *slogAuditLogger
