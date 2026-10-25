@@ -24,7 +24,7 @@ func TestVerifyOMPManagedEdit_RefusesEverythingButTheEdit(t *testing.T) {
 		ok            bool
 	}{
 		"removal that kept a bare sequence": {
-			claimIndentless + "other: 2\n", "theme: dark\ntask:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\nother: 2\n", remove, false,
+			claimIndentless + "other: 2\n", "theme: dark\ntask:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n  - seance\nother: 2\n", remove, false,
 		},
 		"removal that no longer parses": {
 			"task:\n  enabled: true\n  disabledAgents:\n  - scout\n", "task:\n  enabled: true\n  - scout\n", remove, false,
@@ -37,7 +37,7 @@ func TestVerifyOMPManagedEdit_RefusesEverythingButTheEdit(t *testing.T) {
 		"insert":                        {"theme: dark\n", "theme: dark\ntask:\n  disabledAgents:\n    - scout\n", set("scout"), true},
 		"insert of another value":       {"theme: dark\n", "theme: dark\ntask:\n  disabledAgents:\n    - scout\n", set("sonic"), false},
 		"replace that doubled the value": {
-			claimIndentlessFirst, "task:\n  disabledAgents:\n    - scout\n    - security-reviewer\n    - sonic\n    - designer\n    - librarian\n  - scout\n", set(config.OMPAutopusDisabledAgents()...), false,
+			claimIndentlessFirst, "task:\n  disabledAgents:\n    - scout\n    - security-reviewer\n    - sonic\n    - designer\n    - librarian\n    - seance\n  - scout\n", set(config.OMPAutopusDisabledAgents()...), false,
 		},
 		"second document": {"theme: dark\n", "theme: dark\n---\nother: 1\n", remove, false},
 	} {

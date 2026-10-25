@@ -51,9 +51,43 @@ func ompDefaultDisabledAgentsFingerprint() string {
 	return ompDisabledAgentsFingerprint(config.OMPAutopusDisabledAgents(), true)
 }
 
-// ompDisabledAgentsAreDefault reports the value ADK writes: exactly
-// config.OMPAutopusDisabledAgents, in that order.
+// ompDisabledAgentsGenerations is every list ADK has claimed for the key:
+// the current default first, then the retired ones, newest first.
+func ompDisabledAgentsGenerations() [][]string {
+	generations := [][]string{config.OMPAutopusDisabledAgents()}
+	retired := config.OMPAutopusRetiredDisabledAgents()
+	for index := len(retired) - 1; index >= 0; index-- {
+		generations = append(generations, retired[index])
+	}
+	return generations
+}
+
+// ompDisabledAgentsGeneration returns the generation a fingerprint names.
+func ompDisabledAgentsGeneration(fingerprint string) ([]string, bool) {
+	for _, generation := range ompDisabledAgentsGenerations() {
+		if ompDisabledAgentsFingerprint(generation, true) == fingerprint {
+			return generation, true
+		}
+	}
+	return nil, false
+}
+
+// ompDisabledAgentsAreDefault reports a value ADK writes or wrote: exactly
+// config.OMPAutopusDisabledAgents, in that order, or a retired generation of
+// it, which an earlier release claimed and the next update re-claims. Where
+// a ledger records which generation it emitted, evaluateOMPClaimLedgerAt
+// narrows a retired value to that one.
 func ompDisabledAgentsAreDefault(value any, present bool) bool {
+	if !present {
+		return false
+	}
+	_, known := ompDisabledAgentsGeneration(ompDisabledAgentsFingerprint(value, true))
+	return known
+}
+
+// ompDisabledAgentsAreCurrentDefault reports exactly the list this release
+// claims.
+func ompDisabledAgentsAreCurrentDefault(value any, present bool) bool {
 	return present && ompDisabledAgentsFingerprint(value, true) == ompDefaultDisabledAgentsFingerprint()
 }
 
@@ -83,20 +117,21 @@ func setOMPDisabledAgents(data []byte, value any, present bool) ([]byte, error) 
 }
 
 // applyOMPAgentSurfacePrior returns data with task.disabledAgents back in its
-// preimage state: absent, or the default set. A file already in that state
-// keeps its bytes.
+// preimage state: absent, or the generation of the default set the preimage
+// held. A file already in that state keeps its bytes.
 func applyOMPAgentSurfacePrior(data []byte, prior string) ([]byte, error) {
 	value, present, err := ompDisabledAgentsIn(data)
 	if err != nil {
 		return nil, err
 	}
-	switch {
-	case ompDisabledAgentsFingerprint(value, present) == prior:
+	if ompDisabledAgentsFingerprint(value, present) == prior {
 		return data, nil
-	case prior == OMPMissingManagedValueFingerprint():
+	}
+	if prior == OMPMissingManagedValueFingerprint() {
 		return setOMPDisabledAgents(data, nil, false)
-	case prior == ompDefaultDisabledAgentsFingerprint():
-		return setOMPDisabledAgents(data, config.OMPAutopusDisabledAgents(), true)
+	}
+	if generation, known := ompDisabledAgentsGeneration(prior); known {
+		return setOMPDisabledAgents(data, generation, true)
 	}
 	return nil, fmt.Errorf("project ownership agent surface prior invalid")
 }

@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/insajin/autopus-adk/pkg/adapter"
-	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 func readOMPModelProjectOwnershipAt(workspace *ompRootedWorkspace) (ompModelProjectOwnership, bool, error) {
@@ -85,15 +84,25 @@ func ompProjectConfigAnchor(
 	if _, claimed := ownership.agentSurfaceKey(); !claimed && !ownership.AgentSurfaceUserOwned {
 		return nil, false, nil
 	}
-	value, present := any(config.OMPAutopusDisabledAgents()), true
+	// The last emission carried the user-owned value it recorded, or the
+	// generation of the default set the writing release claimed; each is
+	// rendered back in turn, since the file is anchored by its bytes and not
+	// by today's list.
+	var candidates []ompAgentSurfaceValue
 	if emitted := ownership.AgentSurfaceEmitted; emitted != nil {
-		value, present = emitted.Value, emitted.Present
+		candidates = []ompAgentSurfaceValue{*emitted}
+	} else {
+		for _, generation := range ompDisabledAgentsGenerations() {
+			candidates = append(candidates, ompAgentSurfaceValue{Present: true, Value: generation})
+		}
 	}
-	canonical, renderErr := setOMPDisabledAgents(current, value, present)
-	if renderErr != nil || ompModelProjectCommitment(salt, canonical, false) != ownership.LastEmittedCommitment {
-		return nil, false, nil
+	for _, candidate := range candidates {
+		canonical, renderErr := setOMPDisabledAgents(current, candidate.Value, candidate.Present)
+		if renderErr == nil && ompModelProjectCommitment(salt, canonical, false) == ownership.LastEmittedCommitment {
+			return canonical, true, nil
+		}
 	}
-	return canonical, true, nil
+	return nil, false, nil
 }
 
 func loadOMPModelProjectOriginalPreimageAt(

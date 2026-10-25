@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	claimIndentless      = "theme: dark\ntask:\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n"
-	claimIndentlessFirst = "task:\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n"
+	claimIndentless      = "theme: dark\ntask:\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n  - seance\n"
+	claimIndentlessFirst = "task:\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n  - seance\n"
 	claimFourSpace       = "theme: dark\ntask:\n    keep: yes\n"
 )
 
@@ -62,7 +62,7 @@ func TestOMPClaimSet_ReleasesAnIndentlessClaimBesideAUserKey(t *testing.T) {
 	p := newClaimProject(t)
 	p.write(configFile, "theme: dark\n")
 	p.mustRun("generate", configForOMP())
-	p.write(configFile, "theme: dark\ntask:\n  enabled: true\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n")
+	p.write(configFile, "theme: dark\ntask:\n  enabled: true\n  disabledAgents:\n  - scout\n  - security-reviewer\n  - sonic\n  - designer\n  - librarian\n  - seance\n")
 
 	p.mustRun("generate", nativeConfigForOMP())
 
@@ -123,7 +123,7 @@ func TestOMPClaimSet_FourSpaceLayoutRoundTrips(t *testing.T) {
 	p.mustRun("generate", configForOMP())
 
 	claimed, _ := p.read(configFile)
-	assert.Equal(t, claimFourSpace+"    disabledAgents:\n      - scout\n      - security-reviewer\n      - sonic\n      - designer\n      - librarian\n", claimed)
+	assert.Equal(t, claimFourSpace+"    disabledAgents:\n      - scout\n      - security-reviewer\n      - sonic\n      - designer\n      - librarian\n      - seance\n", claimed)
 	p.mustRun("generate", nativeConfigForOMP())
 	released, _ := p.read(configFile)
 	assert.Equal(t, claimFourSpace, released)

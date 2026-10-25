@@ -53,14 +53,29 @@ func OMPAutopusAgentNames() []string {
 
 // OMPAutopusDisabledAgents is the task.disabledAgents value autopus mode
 // claims: every bundled agent but task, across the omp releases ADK supports,
-// so OMP offers the 17 Autopus agents and task only. 18.6.1 bundles scout,
-// security-reviewer, and sonic; 17.2.7 also designer and librarian. OMP
-// filters the task tool's agents by name, so a name the installed release
-// does not bundle is an inert entry. reviewer is not in it because the
-// generated reviewer takes the bundled one's name. New names go at the end:
-// the order is the emitted list and the default every claim compares with.
+// so OMP offers the 17 Autopus agents and task only. 18.12.3 bundles scout,
+// security-reviewer, sonic, and seance; 17.2.7 also designer and librarian.
+// OMP filters the task tool's agents by name, so a name the installed
+// release does not bundle is an inert entry. reviewer is not in it because
+// the generated reviewer takes the bundled one's name. New names go at the
+// end: the order is the emitted list and the default every claim compares
+// with, and the list a new name retires moves to
+// OMPAutopusRetiredDisabledAgents so a project claimed under it migrates.
 func OMPAutopusDisabledAgents() []string {
-	return []string{"scout", "security-reviewer", "sonic", "designer", "librarian"}
+	return []string{"scout", "security-reviewer", "sonic", "designer", "librarian", "seance"}
+}
+
+// OMPAutopusRetiredDisabledAgents lists every earlier value of
+// OMPAutopusDisabledAgents, oldest first. A project claimed under one of them
+// still holds ADK's value, not the user's: the next update re-claims the
+// current list, and a release restores whichever generation the preimage
+// held. Only the claim logic reads this; nothing emits a retired list.
+func OMPAutopusRetiredDisabledAgents() [][]string {
+	return [][]string{
+		// v0.50.127: the bundles of omp 18.6.1 and 17.2.7, before 18.12.3
+		// added seance.
+		{"scout", "security-reviewer", "sonic", "designer", "librarian"},
+	}
 }
 
 func validateOMPAgentSource(declared string) error {

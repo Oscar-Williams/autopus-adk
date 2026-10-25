@@ -2,12 +2,12 @@ package omp
 
 // TestOMPAutopusAgentSurfaceLiveSmoke runs the pinned omp over a project
 // generated in the default autopus mode (SPEC-MODELUX-003) and reads the task
-// tool the parent conversation is offered. It must list the 17 Autopus
-// agents and task: project agent discovery adds the first, and the
-// task.disabledAgents claim in .omp/config.yml hides every bundled agent the
-// claim names, with the profile overlay of the live harness in effect. The
-// one bundle the claim does not name yet is pinned by name below. The fake
-// provider answers once, so no child is spawned and no model is called.
+// tool the parent conversation is offered. It must list exactly the 17
+// Autopus agents and task: project agent discovery adds the first, and the
+// task.disabledAgents claim in .omp/config.yml hides every bundled agent but
+// task, the five 18.12.3 bundles beside it, with the profile overlay of the
+// live harness in effect. The fake provider answers once, so no child is
+// spawned and no model is called.
 
 import (
 	"context"
@@ -30,15 +30,6 @@ import (
 )
 
 const ompAgentSurfaceSmokeToken = "AUTOPUS_OMP_AGENT_SURFACE_SMOKE"
-
-// ompPinnedBundledAgentsOutsideClaim names the agents the pinned omp bundles
-// that config.OMPAutopusDisabledAgents does not hide. omp/18.12.3 bundles
-// reviewer, scout, seance, security-reviewer, sonic, and task; `seance` (a
-// read-only consult of a historical session) postdates the claim, so the
-// task tool lists it in autopus mode. This is a product gap recorded here,
-// not a harness allowance: the exact-set assertion stays load-bearing for
-// any other drift, and this entry goes when the claim names seance.
-var ompPinnedBundledAgentsOutsideClaim = []string{"seance"}
 
 func TestOMPAutopusAgentSurfaceLiveSmoke(t *testing.T) {
 	if os.Getenv("AUTOPUS_OMP_NATIVE_LIVE") != "1" {
@@ -84,14 +75,13 @@ func TestOMPAutopusAgentSurfaceLiveSmoke(t *testing.T) {
 	for _, agent := range config.OMPAutopusDisabledAgents() {
 		assert.NotContains(t, listed, agent, "task.disabledAgents did not hide a bundled agent")
 	}
-	expected := append(config.OMPAutopusAgentNames(), ompPinnedBundledAgentsOutsideClaim...)
-	assert.ElementsMatch(t, expected, listed, "the task tool lists an agent beyond the Autopus set and the pinned exception")
+	assert.ElementsMatch(t, config.OMPAutopusAgentNames(), listed, "the task tool lists an agent beyond the Autopus set")
 	require.Equal(t, baseline, snapshotOMPNativeTree(t, scratch), "the session must leave the project byte-identical")
 	require.Empty(t, findOMPNativeResidualArtifacts(t, scratch, profile))
 
 	encoded, err := json.Marshal(map[string]any{
 		"version": version, "listed": len(listed), "autopus_and_task": len(config.OMPAutopusAgentNames()),
-		"disabled_absent": config.OMPAutopusDisabledAgents(), "outside_claim": ompPinnedBundledAgentsOutsideClaim,
+		"disabled_absent": config.OMPAutopusDisabledAgents(),
 	})
 	require.NoError(t, err)
 	t.Logf("sanitized_autopus_agent_surface_receipt=%s", encoded)

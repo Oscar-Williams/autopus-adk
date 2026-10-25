@@ -15,7 +15,7 @@ import (
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
-const claimSurfaceOnly = "task:\n  disabledAgents:\n    - scout\n    - security-reviewer\n    - sonic\n    - designer\n    - librarian\n"
+const claimSurfaceOnly = "task:\n  disabledAgents:\n    - scout\n    - security-reviewer\n    - sonic\n    - designer\n    - librarian\n    - seance\n"
 
 type claimProject struct {
 	t      *testing.T

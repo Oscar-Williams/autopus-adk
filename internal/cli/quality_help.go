@@ -70,7 +70,7 @@ v0.50.127 cannot read; a file without efforts generates exactly as before.
 
 OMP serves the 17 Autopus agents from .omp/agents by default and disables
 every bundled agent but task (scout, security-reviewer, sonic, designer,
-librarian). In that mode the OMP tab asks no profile or family: from the
+librarian, seance). In that mode the OMP tab asks no profile or family: from the
 current pins or profile routes it edits the 4 role groups or each agent
 (task too while it has its own pin). Each select
 offers keep, keep the OMP session model, and the installed models of every

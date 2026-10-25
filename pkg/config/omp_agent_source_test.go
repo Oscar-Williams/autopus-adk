@@ -71,9 +71,16 @@ func TestOMPAgentNames_FollowTheSource(t *testing.T) {
 	assert.Equal(t, []string{"scout", "reviewer", "security-reviewer", "task", "sonic"},
 		OMPAgentNames(OMPAgentSourceNative))
 	// Every bundled agent but task, across the omp releases ADK supports:
-	// 18.6.1 bundles the first three, 17.2.7 also designer and librarian. A
-	// name the installed omp does not bundle is an inert filter entry.
-	assert.Equal(t, []string{"scout", "security-reviewer", "sonic", "designer", "librarian"}, OMPAutopusDisabledAgents())
+	// 18.12.3 bundles scout, security-reviewer, sonic, and seance; 17.2.7
+	// also designer and librarian. A name the installed omp does not bundle
+	// is an inert filter entry.
+	assert.Equal(t, []string{"scout", "security-reviewer", "sonic", "designer", "librarian", "seance"}, OMPAutopusDisabledAgents())
+	// The v0.50.127 list is retired, not forgotten: a project claimed under
+	// it is re-claimed rather than handed to the user.
+	assert.Equal(t, [][]string{{"scout", "security-reviewer", "sonic", "designer", "librarian"}}, OMPAutopusRetiredDisabledAgents())
+	for _, retired := range OMPAutopusRetiredDisabledAgents() {
+		assert.NotEqual(t, OMPAutopusDisabledAgents(), retired, "a retired list is never the current one")
+	}
 
 	autopus[0] = "mutated"
 	assert.Equal(t, "annotator", OMPAgentNames(OMPAgentSourceAutopus)[0], "callers get a copy")

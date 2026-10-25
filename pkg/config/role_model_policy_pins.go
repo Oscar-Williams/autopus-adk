@@ -56,8 +56,8 @@ func (c RoleModelPolicyConf) pinsOnly() bool {
 // only, and only under names that route there: the canonical agents and
 // task. scout, security-reviewer, and sonic name native agents autopus mode
 // disables; their pins only mean something folded onto a profile's roles.
-// designer and librarian are disabled too but route in no mode, so a pin on
-// either stays an unmapped agent.
+// designer, librarian, and seance are disabled too but route in no mode, so a
+// pin on any of them stays an unmapped agent.
 func (c RoleModelPolicyConf) validatePinsOnlyAgentKeys() error {
 	if c.OMPAgentSource() != OMPAgentSourceAutopus {
 		// Native mode collapses roles onto bundled agents through a profile's
