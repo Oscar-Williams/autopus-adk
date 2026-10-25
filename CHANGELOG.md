@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **autopus 모드가 omp 18.12.3이 번들하는 seance도 끈다** (2026-10-25): CI의 omp-native-smoke를 release canary가 pin한
+  omp/18.12.3으로 올리자 agent surface smoke가 잡았다. 18.12.3은 reviewer·scout·seance·security-reviewer·sonic·task 여섯을
+  번들하는데 `task.disabledAgents` claim은 seance를 몰라, 기본 autopus 모드의 task 도구가 Autopus 에이전트 17개와 task 외에
+  seance도 나열했다. 이제 claim 값은 `[scout, security-reviewer, sonic, designer, librarian, seance]`다.
+  - 기존 프로젝트: v0.50.127이 claim한 다섯 이름 값은 ADK의 값으로 인식되어 다음 `auto update`가 새 값을 다시 claim한다.
+    그 파일의 다른 key를 사용자가 고쳐 두었어도 같다. 사용자가 바꾼 값은 전처럼 사용자 소유로 남고, 해제(`agent_source:
+    native`, `auto clean`)는 preimage가 들고 있던 세대의 값을 그대로 복원한다. 퇴역한 세대는
+    `config.OMPAutopusRetiredDisabledAgents`가 들고 있고 claim 논리만 읽는다.
+  - 문구: update·init·quality help, 사용자 소유·읽기 불가 안내, README가 seance를 함께 적는다.
+  - CI: omp-native-smoke가 omp/17.2.7 대신 18.12.3(sha256 f2a657b3…)으로 돈다. 18.3.0이 `hub`를 없앴으므로 native smoke는
+    `task` 배치 뒤 자식마다 `wait` 한 번으로 lifecycle을 증명하고, 자식은 `yield` 없이 마지막 메시지로 receipt를 돌려준다.
 - **learnings가 실행 근거와 범위를 함께 기록하고, 다섯 플랫폼 모두에서 조회·기록된다** (2026-10-24, SPEC-LEARN-003):
   Harness² 논문의 "실행 비교로 뒷받침될 때만 교훈을 남긴다"와 "범용(에이전트 작업 방식)과 분야 교훈을 나눈다"를 learn 저장소에 들였다.
   - `auto learn record`에 `--evidence-command`·`--evidence-before-exit`·`--evidence-after-exit`와 `--scope process|project`를 더했다.

@@ -181,11 +181,13 @@ func TestOMPNativeSmokeCIPinsExactBinaryAndTest(t *testing.T) {
 		`set -euo pipefail`,
 		`[[ "$(uname -m)" == 'arm64' ]]`,
 		`trap cleanup_omp EXIT`,
-		`https://github.com/can1357/oh-my-pi/releases/download/v17.2.7/omp-darwin-arm64`,
-		`expected='cd2f47545cb3f8eb5e15c91bc9054d73967774652e020b432e294803d1b71ea0'`,
+		// The pin is the release canary's: scripts/companion-release/
+		// materialize-omp-release-canary.sh downloads the same asset.
+		`https://github.com/can1357/oh-my-pi/releases/download/v18.12.3/omp-darwin-arm64`,
+		`expected='f2a657b3320fcafa23055053940a45b26a8d3254e1412a158838013d670d6ec5'`,
 		`/usr/bin/shasum -a 256 "$omp_binary"`,
 		`/bin/chmod 0555 "$omp_binary"`,
-		`[[ "$("$omp_binary" --version)" == 'omp/17.2.7' ]]`,
+		`[[ "$("$omp_binary" --version)" == 'omp/18.12.3' ]]`,
 		`export AUTOPUS_OMP_NATIVE_LIVE=1`,
 		`export AUTOPUS_OMP_LIVE_EXECUTABLE="$omp_binary"`,
 		// The smokes now run through one `live_smoke` helper. It anchors the

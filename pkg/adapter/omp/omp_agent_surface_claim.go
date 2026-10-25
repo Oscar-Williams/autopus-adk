@@ -109,6 +109,12 @@ func evaluateOMPClaimLedgerAt(
 ) (ompClaimSetState, error) {
 	ownership := state.ownership
 	surface, claimed := ownership.agentSurfaceKey()
+	if isDefault && !ompDisabledAgentsAreCurrentDefault(state.value, state.present) &&
+		(!claimed || ompDisabledAgentsFingerprint(state.value, state.present) != surface.Fingerprint) {
+		// A retired generation is ADK's only where this ledger emitted it;
+		// written by hand under a newer claim, it is the user's value.
+		isDefault = false
+	}
 	anchor, edited, err := ompProjectConfigAnchor(state.current, state.currentMissing, ownership)
 	if err != nil {
 		return state, err
@@ -159,8 +165,9 @@ func evaluateOMPClaimLedgerAt(
 		state.prior = surface.PriorFingerprint
 		state.preimage, err = applyOMPAgentSurfacePrior(base, surface.PriorFingerprint)
 	case ownership.AgentSurfaceUserOwned:
-		// The user restored the default set: it is the preimage value now.
-		state.prior = ompDefaultDisabledAgentsFingerprint()
+		// The user restored a default set, current or retired: the value
+		// found is the preimage value now, and a release puts it back.
+		state.prior = ompDisabledAgentsFingerprint(state.value, state.present)
 		state.preimage, err = setOMPDisabledAgents(base, state.value, state.present)
 	default:
 		value, present, readErr := ompDisabledAgentsIn(base)

@@ -96,10 +96,12 @@ func TestPinsOnlyPolicy_LoadRules(t *testing.T) {
 		"scout":             {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"scout": pinOpus}), "role_model_policy.agents_native_key_requires_profile: scout"},
 		"security-reviewer": {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"security-reviewer": pinOpus}), "role_model_policy.agents_native_key_requires_profile: security-reviewer"},
 		"sonic":             {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"sonic": pinOpus}), "role_model_policy.agents_native_key_requires_profile: sonic"},
-		// designer and librarian are disabled too, but no mode routes them,
-		// so a pin on either stays an unmapped agent rather than a native key.
+		// designer, librarian, and seance are disabled too, but no mode routes
+		// them, so a pin on any of them stays an unmapped agent rather than a
+		// native key.
 		"designer":      {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"designer": pinOpus}), "role_model_policy.agents[designer].agent_role_unmapped"},
 		"librarian":     {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"librarian": pinOpus}), "role_model_policy.agents[librarian].agent_role_unmapped"},
+		"seance":        {pinsOnlyPolicy(map[string]RoleModelCandidateConf{"seance": pinOpus}), "role_model_policy.agents[seance].agent_role_unmapped"},
 		"no family":     {unattested, "operator_attestation_family_required"},
 		"no candidates": {empty, "candidates_required"},
 	} {

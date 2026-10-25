@@ -21,16 +21,35 @@ func ompNativeRequestHasAuth(header http.Header) bool {
 	return false
 }
 
+// ompNativeLastToolContent returns the text of the newest tool result in the
+// conversation as the model reads it: a plain string, or the text parts of a
+// content array joined, so callers can match omp's rendering verbatim.
 func ompNativeLastToolContent(messages []json.RawMessage) string {
 	for index := len(messages) - 1; index >= 0; index-- {
 		var message struct {
-			Role    string `json:"role"`
-			Content any    `json:"content"`
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
 		}
-		if json.Unmarshal(messages[index], &message) == nil && message.Role == "tool" {
-			encoded, _ := json.Marshal(message.Content)
-			return string(encoded)
+		if json.Unmarshal(messages[index], &message) != nil || message.Role != "tool" {
+			continue
 		}
+		var text string
+		if json.Unmarshal(message.Content, &text) == nil {
+			return text
+		}
+		var parts []struct {
+			Text string `json:"text"`
+		}
+		if json.Unmarshal(message.Content, &parts) == nil {
+			texts := make([]string, 0, len(parts))
+			for _, part := range parts {
+				if part.Text != "" {
+					texts = append(texts, part.Text)
+				}
+			}
+			return strings.Join(texts, "\n")
+		}
+		return string(message.Content)
 	}
 	return ""
 }

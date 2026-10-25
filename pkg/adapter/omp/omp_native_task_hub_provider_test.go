@@ -108,6 +108,11 @@ func (p *ompNativeProvider) handle(w http.ResponseWriter, r *http.Request) {
 	p.handleChild(w, r, request, body)
 }
 
+// handleParent scripts the omp 18.3+ lifecycle: one task batch, then one
+// `wait` per child. Each wait returns the first settled job as a
+// `## Completed` block carrying the child's final message, with the other
+// child under `## Still Running` while it lasts; the matching child is
+// released when the wait's tool execution starts, so the order is fixed.
 func (p *ompNativeProvider) handleParent(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -128,7 +133,9 @@ func (p *ompNativeProvider) handleParent(
 		}
 	case 1:
 		validationErr = ompNativeRequireTokens(lastTool,
-			"Spawned 2 background agents", ompNativeAlphaID, ompNativeBetaID)
+			"Spawned 2 background agents using scout, reviewer",
+			"`"+ompNativeAlphaID+"` (job `"+ompNativeAlphaID+"`)",
+			"`"+ompNativeBetaID+"` (job `"+ompNativeBetaID+"`)")
 		if validationErr == nil {
 			select {
 			case <-p.childrenReady:
@@ -140,26 +147,18 @@ func (p *ompNativeProvider) handleParent(
 		}
 	case 2:
 		validationErr = ompNativeRequireTokens(lastTool,
-			ompNativeAlphaID, ompNativeBetaID, "running")
+			"## Completed (1)", "## Still Running (1)", "`"+ompNativeBetaID+"`")
+		if validationErr == nil {
+			validationErr = ompNativeRequireOutputReceipt(lastTool, ompNativeAlphaID, "scout")
+		}
 	case 3:
-		validationErr = ompNativeRequireTokens(lastTool,
-			"Still Running (2)", ompNativeAlphaID, ompNativeBetaID)
-	case 4:
-		validationErr = ompNativeRequireTokens(lastTool,
-			"Completed (1)", ompNativeAlphaID,
-			"owned_paths", "changed_files", "verification", "blockers", "next_required_step",
-			"native-alpha-read-only")
-	case 5:
-		validationErr = ompNativeRequireTokens(lastTool,
-			"Still Running (1)", ompNativeBetaID)
-	case 6:
-		validationErr = ompNativeRequireTokens(lastTool,
-			"Completed (1)", ompNativeBetaID,
-			"owned_paths", "changed_files", "verification", "blockers", "next_required_step",
-			"native-beta-read-only")
-	case 7:
-		validationErr = ompNativeRequireTokens(lastTool,
-			ompNativeAlphaID, ompNativeBetaID, "idle")
+		validationErr = ompNativeRequireTokens(lastTool, "## Completed (1)")
+		if validationErr == nil && strings.Contains(lastTool, "Still Running") {
+			validationErr = fmt.Errorf("a child is still running after the last wait")
+		}
+		if validationErr == nil {
+			validationErr = ompNativeRequireOutputReceipt(lastTool, ompNativeBetaID, "reviewer")
+		}
 	default:
 		validationErr = fmt.Errorf("parent request budget exceeded")
 	}
@@ -180,36 +179,17 @@ func (p *ompNativeProvider) handleParent(
 	case 0:
 		writeOMPNativeToolSSE(w, 1, "task", ompNativeTaskArguments())
 	case 1:
-		writeOMPNativeToolSSE(w, 2, "hub", map[string]any{
-			"i": "Listing child identities", "op": "list",
-		})
+		writeOMPNativeToolSSE(w, 2, "wait", map[string]any{"i": "Awaiting alpha receipt"})
 	case 2:
-		writeOMPNativeToolSSE(w, 3, "hub", map[string]any{
-			"i": "Inspecting child jobs", "op": "jobs",
-		})
+		writeOMPNativeToolSSE(w, 3, "wait", map[string]any{"i": "Awaiting beta receipt"})
 	case 3:
-		writeOMPNativeToolSSE(w, 4, "hub", map[string]any{
-			"i": "Awaiting alpha receipt", "op": "wait",
-			"ids": []string{ompNativeAlphaID}, "timeoutMs": 15_000,
-		})
-	case 4:
-		writeOMPNativeToolSSE(w, 5, "hub", map[string]any{
-			"i": "Inspecting remaining child", "op": "jobs",
-		})
-	case 5:
-		writeOMPNativeToolSSE(w, 6, "hub", map[string]any{
-			"i": "Awaiting beta receipt", "op": "wait",
-			"ids": []string{ompNativeBetaID}, "timeoutMs": 15_000,
-		})
-	case 6:
-		writeOMPNativeToolSSE(w, 7, "hub", map[string]any{
-			"i": "Confirming child lifecycle", "op": "list",
-		})
-	case 7:
-		writeOMPNativeFinalSSE(w, 8, "native task hub lifecycle complete")
+		writeOMPNativeFinalSSE(w, 4, "native task lifecycle complete")
 	}
 }
 
+// handleChild holds each child until the parent waits for it, then ends the
+// child's turn on the receipt as plain text: omp 18.3+ children have no
+// `yield`, their final message is the result the parent receives.
 func (p *ompNativeProvider) handleChild(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -257,15 +237,16 @@ func (p *ompNativeProvider) handleChild(
 	case <-r.Context().Done():
 		p.reject(w, "child_request_cancelled:"+id)
 		return
-	case <-time.After(20 * time.Second):
+	case <-time.After(30 * time.Second):
 		p.reject(w, "child_release_timeout:"+id)
 		return
 	}
-	writeOMPNativeToolSSE(w, 100+count, "yield", map[string]any{
-		"i":      "Submitting read-only receipt",
-		"type":   nil,
-		"result": map[string]any{"data": ompNativeExpectedReceipt(id)},
-	})
+	receipt, err := json.Marshal(ompNativeExpectedReceipt(id))
+	if err != nil {
+		p.reject(w, "child_receipt_encode:"+id)
+		return
+	}
+	writeOMPNativeFinalSSE(w, 100+count, string(receipt))
 }
 
 func (p *ompNativeProvider) release(id string) {

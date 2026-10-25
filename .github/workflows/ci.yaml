@@ -579,7 +579,7 @@ jobs:
           umask 077
           [[ "$(uname -s)" == 'Darwin' ]]
           [[ "$(uname -m)" == 'arm64' ]]
-          omp_binary="${RUNNER_TEMP}/omp-v17.2.7-darwin-arm64"
+          omp_binary="${RUNNER_TEMP}/omp-v18.12.3-darwin-arm64"
           omp_bin_dir="${RUNNER_TEMP}/omp-path-shim"
           [[ ! -e "$omp_binary" && ! -L "$omp_binary" ]]
           [[ ! -e "$omp_bin_dir" && ! -L "$omp_bin_dir" ]]
@@ -591,12 +591,12 @@ jobs:
           /usr/bin/curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
             --fail --location --silent --show-error \
             --output "$omp_binary" \
-            'https://github.com/can1357/oh-my-pi/releases/download/v17.2.7/omp-darwin-arm64'
-          expected='cd2f47545cb3f8eb5e15c91bc9054d73967774652e020b432e294803d1b71ea0'
+            'https://github.com/can1357/oh-my-pi/releases/download/v18.12.3/omp-darwin-arm64'
+          expected='f2a657b3320fcafa23055053940a45b26a8d3254e1412a158838013d670d6ec5'
           actual=$(/usr/bin/shasum -a 256 "$omp_binary" | /usr/bin/awk '{print $1}')
           [[ "$actual" == "$expected" ]]
           /bin/chmod 0555 "$omp_binary"
-          [[ "$("$omp_binary" --version)" == 'omp/17.2.7' ]]
+          [[ "$("$omp_binary" --version)" == 'omp/18.12.3' ]]
           # `go test -run '^Name$'` exits 0 with "no tests to run" when the
           # selector matches nothing, and every smoke t.Skips itself when
           # AUTOPUS_OMP_* or the omp binary do not reach it. Either way this
@@ -625,7 +625,7 @@ jobs:
           }
           # The task hub smoke runs on the native agent source; the agent
           # surface smoke proves the default autopus mode on the same binary:
-          # exactly the 16 Autopus agents and task are listed, since the
+          # exactly the 17 Autopus agents and task are listed, since the
           # task.disabledAgents claim hides every bundled agent but task.
           (
             export AUTOPUS_OMP_NATIVE_LIVE=1

@@ -2,10 +2,10 @@ package omp
 
 // TestOMPAutopusAgentSurfaceLiveSmoke runs the pinned omp over a project
 // generated in the default autopus mode (SPEC-MODELUX-003) and reads the task
-// tool the parent conversation is offered. It must list exactly the 16
+// tool the parent conversation is offered. It must list exactly the 17
 // Autopus agents and task: project agent discovery adds the first, and the
 // task.disabledAgents claim in .omp/config.yml hides every bundled agent but
-// task, the five 17.2.7 bundles beside it, with the profile overlay of the
+// task, the five 18.12.3 bundles beside it, with the profile overlay of the
 // live harness in effect. The fake provider answers once, so no child is
 // spawned and no model is called.
 
@@ -55,7 +55,7 @@ func TestOMPAutopusAgentSurfaceLiveSmoke(t *testing.T) {
 	writeOMPLiveModelConfig(t, profile, provider.server.URL)
 	overlay := writeOMPNativeLiveOverlay(t, profile)
 	version := probeOMPLiveVersion(t, executable, profile, overlay)
-	require.Equal(t, "omp/17.2.7", version, "the agent surface is pinned to the supported OMP release")
+	require.Equal(t, "omp/18.12.3", version, "the agent surface is pinned to the supported OMP release")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
 	defer cancel()
@@ -87,32 +87,47 @@ func TestOMPAutopusAgentSurfaceLiveSmoke(t *testing.T) {
 	t.Logf("sanitized_autopus_agent_surface_receipt=%s", encoded)
 }
 
-// ompTaskDefinitionAgents returns the agent names the task tool lists under
-// its "# Available Agents" heading, one "### <name>" line each. A heading can
-// carry a note after the name, as "### scout (READ-ONLY)" does.
+// ompTaskDefinitionAgents is ompTaskDefinitionAgentNames as a test
+// requirement.
 func ompTaskDefinitionAgents(t *testing.T, definition string) []string {
 	t.Helper()
+	agents, err := ompTaskDefinitionAgentNames(definition)
+	require.NoError(t, err)
+	return agents
+}
+
+// ompTaskDefinitionAgentNames returns the agent names the task tool lists
+// under its "# Available Agents" heading, one "- `<name>`" bullet each. A
+// bullet can carry a note after the name, as "- `scout` (READ-ONLY; ...)"
+// does. omp 18.3+ renders these bullets; 17.x rendered "### <name>" lines.
+func ompTaskDefinitionAgentNames(definition string) ([]string, error) {
 	var tool struct {
 		Function struct {
 			Description string `json:"description"`
 		} `json:"function"`
 	}
-	require.NoError(t, json.Unmarshal([]byte(definition), &tool), "task tool definition missing")
+	if err := json.Unmarshal([]byte(definition), &tool); err != nil {
+		return nil, fmt.Errorf("task tool definition missing: %w", err)
+	}
 	_, section, found := strings.Cut(tool.Function.Description, "\n# Available Agents\n")
-	require.True(t, found, "the task tool lists no available agents")
+	if !found {
+		return nil, fmt.Errorf("the task tool lists no available agents")
+	}
 	var agents []string
 	for _, line := range strings.Split(section, "\n") {
 		if strings.HasPrefix(line, "# ") {
 			break
 		}
-		if heading, ok := strings.CutPrefix(line, "### "); ok {
-			if fields := strings.Fields(heading); len(fields) > 0 {
-				agents = append(agents, fields[0])
+		if bullet, ok := strings.CutPrefix(line, "- `"); ok {
+			if name, _, closed := strings.Cut(bullet, "`"); closed && name != "" {
+				agents = append(agents, name)
 			}
 		}
 	}
-	require.NotEmpty(t, agents)
-	return agents
+	if len(agents) == 0 {
+		return nil, fmt.Errorf("the task tool's agent listing has no \"- `<name>`\" bullet")
+	}
+	return agents, nil
 }
 
 type ompAgentSurfaceReceipt struct {
@@ -191,7 +206,7 @@ func (p *ompAgentSurfaceProvider) receipt() ompAgentSurfaceReceipt {
 func runOMPAgentSurfaceRPC(ctx context.Context, executable, scratch, profile, overlay, prompt, endpoint string) error {
 	cmd := exec.CommandContext(ctx, executable,
 		"--mode", "rpc", "--no-session", "--cwd", scratch,
-		"--model", "s7dummy/"+ompLiveModel, "--config", overlay, "--tools", "task,hub",
+		"--model", "s7dummy/"+ompLiveModel, "--config", overlay, "--tools", "task,wait",
 		"--auto-approve", "--no-extensions", "--no-rules", "--no-lsp", "--no-pty", "--max-time", "30s",
 	)
 	cmd.Dir = scratch
