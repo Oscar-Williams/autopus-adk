@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
   조회를 치렀다. 이 dispatcher와 cron 파서를 지운다. 실행되던 것이 없으므로 worker가 하는 일은 바뀌지 않고, 로그에서
   `[scheduler] ...`와 `[worker] schedule triggered` 줄만 사라진다. 설정과 플래그는 그대로다. 스케줄을 worker에서
   실행하려면 서버가 A2A `tasks/send`로 보내면 되고, worker는 그 경로로 받은 태스크를 이미 처리한다.
+- **`role_model_policy.agent_source: native` 제거를 v0.50.129로 미룬다** (2026-10-26): v0.50.127은 native 경로를
+  v0.50.128에서 지운다고 알렸다. 그러나 v0.50.128은 autopus 모드의 `task.disabledAgents`를 다시 바꾸므로(seance), 되돌릴 길을
+  한 릴리스 더 남긴다. 동작은 그대로이고 help·README의 예정 버전만 바뀐다.
 - **autopus 모드가 omp 18.12.3이 번들하는 seance도 끈다** (2026-10-25): CI의 omp-native-smoke를 release canary가 pin한
   omp/18.12.3으로 올리자 agent surface smoke가 잡았다. 18.12.3은 reviewer·scout·seance·security-reviewer·sonic·task 여섯을
   번들하는데 `task.disabledAgents` claim은 seance를 몰라, 기본 autopus 모드의 task 도구가 Autopus 에이전트 17개와 task 외에

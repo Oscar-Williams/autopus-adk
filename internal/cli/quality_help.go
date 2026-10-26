@@ -82,8 +82,8 @@ Applying over a profile converts it after a preview line and the
 confirmation: unchanged agents and task keep their routes, and an ultra
 profile stops following quality.presets.ultra. Native mode, the OMP line
 editor, and auto platform omp profile apply keep profiles;
-role_model_policy.agent_source: native keeps the five bundled agents during
-v0.50.127 (removal planned in v0.50.128).
+role_model_policy.agent_source: native keeps the five bundled agents through
+v0.50.128 (removal planned in v0.50.129).
 
 The tool tab ends with Multi-provider review while spec.review_gate is
 enabled, autopus.yaml holds at least two orchestra.providers entries, and CI
