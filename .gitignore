@@ -90,3 +90,6 @@ credentials.enc
 !.env.example
 /tmp/autopus-*/
 runtime-a2a-canary-local-probe.md
+
+# Autopus-ADK generated files
+.autopus/reverse/
