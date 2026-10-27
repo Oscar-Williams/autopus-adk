@@ -14,9 +14,12 @@ import (
 
 const (
 	// defaultOMPModelProbeTimeout bounds a hung omp process, not a slow one.
-	// `omp models` takes about 1s warm and several seconds cold on OMP 18.x,
-	// and generation runs it beside other platform work; the former 3s ceiling
-	// failed healthy installs with catalog_timeout.
+	// With remote network access closed (OMPModelProbeProcess), `omp models`
+	// takes about 0.4s warm and about 2.5s on an empty profile on OMP 18.12.x;
+	// with it open the same call followed omp's online catalog refresh and
+	// ranged from 1s to past this bound. Generation runs it beside other
+	// platform work; the former 3s ceiling failed healthy installs with
+	// catalog_timeout.
 	defaultOMPModelProbeTimeout = 20 * time.Second
 	defaultOMPModelProbeOutput  = 64 * 1024
 )

@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **omp 모델 카탈로그 조회가 원격 네트워크를 기다리지 않는다** (2026-10-27): `auto update`와 doctor는 설치된 omp의 모델
+  카탈로그를 `omp models --json --no-extensions`로 읽는다. omp 18.12.3은 캐시한 provider 행이 TTL(권위 행 2시간, 그 외 5분)을
+  넘기면 답하기 전에 catalog.stencil.so와 provider별 모델 목록을 온라인으로 다시 받고 로그인한 provider마다 OAuth 사전 갱신을
+  시도한다. 그래서 같은 조회가 네트워크 상태에 따라 0.4초에서 20초 상한 너머까지 걸렸고(응답 없이 열린 원격 한 홉이면 CPU
+  0.8초에 벽시계 10초) update가 `model_catalog_unavailable: catalog_timeout`으로 멈췄다. 이제 카탈로그·설정 조회 프로세스는
+  readiness 조회와 같은 방식으로 원격 네트워크를 닫고(루프백은 열어 둔다) omp가 캐시한 행으로 답하게 한다. 캐시가 신선할 때
+  결과 바이트는 온라인 답과 같고, 오래됐을 때는 마지막으로 받은 행을 쓴다. 20초 상한은 그대로이며 이제 omp 자체가 멈춘
+  경우에만 닿고, 오류 문구도 그렇게 말한다.
 - **worker: 아무것도 실행하지 않던 스케줄 폴링을 지운다** (2026-10-25): workspace ID가 있는 worker는 시작할 때와
   그 뒤 60초마다 `GET /api/v1/workspaces/{id}/schedules`를 불렀다. 그런데 cron이 맞아도 `schedule triggered` 로그만
   남기고 태스크는 실행하지 않았다(`pkg/worker/scheduler`). 호출마다 서버는 워크스페이스 멤버십 확인과 스케줄 목록
