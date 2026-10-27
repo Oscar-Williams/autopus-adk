@@ -17,7 +17,14 @@ import (
 
 // claudeReaC1 is the literal managed .mcp.json entry of the MCP Entry Shape
 // Contract (acceptance S4 row C1).
-const claudeReaC1 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
+const claudeReaC1 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+
+// claudeReaC8 and claudeReaC9 are acceptance rows C8 and C9: the entry
+// v0.50.127 wrote, without --prefix=/, with the managed pin and another pin.
+const (
+	claudeReaC8 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
+	claudeReaC9 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`
+)
 
 func reaClaudeConfig(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg := config.DefaultFullConfig("rea")
@@ -107,11 +114,12 @@ func TestReaMCP_AddThenRemoveRestoresBaseMergeBytes(t *testing.T) {
 func TestReaMCP_MergeLeavesOtherPinAndUserOwnedEntriesValueIdentical(t *testing.T) {
 	t.Parallel()
 	rows := map[string]string{
-		"C2": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`,
+		"C2": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.4.0 mcp"]}`,
 		"C3": `{"command": "npx", "args": ["-y", "rea-agents@6.5.0", "mcp"]}`,
-		"C4": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"], "env": {"REA_MCP_MAX_RESPONSE_BYTES": "1"}}`,
-		"C5": `{"$comment": "mine", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`,
-		"C7": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`,
+		"C4": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"], "env": {"REA_MCP_MAX_RESPONSE_BYTES": "1"}}`,
+		"C5": `{"$comment": "mine", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`,
+		"C7": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.4.0 mcp"]}`,
+		"C9": claudeReaC9,
 	}
 	for id, value := range rows {
 		root := t.TempDir()
@@ -154,6 +162,36 @@ func TestReaMCP_CleanRemovesOnlyTheManagedEntry(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, userAdapter.Clean(context.Background()))
 	assert.Equal(t, decodeReaValue(t, userRea), mcpServers(t, userRoot)["rea"])
+}
+
+// A project holding the v0.50.127 entry (C8) gets the current entry from an
+// add run and loses it on remove and Clean; a keep run leaves it as written.
+func TestReaMCP_MovesTheRetiredEntry(t *testing.T) {
+	t.Parallel()
+	writeRetired := func(t *testing.T) string {
+		root := t.TempDir()
+		writeJSONFile(t, filepath.Join(root, ".mcp.json"), map[string]any{"mcpServers": map[string]any{
+			"rea": decodeReaValue(t, claudeReaC8), "mine": map[string]any{"command": "mine-mcp"}}})
+		return root
+	}
+
+	root := writeRetired(t)
+	_, err := NewWithRoot(root).Generate(context.Background(), reaClaudeConfig(config.ReaMCPKeep))
+	require.NoError(t, err)
+	assert.Equal(t, decodeReaValue(t, claudeReaC8), mcpServers(t, root)["rea"])
+	_, err = NewWithRoot(root).Generate(context.Background(), reaClaudeConfig(config.ReaMCPAdd))
+	require.NoError(t, err)
+	assert.Equal(t, decodeReaValue(t, claudeReaC1), mcpServers(t, root)["rea"])
+	assert.Equal(t, map[string]any{"command": "mine-mcp"}, mcpServers(t, root)["mine"])
+
+	root = writeRetired(t)
+	_, err = NewWithRoot(root).Generate(context.Background(), reaClaudeConfig(config.ReaMCPRemove))
+	require.NoError(t, err)
+	assert.NotContains(t, mcpServers(t, root), "rea")
+
+	root = writeRetired(t)
+	require.NoError(t, NewWithRoot(root).Clean(context.Background()))
+	assert.NotContains(t, string(readReaFile(t, filepath.Join(root, ".mcp.json"))), "rea-agents")
 }
 
 func TestReaMCP_RefusesSymlinkedTargetWhenReaChangesContent(t *testing.T) {

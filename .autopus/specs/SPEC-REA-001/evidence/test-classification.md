@@ -133,3 +133,21 @@
 | `pkg/adapter/parity_acceptance_test.go` | 14 | 보안 후속 L2: S2·S9의 Gemini rule 기대가 content 14개에 Antigravity 전용 `rea-mcp-guard.md`(`platformRuleAdditions`)를 더한 15개다 |
 | `pkg/adapter/parity_conditional_test.go` | 14 | 같은 이유로 Gemini rule 수가 14+1이다 |
 | `pkg/adapter/parity_helpers_test.go` | 14 | 문서화된 Antigravity 전용 rule 목록 `platformRuleAdditions`를 둔다 |
+
+## 보안 감사 L4 (2026-10-27, branch `fix/rea-npm-registry`, 규칙 15)
+
+기준: `git diff --name-status origin/main..fix/rea-npm-registry -- '*_test.go' '*.golden' '*.npd' 'evals/'`. 바뀐 기존 파일 15개(test 10, SPEC-TUIUX-001 NPD golden 5)는 모두 규칙 15이고, 새 test 파일 `internal/cli/update_rea_migrate_test.go`(retired 항목을 실제 `auto update`·`--no-rea`·`auto platform remove`가 옮기고 지움)는 기존 test 변경이 아니다.
+
+| 파일 | 규칙 | 이유 |
+|---|---|---|
+| `internal/cli/doctor_rea_test.go` | 15 | S4 X5 literal이 새 args 줄이다 |
+| `internal/cli/rea_decision_test.go` | 15 | other_pin Codex table literal이 새 args 줄이다 |
+| `internal/cli/rea_plugin_mcp_test.go` | 15 | 주석 JSON 플러그인 파일 fixture의 rea 항목이 새 모양이다 |
+| `internal/cli/rea_target_test.go` | 15 | 구조 검사로 거부되는 managed Codex table이 새 args 줄이다 |
+| `pkg/adapter/antigravity/antigravity_rea_mcp_test.go` | 15 | G1·G2·G3와 생성 플러그인 파일 bytes가 새 모양이고, G4 이동 test와 legacy sweep의 G4 경우가 더해진다 |
+| `pkg/adapter/claude/claude_rea_mcp_test.go` | 15 | C1·C2·C4·C5·C7이 새 모양이고, C9 행과 C8 이동·제거 test가 더해진다 |
+| `pkg/adapter/codex/codex_rea_mcp_test.go` | 15 | X1(과 X2·X4)이 새 args 줄이고, X9 행과 X8 이동·제거 test가 더해진다 |
+| `pkg/reamcp/file_test.go` | 15 | 인코딩된 Claude·Antigravity 파일이 새 모양이고, retired 파일의 `ApplyFile` test가 더해진다 |
+| `pkg/reamcp/shape_codex_test.go` | 15 | X1 계열이 새 args 줄이고, X8·X9와 다른 `--prefix` 값 행, retired table 이동 test가 더해진다 |
+| `pkg/reamcp/shape_test.go` | 15 | S4 JSON 행이 새 모양이고, C8·C9·G4와 retired·다른 prefix 행, retired 이동 test가 더해진다 |
+| `.autopus/specs/SPEC-TUIUX-001/evidence/base-goldens/{init-in,init-pipe,init-yes,update-ci,update-yes}.npd` | 15 | `.mcp.json`·`.codex/config.toml`과 그 manifest·journal·backup checksum만 바뀐다(recapture 8절) |

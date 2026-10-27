@@ -74,12 +74,27 @@ const (
 const (
 	serverName = "rea"
 
+	// npxPrefixFlag moves npm's project lookup to the filesystem root. Without
+	// it npx reads the .npmrc of the project directory, or of the nearest
+	// parent holding a package.json or node_modules, so a cloned repository
+	// could send rea-agents or any of its scoped dependencies to a registry it
+	// names. With --prefix on the command line npm reads no project config and
+	// resolves no package from the project tree, while the user's own ~/.npmrc
+	// still applies and the server still runs in the project directory.
+	npxPrefixFlag = "--prefix=/"
+
 	jsonCommand       = "/bin/bash"
-	jsonScriptPrefix  = "exec npx -y rea-agents@"
+	jsonScriptPrefix  = "exec npx -y " + npxPrefixFlag + " rea-agents@"
 	jsonScriptSuffix  = " mcp"
 	jsonCommentPrefix = "REA reverse-engineering MCP (rea-agents@"
 	jsonCommentSuffix = ")"
 )
+
+// jsonRetiredScriptPrefixes are the script prefixes of the shapes earlier
+// releases wrote; v0.50.127 and earlier ran npx without npxPrefixFlag. An
+// entry in a retired shape with a managed pin is managed, so add moves it to
+// the current shape and remove deletes it. With any other pin it is other_pin.
+var jsonRetiredScriptPrefixes = []string{"exec npx -y rea-agents@"}
 
 // ManagedJSONEntry returns the current-pin entry for a JSON platform. Codex
 // has no JSON shape and gets nil.
@@ -108,7 +123,7 @@ func ClassifyJSON(p Platform, servers map[string]any) Class {
 	if !exists {
 		return ClassAbsent
 	}
-	pin, shaped := jsonEntryPin(p, raw)
+	pin, _, shaped := jsonEntryShape(p, raw)
 	if !shaped {
 		return ClassUserOwned
 	}
@@ -118,17 +133,17 @@ func ClassifyJSON(p Platform, servers map[string]any) Class {
 // ApplyJSON applies one action to a decoded mcpServers object. It never edits
 // servers: a change comes back in a shallow copy, and an unchanged object is
 // returned as is. add inserts the entry when the name is absent and moves a
-// managed entry to Pin; remove deletes a managed entry; other_pin and
-// user_owned entries are never touched.
+// managed entry to the current shape and Pin; remove deletes a managed entry;
+// other_pin and user_owned entries are never touched.
 func ApplyJSON(p Platform, servers map[string]any, a config.ReaMCPAction) (map[string]any, bool) {
 	if p != Claude && p != Antigravity {
 		return servers, false
 	}
 	raw, exists := servers[serverName]
-	pin, shaped := jsonEntryPin(p, raw)
+	pin, current, shaped := jsonEntryShape(p, raw)
 	managed := shaped && isManagedPin(pin)
 	switch {
-	case a == config.ReaMCPAdd && (!exists || managed && pin != Pin):
+	case a == config.ReaMCPAdd && (!exists || managed && (pin != Pin || !current)):
 		out := cloneServers(servers)
 		out[serverName] = ManagedJSONEntry(p)
 		return out, true
@@ -141,38 +156,39 @@ func ApplyJSON(p Platform, servers map[string]any, a config.ReaMCPAction) (map[s
 	}
 }
 
-// jsonEntryPin returns the pin of a value that has p's managed shape with only
-// the pin slots free. Claude carries the pin twice ($comment and the third
-// argument) and both must agree; any extra or missing key fails the shape.
-func jsonEntryPin(p Platform, raw any) (string, bool) {
+// jsonEntryShape returns the pin of a value that has p's managed shape, current
+// or retired, with only the pin slots free, and whether the shape is the
+// current one. Claude carries the pin twice ($comment and the third argument)
+// and both must agree; any extra or missing key fails the shape.
+func jsonEntryShape(p Platform, raw any) (pin string, current, shaped bool) {
 	entry, ok := raw.(map[string]any)
 	if !ok || (p != Claude && p != Antigravity) {
-		return "", false
+		return "", false, false
 	}
 	keys := 2
 	if p == Claude {
 		keys = 3
 	}
 	if len(entry) != keys || entry["command"] != jsonCommand {
-		return "", false
+		return "", false, false
 	}
 	args, ok := entry["args"].([]any)
 	if !ok || len(args) != 3 || args[0] != "-l" || args[1] != "-c" {
-		return "", false
+		return "", false, false
 	}
 	script, _ := args[2].(string)
-	pin, ok := pinBetween(script, jsonScriptPrefix, jsonScriptSuffix)
+	pin, current, ok = shapePin(script, jsonScriptPrefix, jsonRetiredScriptPrefixes, jsonScriptSuffix)
 	if !ok {
-		return "", false
+		return "", false, false
 	}
 	if p == Claude {
 		comment, _ := entry["$comment"].(string)
 		commentPin, ok := pinBetween(comment, jsonCommentPrefix, jsonCommentSuffix)
 		if !ok || commentPin != pin {
-			return "", false
+			return "", false, false
 		}
 	}
-	return pin, true
+	return pin, current, true
 }
 
 func cloneServers(servers map[string]any) map[string]any {
@@ -181,6 +197,22 @@ func cloneServers(servers map[string]any) map[string]any {
 		out[name] = value
 	}
 	return out
+}
+
+// shapePin extracts the pin slot of value framed by suffix and either the
+// current prefix or one of the retired ones, and reports whether the current
+// prefix framed it. None of these prefixes is a prefix of another, so a value
+// matches at most one of them.
+func shapePin(value, current string, retired []string, suffix string) (string, bool, bool) {
+	if pin, ok := pinBetween(value, current, suffix); ok {
+		return pin, true, true
+	}
+	for _, prefix := range retired {
+		if pin, ok := pinBetween(value, prefix, suffix); ok {
+			return pin, false, true
+		}
+	}
+	return "", false, false
 }
 
 // pinBetween extracts the pin slot of value framed by prefix and suffix.

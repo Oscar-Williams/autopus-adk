@@ -116,3 +116,10 @@ RC에 TUIUX 밖의 생성 내용 변경이 더 들어오면 golden은 다시 깨
 - 기록: 6절과 같은 방법이다(이 branch tip에서 writer, stdout golden 되돌림).
 - 차이: `.claude/skills/auto-fix`·`auto-sync`, `.codex/skills/codex-auto-go`·`codex-auto-fix`·`codex-auto-sync`의 checksum, 두 manifest의 그 entry, 두 journal의 `after_checksum`, update 흐름의 backup 사본. 다른 경로는 바뀌지 않았다.
 - 검증: 두 test가 이 golden으로 통과한다.
+
+## 8. REA npx `--prefix=/` 재기록 (fix/rea-npm-registry, 2026-10-27)
+
+- 원인: SPEC-REA-001 보안 감사 L4가 REA managed 항목의 실행 형식에 `--prefix=/`를 더했다(`pkg/reamcp/shape.go` `jsonScriptPrefix`, `shape_codex.go` `codexArgsPrefix`). 템플릿·content는 그대로이고 생성 `.mcp.json`과 `.codex/config.toml`의 rea 항목 bytes만 바뀐다.
+- 기록: 6절과 같은 방법이다(이 branch tip에서 writer를 돌리고, writer가 다시 쓴 `init-in.stdout`은 `git checkout`으로 되돌림).
+- 차이: init 흐름(init-in·init-pipe·init-yes)은 `.mcp.json`, `.codex/config.toml`, 두 manifest, 두 journal의 checksum 6줄씩이다. update 흐름(update-ci·update-yes)은 거기에 두 번째 transaction의 journal 두 줄과 backup 사본 네 줄(`.mcp.json`, `.codex/config.toml`, 두 manifest)을 더한 12줄씩이다. 다른 경로는 바뀌지 않았다.
+- 검증: 기록 전 다섯 흐름이 정확히 이 경로들의 차이로 실패했고, 기록 뒤 test가 통과한다.

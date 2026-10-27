@@ -9,10 +9,15 @@ import (
 const (
 	codexHeader      = "[mcp_servers.rea]"
 	codexCommandLine = `command = "npx"`
-	codexArgsPrefix  = `args = ["-y", "rea-agents@`
+	codexArgsPrefix  = `args = ["-y", "` + npxPrefixFlag + `", "rea-agents@`
 	codexArgsSuffix  = `", "mcp"]`
 	codexTimeoutLine = "startup_timeout_sec = 120"
 )
+
+// codexRetiredArgsPrefixes are the args-line prefixes of the tables earlier
+// releases wrote (jsonRetiredScriptPrefixes): a retired table with a managed
+// pin is managed, and add rewrites its args line.
+var codexRetiredArgsPrefixes = []string{`args = ["-y", "rea-agents@`}
 
 func codexTableLines(pin string) []string {
 	return []string{codexHeader, codexCommandLine, codexArgsPrefix + pin + codexArgsSuffix, codexTimeoutLine}
@@ -35,30 +40,30 @@ type codexScan struct {
 
 // ClassifyCodexTOML classifies the rea server of a Codex config text. The
 // rea server is every `[mcp_servers.rea]` and `[mcp_servers.rea.*]` table plus
-// any dotted or inline key naming it; only one exact four-line table is
-// managed.
+// any dotted or inline key naming it; only one exact four-line table, current
+// or retired, is managed.
 func ClassifyCodexTOML(text string) Class {
 	lines := strings.Split(text, "\n")
-	class, _ := classifyCodex(lines, scanCodex(lines))
+	class, _, _ := classifyCodex(lines, scanCodex(lines))
 	return class
 }
 
 // ApplyCodexTOML applies one action to a Codex config text. add appends one
 // blank line and the managed table at the end when no rea server exists and
-// moves a managed table to Pin in place; remove deletes a managed table and
-// the blank line before it, so add then remove restores the input bytes.
-// Every line outside a managed table keeps its bytes.
+// moves a managed table to the current shape and Pin in place; remove deletes
+// a managed table and the blank line before it, so add then remove restores
+// the input bytes. Every line outside a managed table keeps its bytes.
 func ApplyCodexTOML(text string, a config.ReaMCPAction) (string, bool) {
 	if a != config.ReaMCPAdd && a != config.ReaMCPRemove {
 		return text, false
 	}
 	lines := strings.Split(text, "\n")
 	scan := scanCodex(lines)
-	class, pin := classifyCodex(lines, scan)
+	class, pin, current := classifyCodex(lines, scan)
 	switch {
 	case a == config.ReaMCPAdd && class == ClassAbsent:
 		return appendCodexTable(text), true
-	case a == config.ReaMCPAdd && class == ClassManaged && pin != Pin:
+	case a == config.ReaMCPAdd && class == ClassManaged && (pin != Pin || !current):
 		return repinCodexTable(lines, scan.tables[0]), true
 	case a == config.ReaMCPRemove && class == ClassManaged:
 		return removeCodexTable(lines, scan.tables[0]), true
@@ -104,16 +109,18 @@ func scanCodex(lines []string) codexScan {
 	return result
 }
 
-func classifyCodex(lines []string, scan codexScan) (Class, string) {
+// classifyCodex returns the class of the rea server and, for a table with the
+// managed shape, its pin and whether the shape is the current one.
+func classifyCodex(lines []string, scan codexScan) (Class, string, bool) {
 	switch {
 	case len(scan.tables) == 0 && !scan.inline:
-		return ClassAbsent, ""
+		return ClassAbsent, "", false
 	case scan.inline || len(scan.tables) != 1 || scan.tables[0].nested:
-		return ClassUserOwned, ""
+		return ClassUserOwned, "", false
 	}
 	table := scan.tables[0]
 	if lines[table.header] != codexHeader {
-		return ClassUserOwned, ""
+		return ClassUserOwned, "", false
 	}
 	var body []string
 	for _, line := range lines[table.header+1 : table.end] {
@@ -122,13 +129,18 @@ func classifyCodex(lines []string, scan codexScan) (Class, string) {
 		}
 	}
 	if len(body) != 3 || body[0] != codexCommandLine || body[2] != codexTimeoutLine {
-		return ClassUserOwned, ""
+		return ClassUserOwned, "", false
 	}
-	pin, ok := pinBetween(body[1], codexArgsPrefix, codexArgsSuffix)
+	pin, current, ok := codexArgsPin(body[1])
 	if !ok {
-		return ClassUserOwned, ""
+		return ClassUserOwned, "", false
 	}
-	return pinClass(pin), pin
+	return pinClass(pin), pin, current
+}
+
+// codexArgsPin reads the pin of a current or retired managed args line.
+func codexArgsPin(line string) (string, bool, bool) {
+	return shapePin(line, codexArgsPrefix, codexRetiredArgsPrefixes, codexArgsSuffix)
 }
 
 func appendCodexTable(text string) string {
@@ -142,10 +154,12 @@ func appendCodexTable(text string) string {
 	return text + "\n" + block
 }
 
+// repinCodexTable rewrites the args line of a managed table, the only line in
+// which an older pin or a retired shape differs from the current table.
 func repinCodexTable(lines []string, table codexTable) string {
 	out := append([]string(nil), lines...)
 	for i := table.header + 1; i < table.end; i++ {
-		if strings.HasPrefix(out[i], codexArgsPrefix) {
+		if _, _, ok := codexArgsPin(out[i]); ok {
 			out[i] = codexTableLines(Pin)[2]
 		}
 	}

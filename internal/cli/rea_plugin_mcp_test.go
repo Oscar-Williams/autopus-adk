@@ -101,7 +101,7 @@ func TestReaPluginMCP_PreviewItems(t *testing.T) {
 func reaPluginJSONC(withRea bool) []byte {
 	servers := `"mine": {"command": "mine-mcp"},`
 	if withRea {
-		servers += ` "rea": {"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]},`
+		servers += ` "rea": {"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]},`
 	}
 	return []byte("{\n  // mine\n  \"mcpServers\": {" + servers + "},\n}\n")
 }

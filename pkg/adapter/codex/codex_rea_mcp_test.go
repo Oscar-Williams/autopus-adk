@@ -18,8 +18,12 @@ import (
 // (acceptance S4 row X1).
 const codexReaX1 = "[mcp_servers.rea]\n" +
 	"command = \"npx\"\n" +
-	"args = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\n" +
+	"args = [\"-y\", \"--prefix=/\", \"rea-agents@6.5.0\", \"mcp\"]\n" +
 	"startup_timeout_sec = 120\n"
+
+// codexReaX8 is acceptance row X8, the table v0.50.127 wrote without
+// --prefix=/.
+var codexReaX8 = strings.Replace(codexReaX1, `"--prefix=/", `, "", 1)
 
 func reaCodexConfig(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg := config.DefaultFullConfig("rea")
@@ -175,11 +179,12 @@ func TestReaMCP_CodexMergeLeavesOtherPinAndUserOwnedTablesByteIdentical(t *testi
 	require.NoError(t, err)
 	base := string(rendered[0].Content)
 	rows := map[string]string{
-		"X2": "[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\n",
+		"X2": strings.Replace(codexReaX1, "startup_timeout_sec = 120\n", "", 1),
 		"X3": codexReaX1 + "tool_timeout_sec = 120\n",
-		"X4": "[mcp_servers.rea]\n# mine\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.5.0\", \"mcp\"]\nstartup_timeout_sec = 120\n",
+		"X4": strings.Replace(codexReaX1, "\ncommand", "\n# mine\ncommand", 1),
 		"X5": strings.Replace(codexReaX1, "6.5.0", "6.4.0", 1),
 		"X7": codexReaX1 + "\n[mcp_servers.rea.env]\nA = \"1\"\n",
+		"X9": strings.Replace(codexReaX8, "6.5.0", "6.4.0", 1),
 	}
 	prepare := func(root string, action config.ReaMCPAction) string {
 		t.Helper()
@@ -206,6 +211,40 @@ func TestReaMCP_CodexMergeLeavesOtherPinAndUserOwnedTablesByteIdentical(t *testi
 	keep := prepare(root, config.ReaMCPKeep)
 	require.True(t, strings.HasSuffix(keep, "\n\n"+x6))
 	assert.Equal(t, keep+"\n"+codexReaX1, prepare(root, config.ReaMCPAdd))
+}
+
+// A project v0.50.127 registered holds X8: an add run rewrites only its args
+// line, keep leaves it, and remove and Clean take it out as they take out X1.
+func TestReaMCP_CodexMovesTheRetiredTable(t *testing.T) {
+	t.Parallel()
+	keepRoot := t.TempDir()
+	_, err := reaCodexAdapter(keepRoot).Generate(context.Background(), reaCodexConfig(config.ReaMCPKeep))
+	require.NoError(t, err)
+	base := readReaCodexConfig(t, keepRoot)
+	retired := func(t *testing.T) string {
+		root := t.TempDir()
+		_, err := reaCodexAdapter(root).Generate(context.Background(), reaCodexConfig(config.ReaMCPKeep))
+		require.NoError(t, err)
+		writeReaCodexConfig(t, root, base+"\n"+codexReaX8)
+		return root
+	}
+
+	root := retired(t)
+	_, err = reaCodexAdapter(root).Generate(context.Background(), reaCodexConfig(config.ReaMCPKeep))
+	require.NoError(t, err)
+	assert.Equal(t, base+"\n"+codexReaX8, readReaCodexConfig(t, root))
+	_, err = reaCodexAdapter(root).Generate(context.Background(), reaCodexConfig(config.ReaMCPAdd))
+	require.NoError(t, err)
+	assert.Equal(t, base+"\n"+codexReaX1, readReaCodexConfig(t, root))
+
+	root = retired(t)
+	_, err = reaCodexAdapter(root).Generate(context.Background(), reaCodexConfig(config.ReaMCPRemove))
+	require.NoError(t, err)
+	assert.Equal(t, base, readReaCodexConfig(t, root))
+
+	root = retired(t)
+	require.NoError(t, reaCodexAdapter(root).Clean(context.Background()))
+	assert.NotContains(t, readReaCodexConfig(t, root), "mcp_servers.rea")
 }
 
 func TestReaMCP_CodexCleanRemovesManagedTableBeforeGenericClean(t *testing.T) {
