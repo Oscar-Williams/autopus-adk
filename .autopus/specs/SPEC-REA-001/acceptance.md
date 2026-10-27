@@ -34,32 +34,37 @@ Priority: Must
 
 | ID | 파일 | `rea` 값 | update 전 | `--rea` 뒤 |
 |---|---|---|---|---|
-| C1 | `.mcp.json` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` | managed | managed |
+| C1 | `.mcp.json` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}` | managed | managed |
 | C2 | `.mcp.json` | C1의 두 pin 자리를 모두 `6.4.0`으로 | other_pin | other_pin |
 | C3 | `.mcp.json` | `{"command": "npx", "args": ["-y", "rea-agents@6.5.0", "mcp"]}` | user_owned | user_owned |
 | C4 | `.mcp.json` | C1 + `"env": {"REA_MCP_MAX_RESPONSE_BYTES": "1"}` | user_owned | user_owned |
 | C5 | `.mcp.json` | C1의 `$comment`만 `"mine"` | user_owned | user_owned |
 | C6 | `.mcp.json` | `rea`가 없고 `rea-agents` key에 C1 | absent | managed |
 | C7 | `.mcp.json` | C1에서 args의 pin만 `6.4.0`(`$comment`는 6.5.0) | user_owned | user_owned |
-| G1 | `.agents/plugins/autopus/mcp_config.json` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` | managed | managed |
+| C8 | `.mcp.json` | C1의 셋째 arg가 retired 모양 `exec npx -y rea-agents@6.5.0 mcp`(v0.50.127까지) | managed | managed |
+| C9 | `.mcp.json` | C8의 두 pin 자리를 모두 `6.4.0`으로 | other_pin | other_pin |
+| G1 | `.agents/plugins/autopus/mcp_config.json` | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}` | managed | managed |
 | G2 | `.agents/plugins/autopus/mcp_config.json` | G1 + C1의 `$comment` | user_owned | user_owned |
-| G3 | `.agents/plugins/autopus/mcp_config.json` | G1의 셋째 arg가 `exec npx -y rea-agents@latest mcp` | other_pin | other_pin |
-| X1 | `.codex/config.toml` | `[mcp_servers.rea]` 아래 `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` | managed | managed |
+| G3 | `.agents/plugins/autopus/mcp_config.json` | G1의 셋째 arg가 `exec npx -y --prefix=/ rea-agents@latest mcp` | other_pin | other_pin |
+| G4 | `.agents/plugins/autopus/mcp_config.json` | G1의 셋째 arg가 retired 모양 `exec npx -y rea-agents@6.5.0 mcp` | managed | managed |
+| X1 | `.codex/config.toml` | `[mcp_servers.rea]` 아래 `command = "npx"`, `args = ["-y", "--prefix=/", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` | managed | managed |
 | X2 | `.codex/config.toml` | X1에서 `startup_timeout_sec` 줄을 뺌 | user_owned | user_owned |
 | X3 | `.codex/config.toml` | X1 + `tool_timeout_sec = 120` | user_owned | user_owned |
 | X4 | `.codex/config.toml` | X1의 둘째 줄 앞에 `# mine` 주석 줄 | user_owned | user_owned |
 | X5 | `.codex/config.toml` | X1의 pin이 `6.4.0` | other_pin | other_pin |
 | X6 | `.codex/config.toml` | header가 `[mcp_servers.rea-agents]`이고 본문은 X1 | absent | managed |
 | X7 | `.codex/config.toml` | X1 뒤에 `[mcp_servers.rea.env]`와 `A = "1"` | user_owned | user_owned |
+| X8 | `.codex/config.toml` | X1의 args 줄이 retired 모양 `args = ["-y", "rea-agents@6.5.0", "mcp"]` | managed | managed |
+| X9 | `.codex/config.toml` | X8의 pin이 `6.4.0` | other_pin | other_pin |
 
-Given P3에 위 값을 하나씩 넣은 17개 project와 N24가 있다
+Given P3에 위 값을 하나씩 넣은 22개 project와 N24가 있다
 When 각 값을 `[NEW] reamcp`로 판정하고, `auto update --yes --rea` 뒤와 이어서 `auto update --yes --no-rea` 뒤에 `auto doctor --json`을 실행한다
-Then 판정은 "update 전" 열, `--rea` 뒤 doctor `data.rea.platforms`의 그 플랫폼 값은 "`--rea` 뒤" 열과 같고, managed가 된 행의 `rea`는 C1·G1·X1과 같은 값이다
-And other_pin·user_owned 행의 `rea`는 `--rea`와 `--no-rea` 뒤 모두 입력과 JSON deep-equal이고 X2–X5·X7은 rea 서버 table 줄(X7은 `[mcp_servers.rea.env]` 포함)의 bytes가 입력과 같으며, C6·X6의 `rea-agents` 항목도 입력과 같다
+Then 판정은 "update 전" 열, `--rea` 뒤 doctor `data.rea.platforms`의 그 플랫폼 값은 "`--rea` 뒤" 열과 같고, managed가 된 행의 `rea`는 C1·G1·X1과 같은 값이다. retired 행 C8·G4·X8도 `--rea` 뒤 C1·G1·X1과 같고 X8은 args 줄 밖의 bytes가 입력과 같다
+And other_pin·user_owned 행의 `rea`는 `--rea`와 `--no-rea` 뒤 모두 입력과 JSON deep-equal이고 X2–X5·X7·X9는 rea 서버 table 줄(X7은 `[mcp_servers.rea.env]` 포함)의 bytes가 입력과 같으며, C6·X6의 `rea-agents` 항목도 입력과 같다
 
 ### S5: 제거의 round trip과 `auto platform remove`
 Priority: Must
-Given B에 사용자 서버 `mine`을 비정규 서식(4칸 들여쓰기, key 순서 `{"note": "café", "command": "mine-mcp"}`)으로 `.mcp.json`과 Antigravity 플러그인 파일 `.agents/plugins/autopus/mcp_config.json`에 손으로 넣고 `.codex/config.toml`에 `[mcp_servers.mine]`과 `command = "mine-mcp"  # keep`을 더한 P3m, BASE로 P3m 사본을 `auto update --yes`한 `.mcp.json`·`.codex/config.toml`·`.gemini/settings.json` bytes R, `.mcp.json`의 rea만 C3인 P3u, `.gemini/settings.json`에 G1을 넣은 P3g(v0.50.126 RC가 남긴 항목), N24가 있다
+Given B에 사용자 서버 `mine`을 비정규 서식(4칸 들여쓰기, key 순서 `{"note": "café", "command": "mine-mcp"}`)으로 `.mcp.json`과 Antigravity 플러그인 파일 `.agents/plugins/autopus/mcp_config.json`에 손으로 넣고 `.codex/config.toml`에 `[mcp_servers.mine]`과 `command = "mine-mcp"  # keep`을 더한 P3m, BASE로 P3m 사본을 `auto update --yes`한 `.mcp.json`·`.codex/config.toml`·`.gemini/settings.json` bytes R, `.mcp.json`의 rea만 C3인 P3u, `.gemini/settings.json`에 G4를 넣은 P3g(v0.50.126 RC가 남긴 항목), N24가 있다
 When P3m에서 (1) `auto update --yes --rea`, (2) `auto update --yes --no-rea`를 실행하고, (1) 상태의 사본에서 (3) `auto platform remove codex`와 `auto platform remove antigravity-cli`, P3u에서 (1)과 (2), P3g에서 (4) `auto update --yes`를 실행한다
 Then (2) 뒤 `.mcp.json`·`.codex/config.toml`·`.gemini/settings.json`의 bytes는 R과 같다(기준 commit의 정규화만 남는다). 플러그인 파일은 (1) 뒤 파일에 `reamcp.ApplyFile` remove를 적용한 bytes이고 `mine`만 담는다. `mine` 값은 입력과 deep-equal이고 `[mcp_servers.mine]` 두 줄은 입력과 bytes가 같으며 `.codex/config.toml`에 `mcp_servers.rea`가, 플러그인 파일에 `rea` key가 없다. autopus.yaml은 `enabled: false`를 담는다
 And (3) 뒤 `.codex/config.toml`과 플러그인 파일에 `rea-agents@6.5.0`이 없고 플러그인 파일의 `mine`과 `.mcp.json`의 managed rea는 남는다. P3u의 각 단계 뒤 `.mcp.json`의 `rea`는 C3와 deep-equal이다. (4) 뒤 `.gemini/settings.json`에 `rea` key가 없고 다른 항목은 값이 그대로이며 플러그인 파일은 생기지 않는다(keep 실행). managed 항목만 담던 플러그인 파일은 remove·`auto platform remove antigravity-cli`가 지우고, decode되지 않는 플러그인 파일(주석·끝 쉼표)은 어느 실행에서도 bytes가 그대로이고 실패하지 않는다: `--rea`는 Form Text의 미등록 줄을 1번 내고, `--no-rea`와 `auto platform remove antigravity-cli`는 그 파일이 `rea-agents@`를 담을 때만 자동 제거 실패 줄을 1번 내며, doctor는 그 행을 warning(`rea_target_not_strict_json`), `--plan`은 `skip` 줄로 보인다
@@ -198,3 +203,4 @@ Then REQ-REA-19의 항목(기본 on, flag, Node 범위, lazy key와 옛 바이�
 - Must 시나리오는 concrete expected output을 판정한다: 분류 문자열, `data.rea` 예상 JSON, 출력 줄과 횟수, frontmatter·TOML 예상 값, 파일 bytes와 SHA-256, 호출 수, exec 결과 판정. 파일 존재나 종료 코드만으로 닫는 Must는 없다.
 - JSON 사용자 항목의 oracle은 값(deep-equal)과 "BASE와 같은 정규화"(S5의 R)이고, Codex 사용자 table과 off 뒤 파일은 bytes다. 이는 MCP Entry Shape Contract의 보존 규칙과 같다.
 - 기대 값은 2026-10-15에 기준 commit 4d73aa91 코드, Claude Code·Codex·Gemini CLI 문서, npm `rea-agents@6.5.0`, auto 0.50.123 실행(`evidence/probe-rea-forward-compat.md`)으로 계산했다. 코드 사실과 다르면 test가 아니라 이 SPEC을 고친다. S18·S19는 실제 터미널과 모델 호출이 필요하고, 기록 전이나 probe 행이 FAIL이면 `research.md`의 CD-1·CD-2가 남는다.
+- `--prefix=/` 모양과 retired 행(C8·C9·G4·X8·X9)은 2026-10-27 보안 감사 L4에서 npm 10.9.8·11.19.0·11.20.0 실측(`evidence/probe-rea-forward-compat.md` `## npm project config (보안 감사 L4)`)으로 정했다. S18의 smoke 기록은 그 전 모양으로 남는다.

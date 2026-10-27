@@ -12,16 +12,20 @@ import (
 
 // The JSON values below are the literal S4 rows of acceptance.md, decoded the
 // way the adapters decode a file, so the oracle never comes from this package.
+// C8, C9, and G4 hold the v0.50.127 shape, which ran npx without --prefix=/.
 const (
-	jsonC1 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
-	jsonC2 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`
+	jsonC1 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+	jsonC2 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.4.0 mcp"]}`
 	jsonC3 = `{"command": "npx", "args": ["-y", "rea-agents@6.5.0", "mcp"]}`
-	jsonC4 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"], "env": {"REA_MCP_MAX_RESPONSE_BYTES": "1"}}`
-	jsonC5 = `{"$comment": "mine", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
-	jsonC7 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`
-	jsonG1 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
-	jsonG2 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
-	jsonG3 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@latest mcp"]}`
+	jsonC4 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"], "env": {"REA_MCP_MAX_RESPONSE_BYTES": "1"}}`
+	jsonC5 = `{"$comment": "mine", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+	jsonC7 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.4.0 mcp"]}`
+	jsonC8 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
+	jsonC9 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.4.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`
+	jsonG1 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+	jsonG2 = `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+	jsonG3 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@latest mcp"]}`
+	jsonG4 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
 )
 
 func decodeValue(t *testing.T, text string) any {
@@ -54,15 +58,20 @@ func TestClassifyJSON_S4Rows(t *testing.T) {
 		{"C5", Claude, "rea", jsonC5, ClassUserOwned},
 		{"C6", Claude, "rea-agents", jsonC1, ClassAbsent},
 		{"C7", Claude, "rea", jsonC7, ClassUserOwned},
+		{"C8", Claude, "rea", jsonC8, ClassManaged},
+		{"C9", Claude, "rea", jsonC9, ClassOtherPin},
 		{"G1", Antigravity, "rea", jsonG1, ClassManaged},
 		{"G2", Antigravity, "rea", jsonG2, ClassUserOwned},
 		{"G3", Antigravity, "rea", jsonG3, ClassOtherPin},
+		{"G4", Antigravity, "rea", jsonG4, ClassManaged},
 		{"Claude without comment", Claude, "rea", jsonG1, ClassUserOwned},
 		{"null value", Claude, "rea", `null`, ClassUserOwned},
 		{"string value", Antigravity, "rea", `"npx"`, ClassUserOwned},
-		{"pin with an extra argument", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 --x mcp"]}`, ClassUserOwned},
-		{"empty pin", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@ mcp"]}`, ClassUserOwned},
-		{"fourth arg", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp", "x"]}`, ClassUserOwned},
+		{"pin with an extra argument", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 --x mcp"]}`, ClassUserOwned},
+		{"retired pin with an extra argument", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 --x mcp"]}`, ClassUserOwned},
+		{"another prefix", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/tmp rea-agents@6.5.0 mcp"]}`, ClassUserOwned},
+		{"empty pin", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@ mcp"]}`, ClassUserOwned},
+		{"fourth arg", Antigravity, "rea", `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp", "x"]}`, ClassUserOwned},
 		{"missing args", Antigravity, "rea", `{"command": "/bin/bash", "env": {}}`, ClassUserOwned},
 	}
 	for _, tc := range cases {
@@ -129,7 +138,7 @@ func TestApplyJSON_LeavesOtherPinAndUserOwnedValueIdentical(t *testing.T) {
 		value    string
 	}{
 		{"C2", Claude, "rea", jsonC2}, {"C3", Claude, "rea", jsonC3}, {"C4", Claude, "rea", jsonC4},
-		{"C5", Claude, "rea", jsonC5}, {"C7", Claude, "rea", jsonC7},
+		{"C5", Claude, "rea", jsonC5}, {"C7", Claude, "rea", jsonC7}, {"C9", Claude, "rea", jsonC9},
 		{"G2", Antigravity, "rea", jsonG2}, {"G3", Antigravity, "rea", jsonG3},
 	}
 	for _, tc := range cases {
@@ -160,12 +169,48 @@ func TestApplyJSON_ReplacesOlderManagedPin(t *testing.T) {
 		platform Platform
 		older    string
 		current  string
-	}{{Claude, jsonC2, jsonC1}, {Antigravity, `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.4.0 mcp"]}`, jsonG1}} {
+	}{
+		{Claude, jsonC2, jsonC1},
+		{Antigravity, `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.4.0 mcp"]}`, jsonG1},
+		// An older pin in the retired shape moves to both at once.
+		{Claude, jsonC9, jsonC1},
+	} {
 		servers := serversWith(t, "rea", tc.older)
 		require.Equal(t, ClassManaged, ClassifyJSON(tc.platform, servers))
 		out, changed := ApplyJSON(tc.platform, servers, config.ReaMCPAdd)
 		require.True(t, changed)
 		assert.Equal(t, decodeValue(t, tc.current), out["rea"])
+	}
+}
+
+// The v0.50.127 entry is Autopus-managed: add replaces it with the current
+// shape, remove deletes it, and keep leaves it, as for an older managed pin.
+func TestApplyJSON_MovesTheRetiredShapeToTheCurrentOne(t *testing.T) {
+	for _, tc := range []struct {
+		platform Platform
+		retired  string
+		current  string
+	}{{Claude, jsonC8, jsonC1}, {Antigravity, jsonG4, jsonG1}} {
+		t.Run(string(tc.platform), func(t *testing.T) {
+			servers := serversWith(t, "rea", tc.retired)
+			require.Equal(t, ClassManaged, ClassifyJSON(tc.platform, servers))
+
+			added, changed := ApplyJSON(tc.platform, servers, config.ReaMCPAdd)
+			require.True(t, changed)
+			assert.Equal(t, decodeValue(t, tc.current), added["rea"])
+			assert.Equal(t, servers["context7"], added["context7"])
+			assert.Equal(t, decodeValue(t, tc.retired), servers["rea"], "ApplyJSON must not edit its input")
+			_, changed = ApplyJSON(tc.platform, added, config.ReaMCPAdd)
+			assert.False(t, changed, "the current shape is final")
+
+			kept, changed := ApplyJSON(tc.platform, servers, config.ReaMCPKeep)
+			assert.False(t, changed)
+			assert.Equal(t, servers, kept)
+
+			removed, changed := ApplyJSON(tc.platform, servers, config.ReaMCPRemove)
+			require.True(t, changed)
+			assert.Equal(t, map[string]any{"context7": servers["context7"]}, removed)
+		})
 	}
 }
 

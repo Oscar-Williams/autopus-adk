@@ -19,7 +19,7 @@ const claudeOnlyRea = `{
       "args": [
         "-l",
         "-c",
-        "exec npx -y rea-agents@6.5.0 mcp"
+        "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"
       ],
       "command": "/bin/bash"
     }
@@ -37,7 +37,7 @@ const antigravityWithRea = `{
       "args": [
         "-l",
         "-c",
-        "exec npx -y rea-agents@6.5.0 mcp"
+        "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"
       ],
       "command": "/bin/bash"
     }
@@ -113,6 +113,31 @@ func TestApplyFile_JSONEncodesLikeTheAdapterMerge(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, changed)
 	assert.Equal(t, antigravityWithoutRea, string(out))
+}
+
+// A file holding the v0.50.127 entry comes out of add exactly as a fresh add
+// writes it, and out of remove without the entry.
+func TestApplyFile_MovesTheRetiredShape(t *testing.T) {
+	retired := []byte(`{"mcpServers": {"rea": ` + jsonC8 + `}}`)
+	out, changed, err := ApplyFile(Claude, retired, config.ReaMCPAdd)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.Equal(t, claudeOnlyRea, string(out))
+
+	retired = []byte(`{"hooks": {}, "mcpServers": {"context7": {"command": "npx"}, "rea": ` + jsonG4 + `}}`)
+	out, changed, err = ApplyFile(Antigravity, retired, config.ReaMCPAdd)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.Equal(t, antigravityWithRea, string(out))
+	out, changed, err = ApplyFile(Antigravity, retired, config.ReaMCPRemove)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.Equal(t, antigravityWithoutRea, string(out))
+
+	out, changed, err = ApplyFile(Codex, []byte(codexBase+"\n"+codexX8), config.ReaMCPAdd)
+	require.NoError(t, err)
+	require.True(t, changed)
+	assert.Equal(t, codexBase+"\n"+codexX1, string(out))
 }
 
 // The plugin file Autopus creates for the entry alone goes when the entry

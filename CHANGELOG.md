@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **프로젝트의 `.npmrc`가 REA MCP 서버를 받을 registry를 바꾸지 못하게 한다** (2026-10-27, SPEC-REA-001 보안 감사 L4):
+  Claude Code·Codex·Antigravity에 등록하는 REA 항목은 `npx -y rea-agents@6.5.0 mcp`를 프로젝트 디렉터리에서 실행했다.
+  그래서 npx가 그 디렉터리(또는 `package.json`·`node_modules`가 있는 가장 가까운 상위 디렉터리)의 `.npmrc`를 읽었고,
+  clone한 저장소가 `registry=`나 `@scope:registry=`로 rea-agents와 그 scoped 의존성을 자기가 정한 registry에서 받게 할 수
+  있었다. npx는 실행마다 manifest를 다시 받으므로 이미 받아 둔 설치도 막아 주지 않았다. 이제 항목은
+  `npx -y --prefix=/ rea-agents@6.5.0 mcp`(Codex `args = ["-y", "--prefix=/", "rea-agents@6.5.0", "mcp"]`)를 실행한다.
+  command line의 `--prefix`가 있으면 npm은 프로젝트 config를 읽지 않고 프로젝트 tree에서 package를 찾지 않는다.
+  - `--registry=`나 `npm_config_registry`로 registry만 고정하지 않은 이유: 프로젝트의 `registry=`는 막지만 `@scope:registry=`는
+    막지 못한다(npm 10.9·11.19·11.20 실측). rea-agents 6.5.0은 `@modelcontextprotocol`을 포함한 13개 scope의 package에 기댄다.
+  - 사용자 `~/.npmrc`의 registry·proxy 설정은 그대로 쓰이고, 서버는 여전히 프로젝트 디렉터리에서 실행된다. 받아 둔 npx
+    설치도 그대로 다시 쓴다. Node 설치 prefix 아래의 global npmrc(`npm config set -g`)는 이 서버에 적용되지 않는다.
+  - 기존 프로젝트: `--prefix=/` 없는 이전 항목은 Autopus 항목으로 인식되어 다음 `auto update`가 새 모양으로 바꾸고(Codex는
+    args 줄만), `--no-rea`와 `auto platform remove`는 지운다. 다른 버전에 pin한 항목과 사용자 항목은 그대로다.
 - **omp 모델 카탈로그 조회가 원격 네트워크를 기다리지 않는다** (2026-10-27): `auto update`와 doctor는 설치된 omp의 모델
   카탈로그를 `omp models --json --no-extensions`로 읽는다. omp 18.12.3은 캐시한 provider 행이 TTL(권위 행 2시간, 그 외 5분)을
   넘기면 답하기 전에 catalog.stencil.so와 provider별 모델 목록을 온라인으로 다시 받고 로그인한 provider마다 OAuth 사전 갱신을

@@ -2,7 +2,7 @@
 
 **Status**: completed
 **Created**: 2026-10-15
-**Revised**: 2026-10-17 (S18 Codex cold 시작이 부하 중 30초를 넘어 `startup_timeout_sec`를 120으로 올리고 깨진 npx cache 복구 안내를 더함; v0.50.126 smoke: agy 1.4 — Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고 Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침; update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
+**Revised**: 2026-10-27 (보안 감사 L4: managed 실행 형식에 `--prefix=/`를 더해 npx가 프로젝트·상위 디렉터리의 `.npmrc`를 읽지 않게 하고, 그 전 모양을 retired managed 모양으로 둠. MCP Entry Shape Contract, S4, Existing Test Changes 15), 2026-10-17 (S18 Codex cold 시작이 부하 중 30초를 넘어 `startup_timeout_sec`를 120으로 올리고 깨진 npx cache 복구 안내를 더함; v0.50.126 smoke: agy 1.4 — Antigravity 대상 파일을 워크스페이스 플러그인 `mcp_config.json`으로 옮기고 Antigravity 에이전트 도구 이름과 reverse-engineer의 MCP 표현을 고침; update의 `features.rea` 쓰기를 key 줄 splice로, Decision State Contract·S7), 2026-10-16 (review round 1 J-01–J-29, round 2 J-22·J-14·F-001, Gate 1 사용자 결정, 보안 감사 M1–M3 반영, 반영표 `evidence/review-rounds.md`)
 **Domain**: REA
 **Module**: autopus-adk
 **Release**: v0.50.126(SPEC-MODELUX-003과 같은 릴리스). 작업 branch `feat/rea-001`, 기준 origin/main `4d73aa91`(PR #197 merge 뒤).
@@ -12,7 +12,7 @@
 
 사용자는 기존 앱·바이너리의 기능을 증거와 함께 분석해 자기 프로젝트에 다시 구현하고 싶다. 지금 하네스에는 역공학 도구의 등록, 분석 격리, 디컴파일 결과와 구현 사이의 clean-room 경계가 없다. 16개 에이전트 중 MCP 도구를 가진 것이 없어 분석이 메인 세션에서 돌고, 최대 약 10 MiB인 REA 결과가 메인 문맥을 채운다.
 
-이 SPEC은 세 가지를 한다. (1) Node 조건을 충족한 프로젝트에서 Claude Code·Codex·Antigravity가 프로젝트 범위 REA MCP(`npx -y rea-agents@6.5.0 mcp`)를 띄운다. 새 init은 기본으로 켜고, 기존 프로젝트는 대화형 update에서 한 번만 묻는다. (2) 늘 생성되는 17번째 에이전트 `reverse-engineer`가 REA 도구와 읽기 도구만으로 분석해 evidence_id가 붙은 행동 명세와 unknowns를 낸다. (3) `/auto reverse`가 분석 → (필요하면 runtime capture 동의) → 명세 확인 gate → tester·executor·tester를 메인 세션에서 잇는다.
+이 SPEC은 세 가지를 한다. (1) Node 조건을 충족한 프로젝트에서 Claude Code·Codex·Antigravity가 프로젝트 범위 REA MCP(`npx -y --prefix=/ rea-agents@6.5.0 mcp`)를 띄운다. 새 init은 기본으로 켜고, 기존 프로젝트는 대화형 update에서 한 번만 묻는다. (2) 늘 생성되는 17번째 에이전트 `reverse-engineer`가 REA 도구와 읽기 도구만으로 분석해 evidence_id가 붙은 행동 명세와 unknowns를 낸다. (3) `/auto reverse`가 분석 → (필요하면 runtime capture 동의) → 명세 확인 gate → tester·executor·tester를 메인 세션에서 잇는다.
 
 ## Outcome Boundary
 
@@ -192,17 +192,21 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 
 | 플랫폼 | 자리 | managed 모양(pin 6.5.0) |
 |---|---|---|
-| Claude Code | `.mcp.json` `mcpServers.rea` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
-| Antigravity | `.agents/plugins/autopus/mcp_config.json` `mcpServers.rea`(agy가 `autopus_rea`로 띄운다) | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}` |
-| Codex | `.codex/config.toml` 끝 | 빈 줄 하나, `[mcp_servers.rea]`, `command = "npx"`, `args = ["-y", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` |
+| Claude Code | `.mcp.json` `mcpServers.rea` | `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}` |
+| Antigravity | `.agents/plugins/autopus/mcp_config.json` `mcpServers.rea`(agy가 `autopus_rea`로 띄운다) | `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}` |
+| Codex | `.codex/config.toml` 끝 | 빈 줄 하나, `[mcp_servers.rea]`, `command = "npx"`, `args = ["-y", "--prefix=/", "rea-agents@6.5.0", "mcp"]`, `startup_timeout_sec = 120` |
 
 | 분류 | 조건 | add | remove | doctor |
 |---|---|---|---|---|
 | absent | `rea` 이름이 없다 | 넣는다 | 할 일 없음 | `absent` |
-| managed | `[NEW] reamcp.ManagedPins`(`["6.5.0"]`, 이전에 낸 pin 전부) 중 하나의 모양과 정확히 같다. JSON은 deep-equal이고 Claude의 두 pin 자리(`$comment`, args 셋째)가 같은 pin이다. Codex는 rea 서버 table의 빈 줄을 뺀 줄이 세 줄과 순서까지 같고 하위 table이 없다 | 현재 pin 모양으로 바꾼다 | 지운다 | `managed` |
-| other_pin | 모양이 같고 pin 자리만 목록 밖(`6.4.0`, `latest`). Claude는 두 자리가 같은 pin | 손대지 않는다 | 손대지 않는다 | `other_pin` |
+| managed | 위 모양이나 retired 모양(아래)과 정확히 같고 pin이 `[NEW] reamcp.ManagedPins`(`["6.5.0"]`, 이전에 낸 pin 전부) 중 하나다. JSON은 deep-equal이고 Claude의 두 pin 자리(`$comment`, args 셋째)가 같은 pin이다. Codex는 rea 서버 table의 빈 줄을 뺀 줄이 세 줄과 순서까지 같고 하위 table이 없다 | 현재 모양과 현재 pin으로 바꾼다 | 지운다 | `managed` |
+| other_pin | 위 모양이나 retired 모양이 같고 pin 자리만 목록 밖(`6.4.0`, `latest`). Claude는 두 자리가 같은 pin | 손대지 않는다 | 손대지 않는다 | `other_pin` |
 | user_owned | 그 밖(다른 command·args, 더한 key·`env`, 다른 `$comment`, Claude 두 자리 pin 불일치, Codex 주석 줄, 빠진 key, `[mcp_servers.rea.*]` 하위 table) | 손대지 않는다 | 손대지 않는다 | `user_owned` |
 
+- `--prefix=/`(보안 감사 L4, 2026-10-27): npx는 실행 디렉터리, 또는 `package.json`·`node_modules`가 있는 가장 가까운 상위 디렉터리의 `.npmrc`를 project config로 읽고 그 tree에서 package를 먼저 찾는다. 그래서 clone한 저장소의 `.npmrc`가 `registry=`나 `@scope:registry=`로 rea-agents와 그 scoped 의존성(6.5.0은 `@modelcontextprotocol`을 포함한 13개 scope)을 자기 registry에서 받게 할 수 있었다. command line의 `--prefix`는 그 탐색을 건너뛰므로(`@npmcli/config` `loadLocalPrefix`, npm 10.9·11.19·11.20 실측) project config와 project tree가 `/`의 것이 된다. 사용자 `~/.npmrc`(registry mirror, proxy)는 그대로 쓰이고, 서버는 여전히 실행 디렉터리에서 돈다(`libnpmexec`는 `--prefix`가 아니라 cwd에서 실행한다). npx cache key는 package 목록의 hash라 이전 모양과 같아 받아 둔 설치를 다시 쓴다.
+- 고르지 않은 대안: `--registry=…`와 env `npm_config_registry`는 project의 `registry=`는 이기지만 `@scope:registry=`와, project `.npmrc`의 `userconfig=`가 가리키는 저장소 안 파일의 scope 줄은 막지 못한다. npx를 프로젝트 밖 디렉터리에서 띄우면 REA가 상대 대상 경로를 cwd 기준으로 푸는 동작(`parseBinaryTarget`)이 바뀐다. 실측은 `evidence/probe-rea-forward-compat.md` `## npm project config (보안 감사 L4)`다.
+- 대가와 남는 것: 기본 global config가 `<node prefix>/etc/npmrc` 대신 `/etc/npmrc`가 되어 node prefix의 global npmrc(`npm config set -g`)는 이 서버에 적용되지 않는다. npm이 실행 명령의 PATH 앞에 두는 실행 디렉터리와 그 상위의 `node_modules/.bin`은 그대로다(`research.md` R11).
+- retired 모양: 이전 릴리스(v0.50.127까지)가 쓴 `--prefix=/` 없는 모양(`exec npx -y rea-agents@<pin> mcp`, Codex `args = ["-y", "rea-agents@<pin>", "mcp"]`, `reamcp`의 `jsonRetiredScriptPrefixes`·`codexRetiredArgsPrefixes`)이다. pin이 managed면 managed라 add가 현재 모양으로 바꾸고(Codex는 args 줄만 바뀌고 다른 줄은 bytes가 같다) remove, clean, `.gemini/settings.json` legacy sweep이 지운다. pin이 목록 밖이면 other_pin이라 값이 그대로다. `--prefix=/tmp`처럼 다른 값은 user_owned다.
 - 실행 형식은 그 파일의 기존 서버와 같다(Claude·Antigravity `/bin/bash -l -c "exec npx …"`, Codex `npx`). Windows에서는 `/bin/bash`가 없어 Claude·Antigravity 서버가 시작되지 않는다. 기존 서버와 같은 한계이고 REQ-REA-19 문서가 알린다.
 - 보존: JSON(Claude·Antigravity)은 파일을 decode한 뒤 `json.MarshalIndent`로 다시 쓴다(Claude merge `claude_files.go:25-87`, Antigravity 플러그인 파일은 `reamcp.ApplyFile`). 그래서 사용자 항목은 값(deep-equal)으로 보존되고 서식은 기준 commit의 merge가 이미 모든 update에서 정규화하는 대로다. 이 SPEC은 그 정규화 밖의 byte를 바꾸지 않는다. Codex는 줄 단위 merge라 rea 서버 table 밖의 줄과 user_owned table은 bytes가 같다.
 - Claude: managed 삭제 loop(`claude_files.go:60-68`)는 `rea`를 건너뛰고 rea는 action으로만 바뀐다. clean(`claude_clean.go:176-207`)은 remove와 같은 함수를 부른다.
@@ -357,6 +361,7 @@ WHEN reverse-engineer returns a Runtime Capture Request, THEN THE SYSTEM SHALL h
 12. `internal/cli/edit_guard_corpus_test.go:148`(합법 corpus fixture): `README.md`를 실제 프로젝트 파일로 심는다. 없는 상대 경로의 Gemini CLI `replace`는 host가 그 경로로 끝나는 workspace 파일로 바꿔 쓰므로(guard의 suffix search) 없는 `README.md`의 replace는 보호된 `.claude/hooks/README.md`를 고치는 편집이고 합법이 아니다. 기본 실행은 target마다 shape 하나를 index로 돌리는데, 생성 표면이 늘어 `README.md`가 index 1415(`1415 % 12 = 11`, Gemini replace)에 닿았다. `AUTOPUS_EDITGUARD_CORPUS_FULL=1`은 이 SPEC 전 corpus에서도 같은 deny로 실패한다. guard 판정, corpus 범주, target 수는 그대로이고 없는 파일의 search deny는 `pkg/editguard`의 `TestGeminiReplace_RelativePathNamingNoFile_DeniesTheProtectedFileItReaches`가 고정한다.
 13. Codex analysis rung 대체(T23 scope expansion, lead 결정 (a), commit `7b444d1b`): Codex catalog에 `gpt-6.1-sol`·`xhigh`가 없는 compose golden(`table-D-CAT-B.golden`)에서는 reverse-engineer의 Codex 칸이 `세션 모델`이고 footer에 대체 줄 1개가 더해진다.
 14. agy 1.4 smoke 수정(2026-10-17, branch `fix/v0126-agy`): Antigravity 에이전트 도구 이름과 REA 대상 파일을 고정한 단언만 바뀐다. `pkg/content/context_evolution_test.go`, `agent_transformer_rea_test.go`, `pkg/adapter/antigravity/antigravity_skill_compiler_evolution_test.go`, `evals/harness/tasks/surface/GT-AGENT-READONLY-REVIEW.json`(과 `evals/harness/baseline.json`의 그 expectation digest·set digest)은 `glob`·`replace`·`run_shell_command`·`mcp_rea_<tool>` 대신 `find_by_name`·`edit_file`·`run_command`·`inheritMcp: true`를 기대한다. `pkg/reamcp/shape_test.go`·`file_test.go`, `pkg/content/hooks_rea_test.go`, `internal/cli`의 `init_rea_test.go`·`rea_run_test.go`·`rea_target_posix_test.go`·`update_rea_test.go`·`update_rea_off_test.go`는 `.gemini/settings.json` 대신 `.agents/plugins/autopus/mcp_config.json`을 기대하고, 미리보기 줄은 그 파일의 `create`·`remove`를 기대한다. `pkg/adapter/antigravity/antigravity_rea_mcp_test.go`는 플러그인 파일 기준으로 다시 썼다. 보안 후속(L2)으로 Antigravity 전용 rule `rea-mcp-guard.md`가 더해져 `pkg/adapter`의 `TestAcceptance_S2_GeminiRuleSetMatchesSource`, `TestAcceptance_S9_ParityGateCoversOMP`, `TestParity_RelocationConservesRuleCount`의 Gemini rule 기대가 content 14개에 문서화된 추가(`platformRuleAdditions`)를 더한 15개다. 다른 단언은 그대로다.
+15. 보안 감사 L4(2026-10-27, branch `fix/rea-npm-registry`): managed 모양에 `--prefix=/`가 더해져 그 bytes를 고정한 literal만 바뀐다. `pkg/reamcp`의 `shape_test.go`·`shape_codex_test.go`·`file_test.go`, 세 adapter의 `*_rea_mcp_test.go`, `internal/cli`의 `doctor_rea_test.go`·`rea_decision_test.go`·`rea_plugin_mcp_test.go`·`rea_target_test.go`는 C1·G1·X1과 그로부터 만든 행을 새 모양으로 쓰고, retired 행 C8·C9·G4·X8·X9와 retired 모양을 옮기고 지우는 test가 더해진다. legacy `.gemini/settings.json` sweep test는 RC가 쓴 G4와 현재 G1을 모두 지운다. SPEC-TUIUX-001 base golden NPD 다섯 개는 `.mcp.json`·`.codex/config.toml`과 그 manifest·journal·backup checksum만 바뀐다(`SPEC-TUIUX-001/evidence/base-goldens-recapture.md` 8절). 다른 단언은 그대로다.
 
 - 규칙 1은 정규 에이전트 집합을 literal로 적은 map·목록(기본 등급, 표준 배치, role 행, test 이름의 수)에 reverse-engineer를 그 기본값으로 더하는 것과, 17번째 에이전트로 하나씩 느는 파생 수(사용자 수정 `N개 다름`, Codex `대체 N칸`, compose `*` 칸 수, OMP 표면 줄 수, catalog를 모를 때 보고하는 profile 수)를 포함한다.
 - 규칙 2는 route 수(20 → 21)를 고정한 OMP test와 reverse를 더한 GT-ROUTE task의 digest를 담은 `evals/harness/baseline.json`을 포함한다.

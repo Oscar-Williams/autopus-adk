@@ -106,7 +106,7 @@ func TestResolveReaDecision_DecisionState(t *testing.T) {
 		}, reaDecision{reaUndecided, reaSourceNone}},
 		{"other pin only", func(t *testing.T) (string, *config.HarnessConfig) {
 			dir, cfg := reaFixture(t, all...)
-			writeReaTarget(t, dir, reamcp.Codex, []byte("[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"rea-agents@6.4.0\", \"mcp\"]\nstartup_timeout_sec = 120\n"))
+			writeReaTarget(t, dir, reamcp.Codex, []byte("[mcp_servers.rea]\ncommand = \"npx\"\nargs = [\"-y\", \"--prefix=/\", \"rea-agents@6.4.0\", \"mcp\"]\nstartup_timeout_sec = 120\n"))
 			return dir, cfg
 		}, reaDecision{reaUndecided, reaSourceNone}},
 	}

@@ -17,11 +17,15 @@ import (
 
 // antigravityReaG1 is the literal managed entry of the MCP Entry Shape
 // Contract (acceptance S4 row G1).
-const antigravityReaG1 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
+const antigravityReaG1 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`
+
+// antigravityReaG4 is acceptance row G4: the entry v0.50.127 and the
+// v0.50.126 release candidates wrote, which ran npx without --prefix=/.
+const antigravityReaG4 = `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`
 
 // antigravityPluginMCPCreated is the plugin MCP file an add run creates.
 const antigravityPluginMCPCreated = "{\n  \"mcpServers\": {\n    \"rea\": {\n      \"args\": [\n        \"-l\",\n        \"-c\",\n" +
-	"        \"exec npx -y rea-agents@6.5.0 mcp\"\n      ],\n      \"command\": \"/bin/bash\"\n    }\n  }\n}\n"
+	"        \"exec npx -y --prefix=/ rea-agents@6.5.0 mcp\"\n      ],\n      \"command\": \"/bin/bash\"\n    }\n  }\n}\n"
 
 func reaAntigravityConfig(action config.ReaMCPAction) *config.HarnessConfig {
 	cfg := config.DefaultFullConfig("rea")
@@ -148,12 +152,37 @@ func TestReaMCP_AntigravityKeepsServersTheUserAdded(t *testing.T) {
 	assert.Equal(t, map[string]any{"mine": decodeAntigravityValue(t, `{"note": "café", "command": "mine-mcp"}`)}, removed)
 }
 
+// A plugin file v0.50.127 created for G4 alone is rewritten to the file a
+// fresh add creates, kept by a keep run, and deleted by a remove run.
+func TestReaMCP_AntigravityMovesTheRetiredEntry(t *testing.T) {
+	t.Parallel()
+	retired := `{"mcpServers": {"rea": ` + antigravityReaG4 + `}}`
+	for _, tc := range []struct {
+		action config.ReaMCPAction
+		want   string // "" when the file is gone
+	}{
+		{config.ReaMCPAdd, antigravityPluginMCPCreated},
+		{config.ReaMCPKeep, retired},
+		{config.ReaMCPRemove, ""},
+	} {
+		root := t.TempDir()
+		path := writeAntigravityPluginMCP(t, root, retired)
+		_, err := NewWithRoot(root).Generate(context.Background(), reaAntigravityConfig(tc.action))
+		require.NoError(t, err, tc.action)
+		if tc.want == "" {
+			assert.NoFileExists(t, path, tc.action)
+			continue
+		}
+		assert.Equal(t, tc.want, string(readAntigravityBytes(t, path)), tc.action)
+	}
+}
+
 // other_pin and user-owned rea entries in the plugin file are never touched.
 func TestReaMCP_AntigravityLeavesOtherPinAndUserOwnedEntries(t *testing.T) {
 	t.Parallel()
 	rows := map[string]string{
-		"G2": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@6.5.0 mcp"]}`,
-		"G3": `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y rea-agents@latest mcp"]}`,
+		"G2": `{"$comment": "REA reverse-engineering MCP (rea-agents@6.5.0)", "command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@6.5.0 mcp"]}`,
+		"G3": `{"command": "/bin/bash", "args": ["-l", "-c", "exec npx -y --prefix=/ rea-agents@latest mcp"]}`,
 	}
 	for id, value := range rows {
 		root := t.TempDir()
@@ -192,17 +221,20 @@ func TestReaMCP_AntigravityLeavesAMalformedPluginFile(t *testing.T) {
 }
 
 // A managed rea entry release candidates left in .gemini/settings.json goes
-// on any run; other_pin and user-owned entries there stay.
+// on any run, in the shape they wrote (G4) or the current one; other_pin and
+// user-owned entries there stay.
 func TestReaMCP_AntigravitySweepsTheLegacySettingsEntry(t *testing.T) {
 	t.Parallel()
-	root := t.TempDir()
-	path := writeAntigravitySettings(t, root, `{"mcpServers": {"rea": `+antigravityReaG1+`, "mine": {"command": "mine-mcp"}}}`)
-	_, err := NewWithRoot(root).Update(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
-	require.NoError(t, err)
-	servers := antigravityServers(t, readAntigravityBytes(t, path))
-	assert.NotContains(t, servers, "rea")
-	assert.Equal(t, map[string]any{"command": "mine-mcp"}, servers["mine"])
-	assert.NoFileExists(t, antigravityPluginMCPPath(root), "a keep run adds no entry")
+	for _, entry := range []string{antigravityReaG4, antigravityReaG1} {
+		root := t.TempDir()
+		path := writeAntigravitySettings(t, root, `{"mcpServers": {"rea": `+entry+`, "mine": {"command": "mine-mcp"}}}`)
+		_, err := NewWithRoot(root).Update(context.Background(), reaAntigravityConfig(config.ReaMCPKeep))
+		require.NoError(t, err)
+		servers := antigravityServers(t, readAntigravityBytes(t, path))
+		assert.NotContains(t, servers, "rea", entry)
+		assert.Equal(t, map[string]any{"command": "mine-mcp"}, servers["mine"], entry)
+		assert.NoFileExists(t, antigravityPluginMCPPath(root), "a keep run adds no entry")
+	}
 
 	userRea := `{"command": "npx", "args": ["-y", "rea-agents@6.5.0", "mcp"]}`
 	userRoot := t.TempDir()
