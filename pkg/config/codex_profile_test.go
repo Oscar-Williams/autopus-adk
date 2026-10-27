@@ -133,7 +133,7 @@ func TestParseCodexModelCatalog(t *testing.T) {
 	catalog, err := ParseCodexModelCatalog([]byte(`{
 		"models": [
 			{
-				"slug": "gpt-6-sol",
+				"slug": "gpt-6.1-sol",
 				"default_reasoning_level": "low",
 				"supported_reasoning_levels": [
 					{"effort": "xhigh", "description": "deep"},
@@ -166,7 +166,7 @@ func TestResolveCodexProfile(t *testing.T) {
 
 	catalog := []byte(`{
 		"models": [
-			{"slug":"gpt-6-sol","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},
+			{"slug":"gpt-6.1-sol","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},
 			{"slug":"gpt-6-luna","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"}]},
 			{"slug":"gpt-5.6-sol","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"}]},
 			{"slug":"gpt-5.5","supported_reasoning_levels":[{"effort":"xhigh"}]}
@@ -188,7 +188,7 @@ func TestResolveCodexProfile(t *testing.T) {
 	})
 
 	t.Run("target model with no lower effort keeps model and defers effort", func(t *testing.T) {
-		onlyHigherEffort := []byte(`{"models":[{"slug":"gpt-6-sol","supported_reasoning_levels":[{"effort":"medium"}]}]}`)
+		onlyHigherEffort := []byte(`{"models":[{"slug":"gpt-6.1-sol","supported_reasoning_levels":[{"effort":"medium"}]}]}`)
 		got := ResolveCodexProfile(CodexProfile{Model: CodexSolModel, Effort: CodexEffortLow}, onlyHigherEffort)
 		assert.Equal(t, CodexResolutionRuntimeDefault, got.Reason)
 		assert.True(t, got.Fallback)
@@ -241,11 +241,9 @@ func TestCodexProviderEntryForQuality(t *testing.T) {
 	t.Parallel()
 
 	wantArgs := []string{"exec", "--json", "--sandbox", "workspace-write", "-m", CodexAstraModel, "-c", `model_reasoning_effort="max"`}
-	wantPaneArgs := []string{"-m", CodexAstraModel, "-c", `model_reasoning_effort="max"`}
 
 	for _, mode := range []string{"balanced", "ultra"} {
 		entry := CodexProviderEntryForQuality(QualityConf{Default: mode})
 		assert.Equal(t, wantArgs, entry.Args, mode)
-		assert.Equal(t, wantPaneArgs, entry.PaneArgs, mode)
 	}
 }

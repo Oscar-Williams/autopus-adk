@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/insajin/autopus-adk/pkg/config"
 )
 
 func cleanCodexHooksFile(path string) error {
@@ -148,7 +150,14 @@ func cleanCodexConfigFile(path string) error {
 	if err := validateCodexTOMLStructure(string(data)); err != nil {
 		return fmt.Errorf("config TOML 파싱 실패: %w", err)
 	}
-	cleaned := removeAutopusCodexConfig(string(data))
+	// The managed rea table and the blank line before it go first, by the same
+	// transform and validation as a REA remove run. cleanCodexManagedMergeFile
+	// has already refused a path crossing a symlink before handing path here.
+	text, _, err := reaCodexTransform(string(data), config.ReaMCPRemove)
+	if err != nil {
+		return err
+	}
+	cleaned := removeAutopusCodexConfig(text)
 	return os.WriteFile(path, []byte(cleaned), 0o644)
 }
 

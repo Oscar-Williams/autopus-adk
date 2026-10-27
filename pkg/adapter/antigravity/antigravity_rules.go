@@ -13,6 +13,7 @@ import (
 	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/content"
+	"github.com/insajin/autopus-adk/pkg/rulecond"
 	"github.com/insajin/autopus-adk/templates"
 )
 
@@ -21,9 +22,43 @@ const rulesTemplateDir = "gemini/rules/autopus"
 // fileSizeLimitData is the template data for file-size-limit.md. MaxFileLines
 // carries the project's declared ceiling; zero means no ceiling is declared
 // and the rendered rule says so instead of asserting a universal number.
+// Globs is the canonical rule's `globs` list in the shape agy's `trigger: glob`
+// rule reads.
 type fileSizeLimitData struct {
 	MaxFileLines int
 	Exclusions   []content.FileSizeExclusion
+	Globs        string
+}
+
+// fileSizeLimitGlobs returns the globs of content/rules/file-size-limit.md, the
+// list claude-code loads that rule by, in agy's `globs` shape.
+func fileSizeLimitGlobs() (string, error) {
+	const source = "file-size-limit.md"
+	raw, err := fs.ReadFile(contentfs.FS, "rules/"+source)
+	if err != nil {
+		return "", err
+	}
+	rule, err := rulecond.ParseRule(source, raw)
+	if err != nil {
+		return "", err
+	}
+	return agyGlobs(rule.Globs)
+}
+
+// agyGlobs joins globs into one comma-separated string. agy 1.4.2 skips a rule
+// whose `globs` is a YAML list and splits the string on commas, so a glob that
+// itself holds a comma, such as a brace set, cannot be carried, and a glob
+// rule with no globs never applies.
+func agyGlobs(globs []string) (string, error) {
+	if len(globs) == 0 {
+		return "", fmt.Errorf("glob rule에 globs가 없음")
+	}
+	for _, glob := range globs {
+		if strings.Contains(glob, ",") {
+			return "", fmt.Errorf("glob %q에 쉼표가 있어 agy globs로 옮길 수 없음", glob)
+		}
+	}
+	return strings.Join(globs, ","), nil
 }
 
 // renderRuleTemplates reads Antigravity rule templates from embedded FS,
@@ -70,12 +105,18 @@ func (a *Adapter) prepareRuleMappings(cfg *config.HarnessConfig) ([]adapter.File
 			return nil, fmt.Errorf("gemini rule 템플릿 읽기 실패 %s: %w", name, err)
 		}
 
-		// file-size-limit renders the declared ceiling plus stack exclusions.
+		// file-size-limit renders the declared ceiling, stack exclusions, and
+		// the source globs its agy glob trigger matches.
 		var rendered string
 		if outFile == "file-size-limit.md" {
+			globs, globsErr := fileSizeLimitGlobs()
+			if globsErr != nil {
+				return nil, fmt.Errorf("gemini rule globs 읽기 실패 %s: %w", name, globsErr)
+			}
 			data := fileSizeLimitData{
 				MaxFileLines: cfg.Architecture.MaxFileLines,
 				Exclusions:   content.FileSizeExclusions(cfg.Stack, cfg.Framework),
+				Globs:        globs,
 			}
 			rendered, err = a.engine.RenderString(string(tmplContent), data)
 		} else {
@@ -108,7 +149,10 @@ func (a *Adapter) prepareRuleMappings(cfg *config.HarnessConfig) ([]adapter.File
 
 // expandContentImports replaces `@import content/rules/<name>.md` lines with
 // the body of the referenced embedded content file (frontmatter stripped).
-// Lines that do not match the directive pass through unchanged.
+// Lines that do not match the directive pass through unchanged. Every content
+// rule opens with its own H1, so a template that already wrote a title keeps
+// it and the imported body's opening title is dropped: the generated rule has
+// one H1 whether or not its template titles itself.
 func expandContentImports(rendered string) (string, error) {
 	const prefix = "@import content/rules/"
 	if !strings.Contains(rendered, prefix) {
@@ -116,6 +160,7 @@ func expandContentImports(rendered string) (string, error) {
 	}
 
 	var out strings.Builder
+	titled, fenced := false, false
 	scanner := bufio.NewScanner(strings.NewReader(rendered))
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	for scanner.Scan() {
@@ -127,11 +172,23 @@ func expandContentImports(rendered string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("read embedded %s: %w", target, err)
 			}
-			out.WriteString(stripFrontmatter(string(body)))
+			imported := stripFrontmatter(string(body))
+			if titled {
+				imported = dropLeadingTitle(imported)
+			} else {
+				titled = strings.HasPrefix(strings.TrimLeft(imported, "\n"), "# ")
+			}
+			out.WriteString(imported)
 			if !strings.HasSuffix(out.String(), "\n") {
 				out.WriteString("\n")
 			}
 			continue
+		}
+		switch {
+		case strings.HasPrefix(trimmed, "```"):
+			fenced = !fenced
+		case !fenced && strings.HasPrefix(line, "# "):
+			titled = true
 		}
 		out.WriteString(line)
 		out.WriteString("\n")
@@ -140,6 +197,21 @@ func expandContentImports(rendered string) (string, error) {
 		return "", err
 	}
 	return out.String(), nil
+}
+
+// dropLeadingTitle removes the H1 that opens an imported body, after any
+// leading blank lines, together with the blank line that follows it. A body
+// that does not open with a title is returned unchanged.
+func dropLeadingTitle(body string) string {
+	rest := strings.TrimLeft(body, "\n")
+	if !strings.HasPrefix(rest, "# ") {
+		return body
+	}
+	_, after, found := strings.Cut(rest, "\n")
+	if !found {
+		return ""
+	}
+	return strings.TrimPrefix(after, "\n")
 }
 
 // stripFrontmatter removes YAML frontmatter (--- ... ---) so the imported body

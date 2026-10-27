@@ -40,7 +40,6 @@ func resolveCodexProviderCapabilitiesWith(
 	for i := range resolved {
 		provider := &resolved[i]
 		provider.Args = append([]string(nil), provider.Args...)
-		provider.PaneArgs = append([]string(nil), provider.PaneArgs...)
 		if provider.Backend == config.ProviderBackendOMP || provider.Name != "codex" || provider.ModelPolicy != config.ProviderModelPolicyQuality {
 			continue
 		}
@@ -52,12 +51,10 @@ func resolveCodexProviderCapabilitiesWith(
 		entry := config.ProviderEntry{
 			Binary:      provider.Binary,
 			Args:        provider.Args,
-			PaneArgs:    provider.PaneArgs,
 			ModelPolicy: provider.ModelPolicy,
 		}
 		entry, resolution := config.ResolveCodexProviderProfile(entry, catalogJSON)
 		provider.Args = entry.Args
-		provider.PaneArgs = entry.PaneArgs
 		reportCodexRuntimeFallback(writer, resolution)
 	}
 	return resolved
@@ -74,11 +71,14 @@ func reportCodexRuntimeFallback(writer io.Writer, resolution config.CodexProfile
 			selected += "/" + resolution.Effective.Effort
 		}
 	}
+	// Model and effort come from autopus.yaml args and the codex catalog, so
+	// they reach the terminal through terminalSafe (SPEC-REVMODEL-001
+	// REQ-RVM-20); printable text is unchanged.
 	fmt.Fprintf(writer,
 		"Codex model fallback: requested=%s/%s selected=%s reason=%s\n",
-		strings.TrimSpace(resolution.Requested.Model),
-		strings.TrimSpace(resolution.Requested.Effort),
-		selected,
-		resolution.Reason,
+		terminalSafe(strings.TrimSpace(resolution.Requested.Model)),
+		terminalSafe(strings.TrimSpace(resolution.Requested.Effort)),
+		terminalSafe(selected),
+		terminalSafe(string(resolution.Reason)),
 	)
 }

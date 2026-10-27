@@ -13,13 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// healthyHookTimeout is the budget, in seconds, of every hook and guard a
+// runtime fixture expects to finish. Each runs through a login shell, or
+// spawns this test binary as the real guard, and under load that startup
+// alone outran the 2s and 5s they used to get, so scenarios that assert a
+// decision failed on a deadline they do not test. The scenarios that test a
+// deadline set their own short one against a command that outlives it.
+const healthyHookTimeout = 60
+
 // These optional Node/POSIX contracts do not replace the opt-in native test.
 // AUTOPUS_OPENCODE_V2_LIVE requires its stronger OpenCode V2, Python, and
 // loopback-server prerequisites; a skipped fixture is not host verification.
 func TestOpenCodeV2GeneratedPluginRuntime(t *testing.T) {
 	for _, scenario := range []string{"normal", "before-failure", "timeout", "output-limit", "missing-session", "setup-failure", "dispose-failure"} {
 		t.Run(scenario, func(t *testing.T) {
-			hooks := []adapter.HookConfig{{Event: "PreToolUse", Command: "printf before >> hook.log", Timeout: 2}, {Event: "PostToolUse", Command: "printf after >> hook.log", Timeout: 2}}
+			hooks := []adapter.HookConfig{{Event: "PreToolUse", Command: "printf before >> hook.log", Timeout: healthyHookTimeout}, {Event: "PostToolUse", Command: "printf after >> hook.log", Timeout: healthyHookTimeout}}
 			switch scenario {
 			case "before-failure":
 				hooks[0].Command = "printf secret-credential >&2; exit 7"
@@ -38,7 +46,7 @@ func TestOpenCodeV2GeneratedPluginRuntime(t *testing.T) {
 }
 
 func TestOpenCodeV1PluginRuntimeRemainsCompatible(t *testing.T) {
-	body, err := renderHookPlugin([]adapter.HookConfig{{Event: "PreToolUse", Command: "printf before >> hook.log", Timeout: 2}, {Event: "PostToolUse", Command: "printf after >> hook.log", Timeout: 2}})
+	body, err := renderHookPlugin([]adapter.HookConfig{{Event: "PreToolUse", Command: "printf before >> hook.log", Timeout: healthyHookTimeout}, {Event: "PostToolUse", Command: "printf after >> hook.log", Timeout: healthyHookTimeout}})
 	require.NoError(t, err)
 	runPluginContract(t, body, "v1")
 }
@@ -74,7 +82,11 @@ func runPluginContract(t *testing.T, body, scenario string) {
 	require.NoError(t, err)
 	runner := filepath.Join(root, "contract.mjs")
 	require.NoError(t, os.WriteFile(runner, fixture, 0600))
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	// This budget only guards against a hang, and an overrun kills node, which
+	// surfaces as `signal: killed`. The hooks have their own budgets, and the
+	// contract bounds its failing scenarios itself, so nothing here is timed
+	// against this deadline.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, node, runner, pluginPath, scenario, root)
 	output, err := cmd.CombinedOutput()

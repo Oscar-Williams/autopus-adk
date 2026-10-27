@@ -90,12 +90,18 @@ func clearOMPManagedFlowStyle(node *yaml.Node) {
 }
 
 func parseOMPManagedDocument(data []byte) (*yaml.Node, error) {
+	if ompYAMLOnlyLineBreak(data) {
+		return nil, errOMPYAMLOnlyLineBreak
+	}
 	if len(bytes.TrimSpace(data)) == 0 {
 		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}, nil
 	}
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var document yaml.Node
-	if err := decoder.Decode(&document); err != nil {
+	if err := decoder.Decode(&document); err == io.EOF {
+		// Only comments: an empty mapping a claim can be appended to.
+		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}, nil
+	} else if err != nil {
 		return nil, fmt.Errorf("managed config YAML is invalid: %w", err)
 	}
 	var extra yaml.Node
@@ -161,8 +167,8 @@ func ompYAMLNodeContainsSequence(node *yaml.Node) bool {
 	return false
 }
 
-func replaceOMPManagedEntry(data []byte, key, value *yaml.Node) ([]byte, error) {
-	start, end, err := ompManagedEntrySpan(data, key)
+func replaceOMPManagedEntry(data []byte, root, key, value *yaml.Node) ([]byte, error) {
+	start, end, err := ompManagedEntrySpan(data, root, key)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +183,7 @@ func replaceOMPManagedEntry(data []byte, key, value *yaml.Node) ([]byte, error) 
 	return result, nil
 }
 
-func insertOMPManagedEntry(data []byte, mapping *yaml.Node, missing []string, value *yaml.Node) ([]byte, error) {
+func insertOMPManagedEntry(data []byte, root, mapping *yaml.Node, missing []string, value *yaml.Node) ([]byte, error) {
 	if len(missing) == 0 {
 		return nil, fmt.Errorf("managed_key_conflict: missing insertion path")
 	}
@@ -186,7 +192,7 @@ func insertOMPManagedEntry(data []byte, mapping *yaml.Node, missing []string, va
 	if len(mapping.Content) > 0 {
 		lastKey := mapping.Content[len(mapping.Content)-2]
 		indent = lastKey.Column - 1
-		_, blockEnd, err := ompManagedEntrySpan(data, lastKey)
+		_, blockEnd, err := ompManagedEntrySpan(data, root, lastKey)
 		if err != nil {
 			return nil, err
 		}
@@ -245,42 +251,4 @@ func cloneOMPManagedNode(node *yaml.Node) *yaml.Node {
 		clone.Content[i] = cloneOMPManagedNode(child)
 	}
 	return &clone
-}
-
-func ompManagedEntrySpan(data []byte, key *yaml.Node) (int, int, error) {
-	lines := ompManagedLineOffsets(data)
-	if key.Line < 1 || key.Line > len(lines) {
-		return 0, 0, fmt.Errorf("managed_key_conflict: key position is invalid")
-	}
-	start := lines[key.Line-1]
-	end := len(data)
-	keyIndent := key.Column - 1
-	for lineIndex := key.Line; lineIndex < len(lines); lineIndex++ {
-		lineStart := lines[lineIndex]
-		lineEnd := len(data)
-		if lineIndex+1 < len(lines) {
-			lineEnd = lines[lineIndex+1]
-		}
-		line := strings.TrimSuffix(string(data[lineStart:lineEnd]), "\n")
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "" {
-			continue
-		}
-		indent := len(line) - len(strings.TrimLeft(line, " "))
-		if indent <= keyIndent {
-			end = lineStart
-			break
-		}
-	}
-	return start, end, nil
-}
-
-func ompManagedLineOffsets(data []byte) []int {
-	offsets := []int{0}
-	for i, value := range data {
-		if value == '\n' && i+1 < len(data) {
-			offsets = append(offsets, i+1)
-		}
-	}
-	return offsets
 }

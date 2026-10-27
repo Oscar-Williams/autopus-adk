@@ -12,7 +12,7 @@ import (
 
 // RunOrchestra executes orchestration according to the given config.
 // @AX:ANCHOR: [AUTO] public API — 4 callers; do not change signature
-// @AX:REASON: CLI, pane fallback, spec-review loop, and tests rely on the result/error contract and degraded-provider propagation.
+// @AX:REASON: CLI, spec-review loop, and tests rely on the result/error contract and degraded-provider propagation.
 func RunOrchestra(ctx context.Context, cfg OrchestraConfig) (*OrchestraResult, error) {
 	if err := validateOrchestraProviderConfig(cfg); err != nil {
 		return nil, err
@@ -28,14 +28,6 @@ func RunOrchestra(ctx context.Context, cfg OrchestraConfig) (*OrchestraResult, e
 	}
 	if result, err := preflightJudgeFamilySeparation(cfg); err != nil {
 		return result, err
-	}
-
-	// Delegate to pane runner for non-plain terminals (REQ-007 shared predicate).
-	// recheck is excluded from that wrapper only because it fans providers out
-	// one round each; recheck still runs in panes when the terminal supports
-	// them — runRecheck selects the pane transport itself.
-	if paneCapable(cfg.Terminal, cfg.SubprocessMode) && cfg.Strategy != StrategyRecheck {
-		return RunPaneOrchestra(ctx, cfg)
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, orchestrationTimeout(cfg))
@@ -262,6 +254,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 
 	resultCh := make(chan ProviderResponse, len(cfg.Providers))
 	var wg sync.WaitGroup
+	var rejections fastestRejections
 
 	for _, p := range cfg.Providers {
 		wg.Add(1)
@@ -271,6 +264,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 			// Reject failures the same way runParallel does: an exit-0 provider
 			// with empty stdout is not a usable "fastest" winner (false green).
 			if err != nil || resp == nil || resp.TimedOut || resp.EmptyOutput {
+				rejections.record(provider, resp, err)
 				return
 			}
 			select {
@@ -289,7 +283,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 
 	resp, ok := <-resultCh
 	if !ok {
-		return nil, fmt.Errorf("모든 프로바이더가 응답하지 않았습니다")
+		return nil, rejections.err()
 	}
 	return []ProviderResponse{resp}, nil
 }

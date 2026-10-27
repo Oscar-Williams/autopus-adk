@@ -61,11 +61,11 @@ func parseAgentFrontmatter(t *testing.T, path string) agentFrontmatter {
 	return fm
 }
 
-// --- TC1: All 16 agent files have effort field (spec.md R9, acceptance.md R9) -----
+// --- TC1: All 17 agent files have effort field (spec.md R9, acceptance.md R9) -----
 
-// TestCC21_TC1_AllAgentsHaveEffort verifies that exactly 16 agent .md files exist
+// TestCC21_TC1_AllAgentsHaveEffort verifies that exactly 17 agent .md files exist
 // and every one contains a non-empty effort field.
-// Violation → spec.md R9 (G4: 16/16 agents must have effort frontmatter).
+// Violation → spec.md R9 (G4: 17/17 agents must have effort frontmatter; SPEC-REA-001 added reverse-engineer).
 func TestCC21_TC1_AllAgentsHaveEffort(t *testing.T) {
 	dir := agentsDir()
 	entries, err := os.ReadDir(dir)
@@ -78,8 +78,8 @@ func TestCC21_TC1_AllAgentsHaveEffort(t *testing.T) {
 		}
 	}
 
-	assert.Len(t, agentFiles, 16,
-		"G4 violation: expected exactly 16 agent .md files, got %d", len(agentFiles))
+	assert.Len(t, agentFiles, 17,
+		"G4 violation: expected exactly 17 agent .md files, got %d", len(agentFiles))
 
 	// Verify role-to-effort mapping per spec.md R9.
 	maxEffortRoles := map[string]bool{
@@ -87,7 +87,7 @@ func TestCC21_TC1_AllAgentsHaveEffort(t *testing.T) {
 		"security-auditor": true, "architect": true, "deep-worker": true,
 	}
 	highEffortRoles := map[string]bool{
-		"reviewer": true,
+		"reviewer": true, "reverse-engineer": true,
 	}
 	mediumEffortRoles := map[string]bool{
 		"executor": true, "tester": true, "annotator": true, "validator": true,

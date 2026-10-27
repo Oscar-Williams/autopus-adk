@@ -4,6 +4,10 @@ import "strings"
 
 const OrchestraRouteVersion = "orchestra-route.v1"
 
+// noneBackendMarker records that no backend produced a usable response for a
+// provider (REQ-013).
+const noneBackendMarker = "none"
+
 // OrchestrationTransition records the authoritative terminal projection for a run.
 type OrchestrationTransition struct {
 	Sequence        int    `json:"sequence"`
@@ -241,9 +245,6 @@ func firstNonempty(values ...string) string {
 
 func collectRunArtifacts(result *OrchestraResult) []string {
 	var artifacts []string
-	if result.Reliability != nil {
-		artifacts = appendUniqueName(artifacts, result.Reliability.ArtifactDir)
-	}
 	for _, response := range result.Responses {
 		artifacts = appendUniqueName(artifacts, response.Receipt)
 	}

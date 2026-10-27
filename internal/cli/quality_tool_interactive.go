@@ -21,7 +21,7 @@ func runQualityToolInteractive(
 	dir string,
 	cfg *config.HarnessConfig,
 	tool qualityModelTool,
-	apply bool,
+	apply qualityEditorApply,
 ) error {
 	out := cmd.OutOrStdout()
 	rows, err := qualityToolAgentRows(cfg, tool.provider)
@@ -43,9 +43,13 @@ func runQualityToolInteractive(
 		return nil
 	}
 
-	preset, err := readQualityToolPresetName(cmd, qualityToolPresetName(tool))
+	preset, ok, err := readQualityToolPresetName(cmd, cfg, qualityToolPresetName(tool))
 	if err != nil {
 		return err
+	}
+	if !ok {
+		fmt.Fprintln(out, "Cancelled; no settings changed.")
+		return nil
 	}
 	candidate := withQualityToolPreset(cfg, tool, preset, agents)
 	previewRows, err := qualityToolAgentRows(candidate, tool.provider)
@@ -69,8 +73,8 @@ func runQualityToolInteractive(
 	}
 	fmt.Fprintf(out, "quality.presets.%s written; quality.providers.%s = %s\n",
 		preset, tool.provider, preset)
-	if apply {
-		return applyQualityHarness(cmd, dir, cfg, "auto quality --apply")
+	if apply.enabled {
+		return apply.run(cmd, dir, cfg, "auto quality --apply")
 	}
 	fmt.Fprintln(out, "Run `auto update` to regenerate the agent files with these models.")
 	return nil
@@ -137,24 +141,55 @@ func readQualityToolEdits(cmd *cobra.Command, agents map[string]string) (int, er
 	}
 }
 
-func readQualityToolPresetName(cmd *cobra.Command, fallback string) (string, error) {
+// readQualityToolPresetName asks for the preset the tool's tiers are stored
+// under; Enter keeps fallback. A customized built-in preset is never
+// overwritten (SPEC-MODELUX-001 REQ-MUX-12): its name is refused and asked
+// for again, and the third refusal in a row, or input that ends after a
+// refusal, cancels with ok false. A current or historical built-in name stays
+// an explicit target.
+func readQualityToolPresetName(cmd *cobra.Command, cfg *config.HarnessConfig, fallback string) (string, bool, error) {
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Preset name [%s]: ", fallback)
-	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("read preset name: %w", err)
+	reader := bufio.NewReader(cmd.InOrStdin())
+	for range composeDriverMaxInvalid {
+		fmt.Fprintf(out, "Preset name [%s]: ", fallback)
+		line, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", false, fmt.Errorf("read preset name: %w", err)
+		}
+		name := strings.TrimSpace(line)
+		if name == "" {
+			name = fallback
+		} else if !config.IsValidQualityPresetName(name) {
+			return "", false, fmt.Errorf(
+				"invalid quality preset name %q (use 1-64 ASCII letters, digits, hyphens, or underscores)",
+				name,
+			)
+		}
+		if !qualityToolPresetCustomized(cfg.Quality, name) {
+			return name, true, nil
+		}
+		fmt.Fprintln(out, qualityToolCustomizedRefusal(name))
+		if err != nil {
+			return "", false, nil
+		}
 	}
-	name := strings.TrimSpace(line)
-	if name == "" {
-		return fallback, nil
+	return "", false, nil
+}
+
+// qualityToolPresetCustomized reports a built-in preset the operator changed
+// by hand: writing the tool's tiers under its name would replace those values.
+func qualityToolPresetCustomized(quality config.QualityConf, name string) bool {
+	status, builtin := config.ClassifyBuiltinQualityPreset(quality, name)
+	return builtin && status.Class == config.BuiltinQualityPresetCustomized
+}
+
+// qualityToolCustomizedRefusal is the refusal in the operator's locale
+// (REQ-MUX-22). Only balanced and ultra can be refused, and both take 는.
+func qualityToolCustomizedRefusal(name string) string {
+	if composeLanguage() == "ko" {
+		return fmt.Sprintf("사용자 수정 프리셋 %s는 덮어쓰지 않습니다. 다른 이름을 입력하세요.", name)
 	}
-	if !config.IsValidQualityPresetName(name) {
-		return "", fmt.Errorf(
-			"invalid quality preset name %q (use 1-64 ASCII letters, digits, hyphens, or underscores)",
-			name,
-		)
-	}
-	return name, nil
+	return fmt.Sprintf("Customized preset %s is not overwritten. Enter another name.", name)
 }
 
 func readQualityToolConfirmation(cmd *cobra.Command) (bool, error) {
@@ -168,12 +203,25 @@ func readQualityToolConfirmation(cmd *cobra.Command) (bool, error) {
 
 // withQualityToolPreset returns a detached config carrying the candidate
 // preset, so the preview resolves through the same config API as the generator
-// without mutating the config a cancelled session leaves behind.
+// without mutating the config a cancelled session leaves behind. The per-tool
+// editor edits tiers only, so the candidate keeps the efforts the tool's
+// preset stores (SPEC-MODELUX-003 REQ-MUX3-20).
 func withQualityToolPreset(
 	cfg *config.HarnessConfig,
 	tool qualityModelTool,
 	preset string,
 	agents map[string]string,
+) *config.HarnessConfig {
+	return withQualityToolPresetEfforts(cfg, tool, preset, agents, qualityToolEfforts(cfg.Quality, tool))
+}
+
+// withQualityToolPresetEfforts is withQualityToolPreset whose candidate
+// preset also stores efforts (SPEC-MODELUX-003 REQ-MUX3-04).
+func withQualityToolPresetEfforts(
+	cfg *config.HarnessConfig,
+	tool qualityModelTool,
+	preset string,
+	agents, efforts map[string]string,
 ) *config.HarnessConfig {
 	candidate := *cfg
 	presets := make(map[string]config.QualityPreset, len(cfg.Quality.Presets)+1)
@@ -184,7 +232,7 @@ func withQualityToolPreset(
 	for agent, tier := range agents {
 		tiers[agent] = tier
 	}
-	presets[preset] = config.QualityPreset{Agents: tiers}
+	presets[preset] = config.QualityPreset{Agents: tiers, Efforts: presetEfforts(efforts)}
 	providers := make(map[string]string, len(cfg.Quality.Providers)+1)
 	for provider, value := range cfg.Quality.Providers {
 		providers[provider] = value

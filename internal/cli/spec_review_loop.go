@@ -25,9 +25,11 @@ type specReviewLoopParams struct {
 	judgeConfig     *orchestra.ProviderConfig
 	configuredNames []string
 	codeContext     string
-	subprocessMode  bool
 	contextDelivery *specReviewContextDelivery
 	runtimeEvidence *specReviewRuntimeEvidence
+	// preflight carries the readiness outcome: excluded reviewers, their
+	// degraded reasons, and the receipt rows (SPEC-REVIEWRO-001).
+	preflight *specReviewPreflight
 }
 
 func runSpecReviewLoop(p specReviewLoopParams, doc *spec.SpecDocument, priorFindings []spec.ReviewFinding) (*spec.ReviewResult, error) {
@@ -63,11 +65,7 @@ func runSpecReviewLoop(p specReviewLoopParams, doc *spec.SpecDocument, priorFind
 			return nil, fmt.Errorf("리뷰 필수 문서 전달 실패: %w", err)
 		}
 
-		// SPEC-ORCH-022: the pane provider must launch in the working directory
-		// whose .claude/settings.json carries the orchestra hooks (the same dir
-		// isHookModeAvailable inspects), so its SessionStart/Stop hooks fire and
-		// write the ready/done signals. Without WorkingDir the pane CLI runs in the
-		// surface's default cwd and reads neither hook.
+		// WorkingDir is the review's project root: the OMP review backend reads it.
 		workingDir, _ := os.Getwd()
 		orchCfg := orchestra.OrchestraConfig{
 			Providers:           p.providers,
@@ -79,20 +77,13 @@ func runSpecReviewLoop(p specReviewLoopParams, doc *spec.SpecDocument, priorFind
 			JudgeProvider:       p.gate.Judge,
 			JudgeConfig:         p.judgeConfig,
 			NoJudge:             p.gate.Judge == "",
-			SubprocessMode:      p.subprocessMode,
-			WorkingDir:          workingDir,
-			RunID:               orchestra.NewSessionID(),
-			// REQ-006: inject the detected terminal so SelectBackend can choose the
-			// interactive pane backend on cmux/tmux and the subprocess backend on
-			// plain/CI terminals. The terminal import is centralized in
-			// orchestra_terminal.go (detectStructuredTerminal).
-			Terminal: detectStructuredTerminal(),
+			// Reviewers are read-only (SPEC-REVIEWRO-001 REQ-17). The config
+			// carries no terminal, so every CLI reviewer runs as a headless
+			// subprocess (SPEC-PANERM-001).
+			ReadOnly:   true,
+			WorkingDir: workingDir,
+			RunID:      orchestra.NewSessionID(),
 		}
-		// SPEC-ORCH-022 T8: enable hook-IPC completion collection when the
-		// pane-capable, hook-installed context allows it. Without this the relaxed
-		// CLAUDECODE guard routed into the pane backend with HookMode=false and
-		// fell back to screen polling (the 0/N timeout this SPEC fixes).
-		applyHookMode(&orchCfg)
 
 		fmt.Fprintf(os.Stderr, "SPEC 리뷰 시작: %s (전략: %s, 리비전: %d)\n", p.specID, p.strategy, revision)
 
@@ -112,6 +103,7 @@ func runSpecReviewLoop(p specReviewLoopParams, doc *spec.SpecDocument, priorFind
 				p.runtimeEvidence.RunID = result.RunReceipt.RunID
 			}
 			p.runtimeEvidence.FinishedAt = time.Now().UTC()
+			p.runtimeEvidence.ProviderPolicy = specReviewProviderPolicyRows(p.preflight, result)
 		}
 
 		// Failed or judge responses never contribute to reviewer supermajority.
@@ -197,6 +189,9 @@ func runSpecReviewLoop(p specReviewLoopParams, doc *spec.SpecDocument, priorFind
 		// and provider quorum so the promotion gate can fail closed on partial
 		// observation. Coverage is persisted into the findings sidecar.
 		coverages := applyObservationIntegrity(merged, p.specDir, p.gate, len(configuredNames))
+		// Readiness exclusions merge after the per-revision observation reasons,
+		// which applyObservationIntegrity has just rewritten.
+		applySpecReviewReadiness(merged, p.preflight)
 
 		// A mid-pipeline write failure must abort (issue #38).
 		if persistErr := spec.PersistFindingsWithCoverage(p.specDir, merged.Findings, coverages); persistErr != nil {

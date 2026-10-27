@@ -235,7 +235,7 @@ func writeOutputProvider(t *testing.T, dir, name, output string) string {
 	t.Helper()
 	path := filepath.Join(dir, name)
 	script := "#!/bin/sh\ncat >/dev/null\nprintf '%s' " + shellSingleQuote(output) + "\n"
-	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
+	writeExecutableFixture(t, path, script, 0o755)
 	return path
 }
 

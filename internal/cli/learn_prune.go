@@ -1,11 +1,13 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/insajin/autopus-adk/pkg/harneval/intake"
 	"github.com/insajin/autopus-adk/pkg/learn"
 )
 
@@ -13,10 +15,15 @@ import (
 func newLearnPruneCmd() *cobra.Command {
 	var days int
 	var maxAge int
+	var llmOnlyDays int
 
 	cmd := &cobra.Command{
 		Use:   "prune",
 		Short: "Remove learning entries older than N days",
+		Long: "Remove learning entries older than N days. Entries an open golden-task candidate, a promoted " +
+			"incident link, or an incident task of the golden set references are kept regardless of age " +
+			"(SPEC-HARNEVAL-002). When one of those files cannot be read, prune fails with " +
+			"eval_links_unreadable and leaves the store unchanged.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -35,18 +42,37 @@ func newLearnPruneCmd() *cobra.Command {
 				return fmt.Errorf("either --days or --max-age is required")
 			}
 
-			removed, err := learn.Prune(store, pruneDays)
+			// The protected set is computed inside the store lock.
+			policy := learn.PrunePolicy{Days: pruneDays, LLMOnlyDays: llmOnlyDays}
+			result, err := learn.PrunePolicyExcept(store, policy, func() (map[string]bool, error) {
+				return intake.ProtectedLearningIDs(cwd)
+			})
+			var linksErr *intake.RunError
+			if errors.As(err, &linksErr) {
+				// The message can name a hand-made file, so it is masked and
+				// escaped like every intake command line.
+				return errors.New(intakePrintable(err.Error()) + "; the learning store is unchanged")
+			}
 			if err != nil {
 				return fmt.Errorf("prune: %w", err)
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Removed %d entries older than %d days.\n", removed, pruneDays)
+			// The first line keeps its pre-SPEC-LEARN-003 shape; the
+			// llm_only line appears only when that rule removed something.
+			fmt.Fprintf(cmd.OutOrStdout(), "Removed %d entries older than %d days.\n", result.Removed, pruneDays)
+			if result.RemovedLLMOnly > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "Of those, %d had llm_only evidence older than %d days.\n", result.RemovedLLMOnly, llmOnlyDays)
+			}
+			if result.KeptProtected > 0 {
+				fmt.Fprintf(cmd.OutOrStdout(), "Kept %d entries linked to golden-task evals.\n", result.KeptProtected)
+			}
 			return nil
 		},
 	}
 
 	cmd.Flags().IntVar(&days, "days", 0, "Remove entries older than this many days")
 	cmd.Flags().IntVar(&maxAge, "max-age", 0, "Remove entries older than this many days (alternative to --days)")
+	cmd.Flags().IntVar(&llmOnlyDays, "llm-only-days", 30, "Also remove entries whose evidence is llm_only once older than this many days (0 turns the rule off)")
 
 	return cmd
 }

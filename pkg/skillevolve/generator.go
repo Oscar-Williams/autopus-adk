@@ -210,6 +210,10 @@ func defaultMustChecks(fingerprint string) []ReplayCheckRef {
 	}}
 }
 
+// placeholderProposalHeading marks the stub the generator writes in place of
+// a real skill edit. Promotion refuses a file that still carries it.
+const placeholderProposalHeading = "# Skill Evolution Candidate"
+
 func proposedFilesFor(fingerprint string, affectedRefs, acceptanceRefs []string) []ProposedFile {
 	// @AX:NOTE [AUTO] @AX:SPEC: SPEC-SKILL-EVOLVE-001: fallback proposal target is canonical ADK content, not a generated skill surface.
 	target := "autopus-adk/content/skills/testing-strategy.md"
@@ -220,7 +224,7 @@ func proposedFilesFor(fingerprint string, affectedRefs, acceptanceRefs []string)
 		}
 	}
 	content := "---\nname: skill-evolve-candidate\ndescription: Candidate skill improvement\n---\n"
-	content += "# Skill Evolution Candidate\n\n"
+	content += placeholderProposalHeading + "\n\n"
 	content += "Fingerprint: " + fingerprint + "\n\n"
 	content += "Acceptance refs: " + joinComma(acceptanceRefs) + "\n"
 	return []ProposedFile{{Path: target, Content: content}}

@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -22,11 +22,14 @@ func (m *memCredStore) Load(service string) (string, error) {
 }
 func (m *memCredStore) Delete(service string) error { m.val = ""; return nil }
 
-func lifecycleBackend(t *testing.T, seen *atomic.Value) *httptest.Server {
+// lifecycleBackend answers every worker request. When seen is non-nil it
+// records the Authorization header per request path, so an assertion reads the
+// request it made rather than whichever request landed last.
+func lifecycleBackend(t *testing.T, seen *sync.Map) *httptest.Server {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if seen != nil {
-			seen.Store(r.Header.Get("Authorization"))
+			seen.Store(r.URL.Path, r.Header.Get("Authorization"))
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"success":true,"data":[]}`))
@@ -56,7 +59,6 @@ func TestStartServices_APIKeyModeSkipsRefresherAndUsesWorkDirAudit(t *testing.T)
 	assert.Nil(t, wl.authRefresher, "API key mode must not refresh tokens")
 	assert.Nil(t, wl.authReconnector)
 	assert.Nil(t, wl.memorySearcher, "memory searcher requires a workspace ID")
-	assert.Nil(t, wl.schedulerDisp, "scheduler requires a workspace ID")
 	assert.NotNil(t, wl.netMonitor, "net monitor starts in every auth mode")
 }
 
@@ -105,7 +107,7 @@ func TestStartServices_JWTWithoutStoreHasNoRefresher(t *testing.T) {
 }
 
 // Guards service gating on workspace/knowledge flags: knowledge search needs both
-// KnowledgeSync and WorkspaceID, while memory and scheduler need only WorkspaceID.
+// KnowledgeSync and WorkspaceID, while memory search needs only WorkspaceID.
 func TestStartServices_ServiceGatingByWorkspaceAndKnowledgeFlag(t *testing.T) {
 	srv := lifecycleBackend(t, nil)
 
@@ -120,7 +122,6 @@ func TestStartServices_ServiceGatingByWorkspaceAndKnowledgeFlag(t *testing.T) {
 
 	assert.Nil(t, withWorkspace.knowledgeSearcher, "knowledge search stays off without KnowledgeSync")
 	assert.NotNil(t, withWorkspace.memorySearcher)
-	assert.NotNil(t, withWorkspace.schedulerDisp)
 
 	syncOnly := NewWorkerLoop(LoopConfig{
 		BackendURL:    srv.URL,
@@ -186,8 +187,12 @@ func TestStartServices_ParentCancelPropagates(t *testing.T) {
 // Guards token rotation: an empty token is ignored, and a real token reaches the
 // outbound Authorization header of every token-bearing service.
 func TestUpdateAuthToken_IgnoresEmptyAndPropagatesToSearchers(t *testing.T) {
-	var seen atomic.Value
+	var seen sync.Map
 	srv := lifecycleBackend(t, &seen)
+	authFor := func(path string) any {
+		value, _ := seen.Load(path)
+		return value
+	}
 
 	wl := NewWorkerLoop(LoopConfig{
 		BackendURL:    srv.URL,
@@ -212,11 +217,13 @@ func TestUpdateAuthToken_IgnoresEmptyAndPropagatesToSearchers(t *testing.T) {
 		"describe",
 	)
 	require.NoError(t, err)
-	assert.Equal(t, "Bearer new-token", seen.Load(), "rotated token must be used for memory requests")
+	assert.Equal(t, "Bearer new-token", authFor("/api/v1/workspaces/ws-1/memory/context"),
+		"rotated token must be used for memory requests")
 
 	_, err = wl.knowledgeSearcher.Search(context.Background(), "query")
 	require.NoError(t, err)
-	assert.Equal(t, "Bearer new-token", seen.Load(), "rotated token must be used for knowledge search")
+	assert.Equal(t, "Bearer new-token", authFor("/api/v1/workspaces/ws-1/knowledge/search"),
+		"rotated token must be used for knowledge search")
 }
 
 // Guards degraded-mode reporting: engaging the REST fallback must surface a

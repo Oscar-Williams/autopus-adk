@@ -137,7 +137,7 @@ func (r *ParallelRunner) runDependencyPhases(ctx context.Context, phases []Phase
 		finished++
 		if completed.err != nil {
 			states[completed.index] = "fail"
-			learnHookExecutorError(cfg.LearnStore, phases[completed.index].ID, completed.err)
+			learnHookExecutorError(cfg.LearnStore, cfg.SpecID, phases[completed.index].ID, completed.err)
 			if runErr == nil {
 				runErr = completed.err
 			}
@@ -147,7 +147,7 @@ func (r *ParallelRunner) runDependencyPhases(ctx context.Context, phases []Phase
 			phase := phases[completed.index]
 			if phase.Gate != GateNone && completed.result.Verdict != VerdictPass {
 				states[completed.index] = "fail"
-				learnHookGateFail(cfg.LearnStore, phase.ID, phase.Gate, completed.result.Output, 0)
+				learnHookGateFail(cfg.LearnStore, cfg.SpecID, phase.ID, phase.Gate, completed.result.Output, 0)
 			}
 		}
 	}

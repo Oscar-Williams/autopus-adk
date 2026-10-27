@@ -36,6 +36,7 @@ func TestGitignorePatternsUseNarrowAutopusPolicy(t *testing.T) {
 		".autopus/txns/",
 		".autopus/qa/runs/",
 		".autopus/runtime/",
+		".autopus/reverse/",
 		"/.claude.json",
 		"/.codex/",
 		"/.gemini/",

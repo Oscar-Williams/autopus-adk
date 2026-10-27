@@ -14,6 +14,9 @@ import (
 func newLearnQueryCmd() *cobra.Command {
 	var files, packages, keywords []string
 	var spec string
+	var top int
+	var markReused bool
+	var scope string
 
 	cmd := &cobra.Command{
 		Use:   "query",
@@ -43,11 +46,18 @@ func newLearnQueryCmd() *cobra.Command {
 				Packages: packages,
 				Keywords: keywords,
 				SpecID:   spec,
+				Scope:    scope,
+			}
+			if scope != "" && scope != learn.ScopeProcess && scope != learn.ScopeProject {
+				return fmt.Errorf("unknown scope: must be process or project")
 			}
 
-			entries, err := learn.QueryRelevant(store, q, 1.0)
+			entries, err := learn.QueryScored(store, q, 1.0)
 			if err != nil {
 				return fmt.Errorf("query: %w", err)
+			}
+			if top > 0 && len(entries) > top {
+				entries = entries[:top]
 			}
 
 			out := cmd.OutOrStdout()
@@ -58,8 +68,15 @@ func newLearnQueryCmd() *cobra.Command {
 
 			fmt.Fprintf(out, "%-10s %-16s %-8s %s\n", "ID", "Type", "Score", "Pattern")
 			fmt.Fprintf(out, "%-10s %-16s %-8s %s\n", "----------", "----------------", "--------", "-------")
+			ids := make([]string, 0, len(entries))
 			for _, e := range entries {
-				fmt.Fprintf(out, "%-10s %-16s %-8.2f %s\n", e.ID, string(e.Type), 1.0, e.Pattern)
+				fmt.Fprintf(out, "%-10s %-16s %-8.2f %s\n", e.Entry.ID, string(e.Entry.Type), e.Score, e.Entry.Pattern)
+				ids = append(ids, e.Entry.ID)
+			}
+			if markReused {
+				if err := store.MarkReused(ids); err != nil {
+					return fmt.Errorf("mark reused: %w", err)
+				}
 			}
 			return nil
 		},
@@ -69,6 +86,9 @@ func newLearnQueryCmd() *cobra.Command {
 	cmd.Flags().StringSliceVar(&packages, "packages", nil, "Package names to match against")
 	cmd.Flags().StringSliceVar(&keywords, "keywords", nil, "Keywords to match against")
 	cmd.Flags().StringVar(&spec, "spec", "", "Spec ID to filter by")
+	cmd.Flags().StringVar(&scope, "scope", "", "Only entries of this scope: process or project (an entry without a scope is project)")
+	cmd.Flags().IntVar(&top, "top", 0, "Print only the N best matches (0 prints all)")
+	cmd.Flags().BoolVar(&markReused, "mark-reused", false, "Count the printed entries as reused (for entries a workflow injects into a prompt)")
 
 	return cmd
 }

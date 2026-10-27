@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -14,7 +13,6 @@ import (
 )
 
 var runOrchestraExecute = orchestra.RunOrchestra
-var runOrchestraTerminalDetector = detectStructuredTerminal
 
 // newOrchestraCmd creates the orchestra root command.
 // @AX:ANCHOR: [AUTO] CLI entry point — registers all orchestra subcommands; changes here affect every orchestra route
@@ -45,7 +43,7 @@ func newOrchestraCmd() *cobra.Command {
 // newOrchestraReviewCmd and newOrchestraSecureCmd live in orchestra_file_cmds.go.
 // @AX:ANCHOR: [AUTO] fan_in=4 CLI callers — shared strategy, provider, and judge-resolution boundary
 // @AX:REASON: [AUTO] four production command routes depend on this shared resolution and execution contract
-// @AX:WARN: [AUTO] high-branch orchestration path — provider, judge precedence, detach, output, and degraded states converge here
+// @AX:WARN: [AUTO] high-branch orchestration path — provider, judge precedence, output, and degraded states converge here
 // @AX:REASON: [AUTO] more than eight conditional branches coordinate externally visible CLI outcomes
 func runOrchestraCommand(
 	ctx context.Context,
@@ -60,7 +58,6 @@ func runOrchestraCommand(
 	flags OrchestraFlags,
 ) error {
 	flagJudge := strings.TrimSpace(judge)
-	_, _ = orchestra.CleanupStaleJobs(os.TempDir(), 1*time.Hour)
 	if err := validateOrchestraOutputFormat(flags.OutputFormat); err != nil {
 		return err
 	}
@@ -171,23 +168,15 @@ func runOrchestraCommand(
 
 	keepRelay := flags.KeepRelay
 	noJudge := flags.NoJudge || riskTierSingleProvider
-	nd := flags.NoDetach || execution.guarded || (s == orchestra.StrategyDebate && judge != "" && !noJudge)
-	yieldRounds := flags.YieldRounds
 	contextAware := flags.ContextAware
-	subprocessMode := flags.SubprocessMode
 	resolvedTimeout := resolveOrchestraTimeout(orchConf, timeout, flags.TimeoutChanged, providers)
 	timeout = resolvedTimeout.Seconds
 	providers = applyResolvedProviderTimeouts(providers, resolvedTimeout)
-	term := runOrchestraTerminalDetector()
-	interactive := term != nil && term.Name() != "plain"
-	monitorRuntime := resolveCC21MonitorRuntime(term, harnessCfg)
 	workingDir, _ := os.Getwd()
 
-	sessionID := ""
-	if interactive && monitorRuntime.HookMode {
-		sessionID = orchestra.NewSessionID()
-	}
-
+	// The config carries no terminal, so every provider runs headless as a
+	// subprocess, or through OMP when it is configured with backend: omp
+	// (SPEC-PANERM-001).
 	cfg := orchestra.OrchestraConfig{
 		Providers:            providers,
 		RequestedProviders:   requestedProviderNames,
@@ -202,43 +191,19 @@ func runOrchestraCommand(
 		DebateRounds:         rounds,
 		ConsensusThreshold:   resolvedThreshold,
 		MinimumProviders:     reviewRiskMinimumProviders(commandName, flags.RiskTier),
-		Terminal:             term,
-		NoDetach:             nd,
 		KeepRelayOutput:      keepRelay,
-		Interactive:          interactive,
-		HookMode:             monitorRuntime.HookMode,
-		SessionID:            sessionID,
 		NoJudge:              noJudge,
-		YieldRounds:          yieldRounds,
 		ContextAware:         contextAware,
-		SubprocessMode:       subprocessMode,
-		MonitorEnabled:       monitorRuntime.Enabled,
-		MonitorTimeout:       monitorRuntime.PatternTimeout,
 		WorkingDir:           workingDir,
 		ProviderWorkDir:      execution.workDir,
 		ReadOnly:             execution.readOnly,
 		FallbackMode:         flags.FallbackMode,
 	}
 	cfg.ProviderBackends = ompProviderBackends(cfg)
-	applyHookMode(&cfg)
 
 	providerNames := providerConfigNames(providers)
-	termName := ""
-	if cfg.Terminal != nil {
-		termName = cfg.Terminal.Name()
-	}
-	fmt.Fprintf(os.Stderr, "전략: %s, 프로바이더: %s, 백엔드: %s (terminal=%s, hook=%t)\n",
-		strategyStr, strings.Join(providerNames, ", "), selectRoutedBackend(cfg).Name(), termName, cfg.HookMode)
-
-	if orchestra.ShouldDetach(termName, isStdoutTTY(), cfg.NoDetach) {
-		jobID, err := orchestra.RunPaneOrchestraDetached(ctx, cfg)
-		if err != nil {
-			return fmt.Errorf("detach mode failed: %w", err)
-		}
-		fmt.Fprintf(os.Stderr, "Detached: job %s\n", jobID)
-		fmt.Printf("%s\n", jobID)
-		return nil
-	}
+	fmt.Fprintf(os.Stderr, "전략: %s, 프로바이더: %s, 백엔드: %s\n",
+		strategyStr, strings.Join(providerNames, ", "), selectRoutedBackend(cfg).Name())
 
 	result, err := runGuardedOrchestra(ctx, cfg, execution)
 	if err != nil {
@@ -260,7 +225,9 @@ func runOrchestraCommand(
 		return nil
 	}
 
-	structured, writeErr := writeOrchestraPrimaryOutput(os.Stdout, result, noJudge, sessionID)
+	// No hook session exists without the pane backend, so the yield output
+	// carries an empty session id.
+	structured, writeErr := writeOrchestraPrimaryOutput(os.Stdout, result, noJudge, "")
 	if writeErr != nil {
 		return fmt.Errorf("write JSON output: %w", writeErr)
 	}
@@ -286,9 +253,6 @@ func runOrchestraCommand(
 			fmt.Fprint(os.Stderr, renderOrchestraFailureSummary(resolvedTimeout, result, reportPath))
 		}
 		fmt.Fprintf(os.Stderr, "상태: degraded\n")
-	}
-	if result.Reliability != nil && result.Reliability.ArtifactDir != "" {
-		fmt.Fprintf(os.Stderr, "아티팩트: %s\n", result.Reliability.ArtifactDir)
 	}
 	fmt.Fprintf(os.Stderr, "\n요약: %s (총 %s)\n", result.Summary, result.Duration.Round(1e6))
 	return nil

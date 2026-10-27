@@ -20,10 +20,11 @@ type LanguageConf struct {
 	AIResponses string `yaml:"ai_responses"` // AI 응답 언어
 }
 
-// QualityPreset defines a named quality configuration with agent mappings.
+// QualityPreset defines a named quality configuration: agent tiers and explicit agent efforts.
 type QualityPreset struct {
 	Description string            `yaml:"description,omitempty"`
 	Agents      map[string]string `yaml:"agents,omitempty"`
+	Efforts     map[string]string `yaml:"efforts,omitempty"`
 }
 
 // QualityConf holds quality preset definitions and provider-specific defaults.
@@ -89,23 +90,25 @@ type HarnessConfig struct {
 	UsageProfile     UsageProfile         `yaml:"usage_profile,omitempty"` // developer (default) or fullstack
 	Hints            HintsConf            `yaml:"hints,omitempty"`
 	Workflow         WorkflowConf         `yaml:"workflow,omitempty"`
+	HealthBand       HealthBandConf       `yaml:"health_band,omitempty"`
 	Runtime          RuntimeConf          `yaml:"-"`
 }
 
 // FeaturesConf holds feature-flag namespaces.
 type FeaturesConf struct {
 	CC21 CC21FeaturesConf `yaml:"cc21,omitempty"`
+	Rea  ReaFeaturesConf  `yaml:"rea,omitempty"`
 }
 
-// CC21FeaturesConf holds Claude Code 2.1 integration flags.
+// CC21FeaturesConf holds Claude Code 2.1 integration flags. The retired
+// monitor_pattern_timeout_ms key (orchestra pane monitor) is ignored on load.
 type CC21FeaturesConf struct {
-	Enabled                 bool   `yaml:"enabled"`
-	EffortEnabled           bool   `yaml:"effort_enabled,omitempty"`
-	MonitorEnabled          bool   `yaml:"monitor_enabled,omitempty"`
-	TaskCreatedEnabled      bool   `yaml:"task_created_enabled,omitempty"`
-	InitialPromptEnabled    bool   `yaml:"initial_prompt_enabled,omitempty"`
-	TaskCreatedMode         string `yaml:"task_created_mode,omitempty"`
-	MonitorPatternTimeoutMS int    `yaml:"monitor_pattern_timeout_ms,omitempty"`
+	Enabled              bool   `yaml:"enabled"`
+	EffortEnabled        bool   `yaml:"effort_enabled,omitempty"`
+	MonitorEnabled       bool   `yaml:"monitor_enabled,omitempty"`
+	TaskCreatedEnabled   bool   `yaml:"task_created_enabled,omitempty"`
+	InitialPromptEnabled bool   `yaml:"initial_prompt_enabled,omitempty"`
+	TaskCreatedMode      string `yaml:"task_created_mode,omitempty"`
 }
 
 // ProfilesConf holds profile configuration for agents.
@@ -184,6 +187,9 @@ type HooksConf struct {
 	// StickyCadence is the SPEC-STICKYRULE-001 prompt interval between sticky
 	// rule re-injections. Read it through StickyCadence, never directly.
 	StickyCadence int `yaml:"sticky_cadence,omitempty"`
+	// EditGuard registers the SPEC-EDITGUARD-001 edit guard hook. Read it
+	// through IsEditGuardEnabled; DefaultEditGuard says why unset stays nil.
+	EditGuard *bool `yaml:"edit_guard,omitempty"`
 }
 
 // PermissionsConf는 코딩 CLI 권한 설정이다.

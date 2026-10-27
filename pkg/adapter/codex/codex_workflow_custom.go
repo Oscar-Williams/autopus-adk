@@ -3,6 +3,8 @@ package codex
 import (
 	"fmt"
 	"strings"
+
+	"github.com/insajin/autopus-adk/templates"
 )
 
 type customWorkflowBody struct {
@@ -41,7 +43,34 @@ func customWorkflowBodies(spec workflowSpec) (customWorkflowBody, bool) {
 		return whyWorkflowBody(spec.Name, spec.Description), true
 	case "auto-dev":
 		return devWorkflowBody(spec.Name, spec.Description), true
+	case "auto-reverse":
+		return reverseWorkflowBody(spec.Name, spec.Description), true
 	default:
 		return customWorkflowBody{}, false
 	}
+}
+
+// reverseWorkflowBody renders the shared /auto reverse contract. Its consent
+// question and confirmation gate stay in the main Codex session; the
+// reverse-engineer worker only analyses and returns a behaviour specification.
+func reverseWorkflowBody(name, summary string) customWorkflowBody {
+	skill := compose(
+		"# "+name+" — Clean-room Reverse Implementation",
+		"",
+		"## 설명",
+		"",
+		summary,
+		"",
+		"## Codex Invocation",
+		"",
+		"- `@auto reverse <대상> <기능> [--runtime]`",
+		"- `$"+name+" ...`",
+		"- `$auto reverse ...`",
+		"",
+		"## Contract",
+		"",
+		templates.ReverseRouteContract(),
+	)
+
+	return customWorkflowBody{skill: skill}
 }

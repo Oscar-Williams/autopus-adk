@@ -93,21 +93,20 @@ func validateRotationDocument(
 	enforceCurrentWindow bool,
 ) error {
 	expectations := [...]struct {
-		field    string
-		actual   string
-		expected string
+		field   string
+		matches bool
 	}{
-		{"schema_version", document.SchemaVersion, rotationSchema},
-		{"channel", document.Channel, channelName},
-		{"repository", document.Repository, channelRepository},
-		{"bridge_tag", document.BridgeTag, rotationBridgeTag},
-		{"release_mode", document.ReleaseMode, rotationReleaseMode},
-		{"source_commit", document.SourceCommit, options.ExpectedSourceCommit},
-		{"source_tree", document.SourceTree, options.ExpectedSourceTree},
-		{"channel_key_id", document.ChannelKeyID, options.ExpectedKeyID},
+		{"schema_version", document.SchemaVersion == rotationSchema},
+		{"channel", document.Channel == channelName},
+		{"repository", channelRepositoryAccepted(document.Repository)},
+		{"bridge_tag", document.BridgeTag == rotationBridgeTag},
+		{"release_mode", document.ReleaseMode == rotationReleaseMode},
+		{"source_commit", document.SourceCommit == options.ExpectedSourceCommit},
+		{"source_tree", document.SourceTree == options.ExpectedSourceTree},
+		{"channel_key_id", document.ChannelKeyID == options.ExpectedKeyID},
 	}
 	for _, expectation := range expectations {
-		if expectation.actual != expectation.expected {
+		if !expectation.matches {
 			return fmt.Errorf("%s does not match the authorized value", expectation.field)
 		}
 	}

@@ -28,6 +28,15 @@ func (a *Adapter) Clean(_ context.Context) error {
 			return err
 		}
 	}
+	// The plugin MCP file is not a manifest mapping, so the prune below never
+	// deletes it; only the managed rea entry leaves (REQ-REA-04).
+	if change, changed, err := a.planReaPluginMCP(config.ReaMCPRemove); err != nil {
+		return err
+	} else if changed {
+		if err := a.writeReaPluginMCP(change); err != nil {
+			return err
+		}
+	}
 	if _, owned := manifest.Files[antigravityHooksTarget]; owned {
 		if err := a.removeAntigravityHooksJSON(); err != nil {
 			return err
@@ -87,7 +96,8 @@ func (a *Adapter) removeManagedSettingsKeys() error {
 	if err != nil {
 		return err
 	}
-	removeAuthoredLegacyHooks(settings, append(defaultLegacyHookConfigs(), a.configuredLegacyGeminiHooks(cfg)...))
+	removeAuthoredLegacyHooks(settings, authoredLegacyGeminiHooks(a.configuredLegacyGeminiHooks(cfg)))
+	retractStaleCompletionHandlers(settings)
 	currentServers, _ := settings["mcpServers"].(map[string]any)
 	authoredServers, _ := authored["mcpServers"].(map[string]any)
 	for name, value := range authoredServers {
@@ -95,7 +105,12 @@ func (a *Adapter) removeManagedSettingsKeys() error {
 			delete(currentServers, name)
 		}
 	}
-	if len(currentServers) == 0 {
+	// A managed rea entry an earlier build left goes whatever the current
+	// render holds; other_pin and user-owned rea entries stay.
+	if err := a.sweepLegacyReaMCP(settings); err != nil {
+		return err
+	}
+	if currentServers, _ = settings["mcpServers"].(map[string]any); len(currentServers) == 0 {
 		delete(settings, "mcpServers")
 	}
 	if len(settings) == 0 {
@@ -108,9 +123,38 @@ func (a *Adapter) removeManagedSettingsKeys() error {
 	return adapter.WriteFileIfChanged(path, append(out, '\n'), 0o644)
 }
 
+// retractStaleCompletionHandlers removes the group S handlers
+// (SPEC-PANERM-001: the AfterAgent hook-gemini-afteragent.sh handler that
+// legacy Gemini generation wrote) from .gemini/settings.json. The authored-hook
+// subtraction cannot see them because generation no longer authors them, yet
+// update and Clean both delete the script they run. A user handler sharing
+// their entry stays.
+func retractStaleCompletionHandlers(settings map[string]any) {
+	hooks, ok := settings["hooks"].(map[string]any)
+	if !ok {
+		return
+	}
+	removed := adapter.RetractHookHandlers(hooks, func(command string) bool {
+		return adapter.IsStaleCompletionHookCommand(adapterName, command)
+	})
+	if removed > 0 && len(hooks) == 0 {
+		delete(settings, "hooks")
+	}
+}
+
 func defaultLegacyHookConfigs() []adapter.HookConfig {
 	hooks, _, _ := pkgcontent.GenerateProjectHookConfigs(config.DefaultFullConfig("autopus"), "gemini", true)
 	return hooks
+}
+
+// authoredLegacyGeminiHooks is every .gemini/settings.json entry shape
+// generation has written for the current hooks: the default and the current
+// configuration's entries, plus the shell-tool shapes earlier releases wrote
+// for them (matcher "Bash", second timeouts), so update and Clean replace or
+// remove those instead of leaving them beside the corrected entries.
+func authoredLegacyGeminiHooks(current []adapter.HookConfig) []adapter.HookConfig {
+	authored := append(defaultLegacyHookConfigs(), current...)
+	return append(authored, pkgcontent.RetiredGeminiHookShapes(authored)...)
 }
 
 // Handler-level subtraction preserves user handlers sharing the same event

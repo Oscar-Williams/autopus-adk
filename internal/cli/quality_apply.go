@@ -24,19 +24,33 @@ func applyQualityHarnessPlatforms(
 	platforms []string,
 	retryCommand string,
 ) error {
+	return applyQualityHarnessPlatformsUsing(cmd, dir, cfg, platforms, retryCommand, qualityPlatformUpdater)
+}
+
+// applyQualityHarnessPlatformsUsing owns the apply report so every caller,
+// whichever updater it passes, prints the same lines.
+func applyQualityHarnessPlatformsUsing(
+	cmd *cobra.Command,
+	dir string,
+	cfg *config.HarnessConfig,
+	platforms []string,
+	retryCommand string,
+	update func(context.Context, string, string, *config.HarnessConfig) (bool, error),
+) error {
 	out := cmd.OutOrStdout()
 	updated := 0
 	var failures []string
 	codexApplied := false
 
 	for _, platform := range platforms {
-		supported, err := qualityPlatformUpdater(commandContext(cmd), dir, platform, cfg)
+		supported, err := update(commandContext(cmd), dir, platform, cfg)
+		// Platform tokens and adapter errors can carry text from autopus.yaml.
 		if !supported {
-			fmt.Fprintf(out, "  skipped unknown platform: %s\n", platform)
+			fmt.Fprintf(out, "  skipped unknown platform: %s\n", terminalSafe(platform))
 			continue
 		}
 		if err != nil {
-			fmt.Fprintf(out, "  failed %s: %v\n", platform, err)
+			fmt.Fprintf(out, "  failed %s: %s\n", terminalSafe(platform), terminalSafe(err.Error()))
 			failures = append(failures, fmt.Sprintf("%s: %v", platform, err))
 			continue
 		}

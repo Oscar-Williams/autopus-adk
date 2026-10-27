@@ -23,11 +23,8 @@ func newQualityCmdWithOMPDependencies(deps ompPlatformDependencies) *cobra.Comma
 	cmd := &cobra.Command{
 		Use:   "quality [preset]",
 		Short: "Choose quality modes and OMP agent models",
-		Long: "Show or change quality.default, quality.providers, and quality.supervisor_model_policy in autopus.yaml.\n\n" +
-			"Use `auto quality <preset> --apply` for the global fallback, " +
-			"`auto quality provider <provider> <preset|inherit> --apply` for one provider, " +
-			"or run `auto quality` without arguments for guided quality and OMP model selection.",
-		Args: cobra.MaximumNArgs(1),
+		Long:  qualityCmdLong,
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
 				return runQualitySet(cmd, args[0], apply)
@@ -58,13 +55,15 @@ func newQualitySupervisorCmd(apply *bool) *cobra.Command {
 }
 
 func newQualityShowCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:     "show",
 		Aliases: []string{"status"},
 		Short:   "Show current quality mode and supervisor policy",
 		Args:    cobra.NoArgs,
 		RunE:    runQualityShow,
 	}
+	cmd.Flags().Bool("agents", false, "Also print the agent × platform model table, read-only")
+	return cmd
 }
 
 func newQualitySetCmd(apply *bool) *cobra.Command {
@@ -91,6 +90,9 @@ func runQualityShow(cmd *cobra.Command, _ []string) error {
 	writeOMPRoleModelPolicyStatus(out, cfg.RoleModelPolicy)
 	fmt.Fprintf(out, "config = %s\n", filepath.Join(dir, "autopus.yaml"))
 	fmt.Fprintf(out, "available = %s\n", strings.Join(orderedQualityPresets(cfg), ", "))
+	if agents, _ := cmd.Flags().GetBool("agents"); agents {
+		return writeQualityAgentTable(cmd, cfg)
+	}
 	return nil
 }
 
@@ -133,60 +135,15 @@ func runQualitySupervisorSet(cmd *cobra.Command, policy string, apply bool) erro
 	return nil
 }
 
+// runQualityInteractive is `auto quality` without arguments: the composition
+// step comes first and still reaches every existing editor
+// (SPEC-MODELUX-001 REQ-MUX-16).
 func runQualityInteractive(cmd *cobra.Command, apply bool, deps ompPlatformDependencies) error {
 	dir, cfg, err := loadQualityConfig(cmd)
 	if err != nil {
 		return err
 	}
-	if tools := configuredQualityModelTools(cfg); len(tools) > 0 {
-		target, err := chooseQualityTarget(cmd, cfg)
-		if err != nil {
-			return err
-		}
-		for _, tool := range tools {
-			if tool.platform != target {
-				continue
-			}
-			if tool.platform == "omp" {
-				return runOMPQualityInteractive(cmd, dir, cfg, deps)
-			}
-			return runQualityToolInteractive(cmd, dir, cfg, tool, apply)
-		}
-	}
-	options := orderedQualityPresets(cfg)
-	if len(options) == 0 {
-		return fmt.Errorf("quality presets are not configured")
-	}
-
-	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "Current quality: %s\n", cfg.Quality.Default)
-	fmt.Fprintln(out, "Select quality mode:")
-	for i, preset := range options {
-		marker := " "
-		if preset == cfg.Quality.Default {
-			marker = "*"
-		}
-		desc := strings.TrimSpace(cfg.Quality.Presets[preset].Description)
-		if desc != "" {
-			fmt.Fprintf(out, "  %s %d) %s - %s\n", marker, i+1, preset, desc)
-		} else {
-			fmt.Fprintf(out, "  %s %d) %s\n", marker, i+1, preset)
-		}
-	}
-	fmt.Fprint(out, "Choose: ")
-
-	choice, err := readQualityChoice(cmd, options)
-	if err != nil {
-		return err
-	}
-	if err := saveQualityDefault(dir, cfg, choice); err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "quality.default = %s\n", choice)
-	if apply {
-		return applyQualityHarness(cmd, dir, cfg, "auto quality "+choice+" --apply")
-	}
-	return nil
+	return runQualityComposeEntry(cmd, dir, cfg, apply, deps)
 }
 
 func loadQualityConfig(cmd *cobra.Command) (string, *config.HarnessConfig, error) {

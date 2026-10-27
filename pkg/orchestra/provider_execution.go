@@ -8,7 +8,10 @@ import (
 
 // Sandbox mode vocabulary recorded on provider execution evidence.
 const (
-	SandboxModeReadOnly       = "read-only"
+	SandboxModeReadOnly = "read-only"
+	// SandboxModeUnverified marks a read-only projection whose enforcement has
+	// no live evidence yet, so the receipt does not claim read-only.
+	SandboxModeUnverified     = "unverified"
 	SandboxModeWorkspaceWrite = "workspace-write"
 	SandboxModeUnrestricted   = "unrestricted"
 )
@@ -20,7 +23,7 @@ type ProviderExecution struct {
 	Command     []string  `json:"command"`                // argv including the binary
 	Cwd         string    `json:"cwd,omitempty"`          // effective process working directory
 	PID         int       `json:"pid,omitempty"`          // started process ID; 0 when the process never started
-	SandboxMode string    `json:"sandbox_mode,omitempty"` // read-only, workspace-write, or unrestricted
+	SandboxMode string    `json:"sandbox_mode,omitempty"` // read-only, unverified, workspace-write, or unrestricted
 	StartedAt   time.Time `json:"started_at"`
 	EndedAt     time.Time `json:"ended_at"`
 }
@@ -39,7 +42,7 @@ func newProviderExecution(provider ProviderConfig, args []string, start time.Tim
 	return &ProviderExecution{
 		Command:     command,
 		Cwd:         cwd,
-		SandboxMode: providerSandboxMode(provider, args),
+		SandboxMode: ProviderSandboxMode(provider, args),
 		StartedAt:   start,
 	}
 }
@@ -53,32 +56,6 @@ func (e *ProviderExecution) finish(duration time.Duration) {
 	e.EndedAt = e.StartedAt.Add(duration)
 }
 
-// providerSandboxMode reports the sandbox mode a provider runs under: the
-// policy-stamped mode wins; otherwise the native argv is inspected. Codex
-// declares its sandbox explicitly, a Claude plan permission mode is read-only,
-// and a permission/sandbox bypass flag means unrestricted. Without any
-// restriction the orchestrator imposes nothing, which is recorded as
-// unrestricted rather than guessed.
-func providerSandboxMode(provider ProviderConfig, args []string) string {
-	if mode := strings.TrimSpace(provider.SandboxMode); mode != "" {
-		return mode
-	}
-	for index, arg := range args {
-		switch {
-		case arg == "--sandbox" && index+1 < len(args) && !strings.HasPrefix(args[index+1], "-"):
-			return args[index+1]
-		case strings.HasPrefix(arg, "--sandbox=") && len(arg) > len("--sandbox="):
-			return strings.TrimPrefix(arg, "--sandbox=")
-		case arg == "--permission-mode" && index+1 < len(args) && args[index+1] == "plan",
-			arg == "--permission-mode=plan":
-			return SandboxModeReadOnly
-		case arg == "--dangerously-skip-permissions", arg == "--dangerously-bypass-approvals-and-sandbox", arg == "--yolo":
-			return SandboxModeUnrestricted
-		}
-	}
-	return SandboxModeUnrestricted
-}
-
 // resolveProviderWorkDir applies the run-level provider working directory to
 // a provider that does not pin its own, so every subprocess dispatch site
 // shares one cwd policy.
@@ -87,13 +64,4 @@ func resolveProviderWorkDir(cfg OrchestraConfig, provider ProviderConfig) Provid
 		provider.WorkDir = cfg.ProviderWorkDir
 	}
 	return provider
-}
-
-// providerLaunchDir resolves where pane shells run: the isolated provider
-// directory when set, otherwise the artifact working directory.
-func (cfg OrchestraConfig) providerLaunchDir() string {
-	if cfg.ProviderWorkDir != "" {
-		return cfg.ProviderWorkDir
-	}
-	return cfg.WorkingDir
 }

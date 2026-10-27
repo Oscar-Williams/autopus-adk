@@ -1,0 +1,79 @@
+{
+  "schema_version": "harness_golden_task.v1",
+  "id": "GT-AGENT-A01",
+  "kind": "agent",
+  "category": "skill_selection_precedence",
+  "intent": "Fix skill selection when a task supplies an incompatible supported-tool version but omits another required version. A confirmed incompatibility must remain excluded regardless of capability ordering, while missing evidence alone must remain unknown. Keep the declared selection evidence and compatible cases intact.",
+  "outcome": "With the generated Codex surface installed, the agent repairs the seeded regression in pkg/skillpolicy/select.go so every expected oracle test passes again (Seeds a precedence regression where a later missing capability overwrites an earlier exclusion; existing tests cover unknown, incompatible, and compatible boundaries.)",
+  "variants": [],
+  "assertions": [
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/config.toml"
+    },
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/skills/codex-auto/SKILL.md"
+    }
+  ],
+  "corpus_ref": {
+    "file": "scripts/benchmarks/harness/corpus_a.json",
+    "task_id": "a01",
+    "file_sha256": "97c03debd2dd2e9414a585ec3fabc931228ed87167fe98ffc51b3d9abf774101"
+  },
+  "expected_tests": [
+    "TestExcludeWinsAndMissingFile",
+    "TestSelectExplicitEvidence",
+    "TestVersionMismatchWinsOverUnknown"
+  ],
+  "oracle_mode": "black_box",
+  "black_box_oracle": {
+    "build": "./cmd/auto",
+    "command": [
+      "{artifact}",
+      "skill",
+      "select",
+      "--policy-json",
+      "{input}/policy.json",
+      "--task-json",
+      "{input}/task.json",
+      "--dir",
+      "{input}"
+    ],
+    "inputs": [
+      {
+        "path": "evals/harness/oracles/GT-AGENT-A01/policy.json",
+        "sha256": "14d7c166c67b257296275d6074e3ff7f959290ff8b60ac30df6a4aef50ddbb61"
+      },
+      {
+        "path": "evals/harness/oracles/GT-AGENT-A01/task.json",
+        "sha256": "24ff7a3018beba12df6d4e25357463ce464ed68b0a1bd1448e380cdbcc395189"
+      }
+    ],
+    "assertions": [
+      {
+        "id": "exit",
+        "kind": "exit_code",
+        "exit_code": 0
+      },
+      {
+        "id": "stdout",
+        "kind": "stdout",
+        "expected": {
+          "path": "evals/harness/oracles/GT-AGENT-A01/stdout.json",
+          "sha256": "9dae35332f25bc8735a0de66af51e42c97247169253532466bb1836abe766146"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "benchmark",
+    "ref": "scripts/benchmarks/harness/corpus_a.json#a01"
+  },
+  "status": {
+    "state": "active",
+    "reason": ""
+  }
+}

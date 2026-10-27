@@ -53,6 +53,19 @@ auto quality provider claude inherit --apply
 `--apply` refreshes only that configured platform; `auto quality <mode> --apply` continues to
 refresh every configured platform.
 
+### Per-agent composition
+
+Individual agent tiers change through the composition step of `auto quality` without arguments
+(also asked by every interactive `auto update`). It shows the agent × platform table — Claude Code
+and Codex cells are the generated model and effort, the OMP column is the requested route before
+OMP's catalog check — and edits one tier per role group (`g`: Design·Judgment, Implementation,
+Verification·Review, Exploration·Support) or per agent (`a`, `agent=tier`). Only a confirmed `y`
+writes: a result equal to the current Balanced or Ultra default binds that preset, and anything else
+is saved as `quality.presets.custom`. `u` updates previous-version default presets; a customized
+preset is never modified. `auto quality show --agents` prints the table read-only. The step needs
+an interactive terminal, so an agent points the operator to it; generated agent files are
+overwritten on regeneration and are never hand-edited to change a model.
+
 ## Complexity Assessment Criteria
 
 The planner assesses each task before spawning an agent. Complexity describes the nature of the work, not its size: file count and line count are not criteria.
@@ -72,9 +85,10 @@ When `{SPEC_DIR}/gate-applicability.json` carries `change_risk.risk_tier`, that 
 | Planning, review, security, debugging, long work | `fable`: planner, architect, spec-writer, reviewer, security-auditor, debugger, deep-worker | same seven-role `fable` core |
 | Implementation and testing | `sonnet`: executor, tester, devops, frontend-specialist, perf-engineer | `opus` |
 | Routine work | `sonnet`: explorer, annotator, validator, ux-validator | `opus` |
+| Reverse-engineering analysis | `opus`: reverse-engineer | `opus` |
 
 Platform note:
-- Standard balanced uses the same role matrix in Claude Code, Codex, and OMP. Claude emits Fable 5.1/max for the seven-role core, Sonnet 5/max for implementation, and Sonnet 5/high for routine work. Codex emits Astra/max for the core and Luna/max for every other canonical agent.
+- Standard balanced uses the same role matrix in Claude Code, Codex, and OMP. Claude emits Fable 5.1/max for the seven-role core, Opus 5.5/high for reverse-engineer, Sonnet 5.5/max for implementation, and Sonnet 5.5/high for routine work. Codex emits Astra/max for the core, Sol/xhigh for reverse-engineer, and Luna/max for every other canonical agent.
 - Explicit nonstandard native agent tiers retain the tier ladder: Claude Fable/Opus/Sonnet/Haiku and Codex Astra/Sol/Luna (sonnet and haiku both run Luna; sonnet at `max`). Ultra remains unchanged. Native multi-provider review defaults to Fable 5.1/max and Astra/max regardless of quality mode; explicit provider pins and effort overrides stay authoritative.
 - Gemini maps `fable`/`opus`/`sonnet` to `gemini-3.1-pro` and `haiku` to `gemini-3.8-flash`.
 - OpenCode keeps the configured default runtime model; tier changes act as reasoning-profile hints until explicit model overrides are available.
@@ -143,9 +157,9 @@ Quality Mode defaults:
 |------|--------------|--------|
 | Any | Fable 5.1 | `max` |
 | Ultra | Opus 5.5 / Opus 5 / Opus 4.8 / Opus 4.7 | `max` |
-| Ultra | Opus 4.6 / Sonnet 5 | `high` |
-| Balanced standard | Sonnet 5 implementation/testing roles | `max` |
-| Balanced standard | Sonnet 5 routine roles | `high` |
+| Ultra | Opus 4.6 / Sonnet 5.5 | `high` |
+| Balanced standard | Sonnet 5.5 implementation/testing roles | `max` |
+| Balanced standard | Sonnet 5.5 routine roles | `high` |
 | Balanced custom tier | Opus / Sonnet | `high` / `medium` |
 | Any | Haiku 4.5 | strip effort |
 
@@ -223,7 +237,7 @@ quality:
 ## Cost Estimation
 
 `cost = Σ(task_tokens × model_price_per_token)`. Fable 5.1 costs more per token
-than Opus 5.5, and Sonnet 5 less, so compare profiles using the actual role mix
+than Opus 5.5, and Sonnet 5.5 less, so compare profiles using the actual role mix
 and token counts rather than assuming a quality mode is uniformly cheaper.
 Pricing and token estimation live in `pkg/cost/pricing.go` and
 `pkg/cost/estimator.go`.

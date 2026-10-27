@@ -32,17 +32,26 @@ type ompCustomModelChoice struct {
 	Model        string
 	Thinking     []string
 	Capabilities []string
+	// Family is the attested family a pins-only pin records: the strict
+	// catalog's report, or the built-in declaration on a metadata-light one.
+	Family string
 }
 
 func (c ompCustomModelChoice) selector() string { return c.Provider + "/" + c.Model }
 
-// readOMPCustomAgentPins asks for one installed model per bundled agent and
-// returns them in `--agent` form, so the selection travels through the same
-// attestation, preview, and rollback path as the flag.
+// readOMPCustomAgentPins asks for one installed model per agent the source
+// serves and returns them in `--agent` form, so the selection travels through
+// the same attestation, preview, and rollback path as the flag. Native asks
+// the bundled agents. Autopus asks the 17 Autopus agents and no bundled name,
+// task included: under the Route Contract's rule (2) a pin on one folds onto
+// every role that collapsed there before v0.50.127 (an agents.task pin reaches
+// fifteen), which is not the per-agent choice the prompt promises; task
+// follows the planner pin instead.
 func readOMPCustomAgentPins(
 	ctx context.Context,
 	cmd *cobra.Command,
 	runner omp.OMPModelCatalogRunner,
+	source string,
 ) ([]string, error) {
 	out := cmd.OutOrStdout()
 	choices, version, err := installedOMPCustomModelChoices(ctx, cmd, runner)
@@ -54,8 +63,12 @@ func readOMPCustomAgentPins(
 	fmt.Fprintf(out, "Pick a model per agent; empty keeps the %s default.\n", ompCustomBaseProfile)
 
 	reader := bufio.NewReader(cmd.InOrStdin())
-	pins := make([]string, 0, len(config.OMPNativeAgentNames()))
-	for _, agent := range config.OMPNativeAgentNames() {
+	agents := config.CanonicalAgentNames()
+	if source == config.OMPAgentSourceNative {
+		agents = config.OMPNativeAgentNames()
+	}
+	pins := make([]string, 0, len(agents))
+	for _, agent := range agents {
 		capability, err := ompCustomAgentCapability(agent)
 		if err != nil {
 			return nil, err
@@ -80,7 +93,7 @@ func readOMPCustomAgentPins(
 			pin += ":" + thinking
 		}
 		pins = append(pins, pin)
-		fmt.Fprintf(out, "  %s\n", pin)
+		fmt.Fprintf(out, "  %s\n", terminalSafe(pin))
 	}
 	return pins, nil
 }
@@ -135,27 +148,17 @@ func installedOMPCustomModelChoices(
 	cmd *cobra.Command,
 	runner omp.OMPModelCatalogRunner,
 ) ([]ompCustomModelChoice, string, error) {
-	probe, err := probeInstalledOMPCatalog(ctx, runner)
-	version := safeOMPOperatorVersion(probe.Version)
+	strict, display, version, err := readInstalledOMPModelChoices(ctx, runner)
 	switch {
-	case err == nil:
-		return sortedOMPCustomModelChoices(strictOMPCustomModelChoices(probe.Catalog.Models)), version, nil
-	case probe.Reason == ompRawCatalogFallbackReason:
-		body, runErr := runner.Run(ctx, "omp", "models", "--json", "--no-extensions")
-		if runErr != nil {
-			return nil, version, runErr
-		}
-		models, reason := normalizeOMPRawDisplayCatalog(body, ompModelDoctorProbeOutput)
-		if reason != "catalog_ready" {
-			return nil, version, ompCatalogUnavailableError{reason: reason}
-		}
+	case err != nil:
+		return nil, version, err
+	case display != nil:
 		fmt.Fprintln(cmd.OutOrStdout(),
 			"The installed catalog reports no family or capability metadata; "+
 				"a pin is attested against the built-in declarations.")
-		return sortedOMPCustomModelChoices(displayOMPCustomModelChoices(models)), version, nil
-	default:
-		return nil, version, err
+		return display, version, nil
 	}
+	return strict, version, nil
 }
 
 // strictOMPCustomModelChoices keeps only models the installation can run and
@@ -168,7 +171,7 @@ func strictOMPCustomModelChoices(models []omp.OMPModelMetadata) []ompCustomModel
 		}
 		choices = append(choices, ompCustomModelChoice{
 			Provider: model.Provider, Model: model.Model,
-			Thinking: model.Thinking, Capabilities: model.Capabilities,
+			Thinking: model.Thinking, Capabilities: model.Capabilities, Family: model.Family,
 		})
 	}
 	return choices
@@ -199,12 +202,14 @@ func sortedOMPCustomModelChoices(choices []ompCustomModelChoice) []ompCustomMode
 	return choices
 }
 
+// renderOMPCustomModelChoices prints the installed models. Catalog text
+// reaches the terminal only through terminalSafe.
 func renderOMPCustomModelChoices(out io.Writer, choices []ompCustomModelChoice) {
 	table := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(table, "#\tModel\tThinking")
 	for index, choice := range choices {
 		fmt.Fprintf(table, "%d\t%s\t%s\n",
-			index+1, choice.selector(), strings.Join(choice.Thinking, ","))
+			index+1, terminalSafe(choice.selector()), terminalSafe(strings.Join(choice.Thinking, ",")))
 	}
 	_ = table.Flush()
 }

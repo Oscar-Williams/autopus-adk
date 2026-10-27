@@ -15,7 +15,7 @@ import (
 // Sol/xhigh); balanced routes both through the native placement (planner
 // Astra/max, executor Luna/max).
 func TestInitCmd_QualityUltraInheritsCodexSupervisorAndSetsManagedAgents(t *testing.T) {
-	assertInitCodexQualityProfile(t, "ultra", "max", "gpt-6-sol", "xhigh", "max")
+	assertInitCodexQualityProfile(t, "ultra", "max", "gpt-6.1-sol", "xhigh", "max")
 }
 
 func TestInitCmd_QualityBalancedInheritsCodexSupervisorAndSetsManagedAgents(t *testing.T) {
@@ -52,14 +52,17 @@ func assertInitCodexQualityProfile(t *testing.T, quality, orchestraEffort, execu
 	assert.Contains(t, harness, "supervisor_model_policy: inherit")
 	assert.Contains(t, harness, "model_policy: quality")
 	assert.Contains(t, harness, "gpt-6-astra")
-	assert.GreaterOrEqual(t, strings.Count(harness, `model_reasoning_effort="`+orchestraEffort+`"`), 2)
+	// The codex orchestra provider carries the effort once in args; pane_args
+	// was retired with the pane backend (SPEC-PANERM-001).
+	assert.Equal(t, 1, strings.Count(harness, `model_reasoning_effort="`+orchestraEffort+`"`))
+	assert.NotContains(t, harness, "pane_args")
 }
 
 func installCodex56CatalogFixture(t *testing.T) {
 	t.Helper()
 	binDir := t.TempDir()
 	script := `#!/bin/sh
-printf '%s' '{"models":[{"slug":"gpt-6-astra","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},{"slug":"gpt-6-sol","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},{"slug":"gpt-5.6-terra","supported_reasoning_levels":[{"effort":"medium"},{"effort":"high"}]},{"slug":"gpt-6-luna","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"max"}]},{"slug":"gpt-5.5","supported_reasoning_levels":[{"effort":"xhigh"}]}]}'
+printf '%s' '{"models":[{"slug":"gpt-6-astra","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},{"slug":"gpt-6.1-sol","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},{"slug":"gpt-5.6-terra","supported_reasoning_levels":[{"effort":"medium"},{"effort":"high"}]},{"slug":"gpt-6-luna","supported_reasoning_levels":[{"effort":"low"},{"effort":"medium"},{"effort":"max"}]},{"slug":"gpt-5.5","supported_reasoning_levels":[{"effort":"xhigh"}]}]}'
 `
 	path := filepath.Join(binDir, "codex")
 	require.NoError(t, os.WriteFile(path, []byte(script), 0755))

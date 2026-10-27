@@ -100,7 +100,12 @@ func TestProbeOMPModelCatalog_LiveInstalledSchemaFailsClosedWhenSemanticMetadata
 		require.Equal(t, "catalog_metadata_insufficient", result.Reason)
 		require.Empty(t, result.Catalog.Models)
 	}
-	require.Equal(t, "omp/18.0.5", result.Version)
+	// The probe must report the installed binary's own identity, whichever
+	// release that is; pinning one release made the test fail on every upgrade.
+	installed, err := exec.Command("omp", "--version").Output()
+	require.NoError(t, err)
+	require.Equal(t, strings.TrimSpace(string(installed)), result.Version)
+	require.Regexp(t, `^omp/[0-9]+\.[0-9]+\.[0-9]+$`, result.Version)
 	require.Zero(t, requests.Load(), "catalog discovery must not issue a model/provider request")
 	t.Logf("catalog-only schema: top_level=%s custom_row=%s required_metadata=%t missing=%s provider_requests=%d",
 		strings.Join(topSchema, ","), strings.Join(rowSchema, ","), hasRequiredMetadata,

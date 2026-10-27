@@ -39,6 +39,12 @@ type platformDescriptor struct {
 	rollbackPlatforms []string
 }
 
+// platformOMPModelRunner, when set, replaces the omp executable the OMP
+// platform's model integration runs: its catalog probe and the read-back of
+// the config it wrote. Tests set it to drive a real OMP generation; nil keeps
+// the exec runner.
+var platformOMPModelRunner omp.OMPModelCatalogRunner
+
 var lifecyclePlatformCatalog = [...]platformDescriptor{
 	{
 		name: "claude-code",
@@ -85,7 +91,11 @@ var lifecyclePlatformCatalog = [...]platformDescriptor{
 	{
 		name: "omp",
 		newAdapter: func(root string, _ platformAdapterOptions) adapter.PlatformAdapter {
-			return omp.NewWithRoot(root)
+			ompAdapter := omp.NewWithRoot(root)
+			if platformOMPModelRunner != nil {
+				return ompAdapter.WithModelIntegrationRunner(platformOMPModelRunner)
+			}
+			return ompAdapter
 		},
 		clean: func(ctx context.Context, root string) (platformCleanReceipt, error) {
 			receipt, err := omp.NewWithRoot(root).CleanWithReceipt(ctx)
@@ -122,6 +132,22 @@ func (d platformDescriptor) driftAdapter(root string, catalog []byte, fixed bool
 	}
 	return d.newAdapter(root, options)
 }
+
+// withSnapshot binds every adapter of d to the run's Codex catalog snapshot,
+// the way driftAdapter does, so a platform an update detected generates from
+// the catalog the run's table showed (SPEC-MODELUX-002 REQ-MUX2-12). The zero
+// snapshot returns d unchanged: its adapters probe for themselves as before.
+func (d platformDescriptor) withSnapshot(snapshot driftGenerationSnapshot) platformDescriptor {
+	if !snapshot.codexCatalogFixed || d.driftOptions == nil {
+		return d
+	}
+	newAdapter, options := d.newAdapter, d.driftOptions(snapshot.codexCatalog, true)
+	d.newAdapter = func(root string, _ platformAdapterOptions) adapter.PlatformAdapter {
+		return newAdapter(root, options)
+	}
+	return d
+}
+
 func (d platformDescriptor) adapter(root string) adapter.PlatformAdapter {
 	return d.newAdapter(root, platformAdapterOptions{})
 }

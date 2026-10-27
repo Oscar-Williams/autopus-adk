@@ -13,6 +13,7 @@ func balancedAnthropicRoutes() map[string]RoleModelCandidateConf {
 	top := builtinCandidate("anthropic/"+ClaudeFableModel, "max", "anthropic")
 	implementation := builtinCandidate("anthropic/"+ClaudeSonnetModel, "max", "anthropic")
 	routine := builtinCandidate("anthropic/"+ClaudeSonnetModel, "high", "anthropic")
+	analysis := builtinCandidate("anthropic/"+ClaudeOpusModel, "high", "anthropic")
 	return map[string]RoleModelCandidateConf{
 		"architect": top, "debugger": top, "deep-worker": top, "planner": top,
 		"reviewer": top, "security-auditor": top, "spec-writer": top,
@@ -20,7 +21,7 @@ func balancedAnthropicRoutes() map[string]RoleModelCandidateConf {
 		"frontend-specialist": implementation, "perf-engineer": implementation,
 		"tester":    implementation,
 		"annotator": routine, "explorer": routine, "ux-validator": routine,
-		"validator": routine,
+		"validator": routine, "reverse-engineer": analysis,
 	}
 }
 
@@ -28,13 +29,14 @@ func balancedAnthropicRoutes() map[string]RoleModelCandidateConf {
 func balancedOpenAIRoutes() map[string]RoleModelCandidateConf {
 	top := builtinCandidate("openai-codex/"+CodexAstraModel, "max", "openai")
 	worker := builtinCandidate("openai-codex/"+CodexLunaModel, "max", "openai")
+	analysis := builtinCandidate("openai-codex/"+CodexSolModel, "xhigh", "openai")
 	return map[string]RoleModelCandidateConf{
 		"architect": top, "debugger": top, "deep-worker": top, "planner": top,
 		"reviewer": top, "security-auditor": top, "spec-writer": top,
 		"devops": worker, "executor": worker, "frontend-specialist": worker,
 		"perf-engineer": worker, "tester": worker,
 		"annotator": worker, "explorer": worker, "ux-validator": worker,
-		"validator": worker,
+		"validator": worker, "reverse-engineer": analysis,
 	}
 }
 
@@ -53,7 +55,7 @@ func roleModelOverrideAgents(overrides map[string]RoleAgentOverrideConf) []strin
 	return agents
 }
 
-func TestBalancedRoleModelProfile_RoutesSixteenAgentsExactlyPerFamily(t *testing.T) {
+func TestBalancedRoleModelProfile_RoutesSeventeenAgentsExactlyPerFamily(t *testing.T) {
 	t.Parallel()
 
 	for _, family := range RoleModelFamilies() {

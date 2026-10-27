@@ -11,10 +11,10 @@ USAGE
 }
 readonly repository='autopus-ai/autopus-adk'
 readonly environment_name='adk-companion-release'
-readonly release_tag='v0.50.120'
+readonly release_tag='v0.50.128'
 readonly spec_id='SPEC-OMP-004'
-readonly expected_go_toolchain='go1.26.6'
-readonly expected_omp_sha256='cd2f47545cb3f8eb5e15c91bc9054d73967774652e020b432e294803d1b71ea0'
+readonly expected_go_toolchain='go1.27.3'
+readonly expected_omp_sha256='f2a657b3320fcafa23055053940a45b26a8d3254e1412a158838013d670d6ec5'
 readonly expected_promotion_key_id='omp-context-promotion-2026-q3-k3'
 readonly release_ref="refs/tags/${release_tag}"
 readonly evidence_tag="omp-context-evidence-${release_tag}"
@@ -132,11 +132,11 @@ for runtime_lib_name in prepare-release-user-lib.sh prepare-release-runtime-lib.
 done
 trap 'cleanup $?' EXIT
 probe_configure
-staged_omp="$temp_dir/omp-v17.2.7"
+staged_omp="$temp_dir/omp-v18.12.3"
 readonly staged_omp
 cp "$omp_executable" "$staged_omp"; chmod 0500 "$staged_omp"
 [[ "$(shasum -a 256 "$staged_omp" | awk '{print $1}')" == "$expected_omp_sha256" ]] || fail 'staged OMP executable digest differs'
-[[ "$("$staged_omp" --version)" == 'omp/17.2.7' ]] || fail 'verified OMP version differs from v17.2.7'
+[[ "$("$staged_omp" --version)" == 'omp/18.12.3' ]] || fail 'verified OMP version differs from v18.12.3'
 omp_executable=$staged_omp
 probe_verify_tag_signing_authority
 environment_variables=$(gh variable list --repo "$repository" --env "$environment_name" --json name,value) ||
@@ -167,17 +167,17 @@ release_present=0; evidence_present=0
 [[ -n "$evidence_remote" ]] && evidence_present=1
 if [[ "$release_present" -eq 0 ]]; then
   scripts/companion-release/verify-release-tag-ruleset.sh --armed ||
-    fail 'exact armed v0.50.120 tag ruleset or environment is unavailable'
+    fail 'exact armed v0.50.128 tag ruleset or environment is unavailable'
   ruleset_state=armed
 elif scripts/companion-release/verify-release-tag-ruleset.sh --sealed; then
   ruleset_state=sealed
 elif scripts/companion-release/verify-release-tag-ruleset.sh --armed; then
   ruleset_state=armed-reconciliation-required
 else
-  fail 'committed v0.50.120 tag ruleset is neither exact sealed nor reconcilable armed state'
+  fail 'committed v0.50.128 tag ruleset is neither exact sealed nor reconcilable armed state'
 fi
 releases=$(gh api --paginate --slurp "repos/${repository}/releases?per_page=100") || fail 'cannot inspect GitHub Release state'
-release_count=$(jq '[.[][] | select(.tag_name == "v0.50.120")] | length' <<<"$releases") || fail 'GitHub Release state is malformed'
+release_count=$(jq '[.[][] | select(.tag_name == "v0.50.128")] | length' <<<"$releases") || fail 'GitHub Release state is malformed'
 [[ "$release_count" == '0' || "$release_count" == '1' ]] || fail 'GitHub Release state is ambiguous'
 [[ "$release_count" == '0' || "$release_present" -eq 1 || -n "$retained_lock_commit" ]] ||
   fail 'GitHub Release exists without its source tag or retained prep lock'

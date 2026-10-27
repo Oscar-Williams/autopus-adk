@@ -52,6 +52,7 @@ func TestMain(m *testing.M) {
 	if os.Getenv(pipelineOMPRPCFixtureEnv) == "1" {
 		os.Exit(runPipelineOMPRPCFixture())
 	}
+	reaNodeExec = testReaNodeV24 // SPEC-REA-001: no CLI test runs a real node
 	os.Exit(m.Run())
 }
 

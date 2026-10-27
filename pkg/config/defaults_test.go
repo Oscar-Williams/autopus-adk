@@ -19,7 +19,6 @@ func TestDefaultFullConfig_GeminiPromptViaArgs(t *testing.T) {
 	// value; the prompt fills the "" slot via PromptViaArgs (injectPromptArg).
 	assert.True(t, gemini.PromptViaArgs, "gemini provider must pass the prompt as the --print value")
 	assert.Equal(t, []string{"--print", ""}, gemini.Args, "gemini provider must use the --print value slot")
-	assert.Equal(t, "stdin", gemini.InteractiveInput, "gemini pane mode must not derive args-based launch input")
 }
 
 func TestDefaultFullConfig_OtherProvidersPromptViaArgsFalse(t *testing.T) {
@@ -68,6 +67,7 @@ func TestDefaultFullConfig_QualityPresets(t *testing.T) {
 		"annotator": "sonnet", "devops": "sonnet", "explorer": "sonnet",
 		"frontend-specialist": "sonnet", "perf-engineer": "sonnet",
 		"tester": "sonnet", "ux-validator": "sonnet", "validator": "sonnet",
+		"reverse-engineer": "opus",
 	}, balanced.Agents)
 }
 
@@ -84,7 +84,7 @@ func TestDefaultFullConfig_QualityUltraUsesFableAndOpus(t *testing.T) {
 	for _, tier := range ultra.Agents {
 		counts[tier]++
 	}
-	assert.Equal(t, map[string]int{"fable": 7, "opus": 9}, counts)
+	assert.Equal(t, map[string]int{"fable": 7, "opus": 10}, counts)
 	for _, agent := range []string{
 		"architect", "debugger", "deep-worker", "planner", "reviewer", "security-auditor", "spec-writer",
 	} {
@@ -182,7 +182,6 @@ func TestDefaultFullConfig_ClaudeReviewUsesFrontierMax(t *testing.T) {
 	require.True(t, ok, "claude provider must exist")
 	want := []string{"--print", "--model", "claude-fable-5-1", "--effort", "max"}
 	assert.Equal(t, want, claude.Args)
-	assert.Equal(t, want, claude.PaneArgs)
 }
 
 func TestDefaultFullConfig_SpecReviewContextUsesAdaptiveLimit(t *testing.T) {

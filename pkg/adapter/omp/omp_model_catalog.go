@@ -13,7 +13,14 @@ import (
 )
 
 const (
-	defaultOMPModelProbeTimeout = 3 * time.Second
+	// defaultOMPModelProbeTimeout bounds a hung omp process, not a slow one.
+	// With remote network access closed (OMPModelProbeProcess), `omp models`
+	// takes about 0.4s warm and about 2.5s on an empty profile on OMP 18.12.x;
+	// with it open the same call followed omp's online catalog refresh and
+	// ranged from 1s to past this bound. Generation runs it beside other
+	// platform work; the former 3s ceiling failed healthy installs with
+	// catalog_timeout.
+	defaultOMPModelProbeTimeout = 20 * time.Second
 	defaultOMPModelProbeOutput  = 64 * 1024
 )
 
@@ -111,6 +118,11 @@ func probeOMPModelCatalog(
 		return result
 	}
 	result.Catalog, result.Reason = NormalizeOMPModelCatalog(output, opts.MaxOutput)
+	if profile != nil && profile.PinsOnly && result.Reason != "catalog_metadata_insufficient" {
+		// A pins-only profile takes its trust from the catalog: a strict
+		// catalog's own report attests its pins (security review P2).
+		result.CatalogTrust = config.RoleModelCatalogTrustStrict
+	}
 	if result.Reason == "catalog_metadata_insufficient" &&
 		profile != nil && trust == config.RoleModelCatalogTrustOperatorAttested {
 		result.Catalog, result.Reason = normalizeOMPOperatorAttestedCatalog(output, opts.MaxOutput, *profile)

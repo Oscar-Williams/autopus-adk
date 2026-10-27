@@ -2,6 +2,7 @@ package omp
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/config"
 )
@@ -24,29 +25,30 @@ func validateOMPIntegrationOverrides(profile config.RoleModelProfileConf) error 
 	return nil
 }
 
-// bridgeOMPIntegrationRoutes builds one route request per native OMP agent,
-// keyed by native agent name. The governing route is the single
-// operator-written override that collapses onto that agent, or the
-// representative ADK role's route when the operator wrote none.
+// bridgeOMPIntegrationRoutes builds one route request per agent the profile's
+// source serves, keyed by the name OMP binds a model to. In autopus mode that
+// is each canonical agent and task, routed by the Route Contract; in native
+// mode it is each bundled agent, routed by the single operator-written
+// override that collapses onto it, or the representative ADK role's route.
 func bridgeOMPIntegrationRoutes(
 	profile config.RoleModelProfileConf,
 ) (map[string]OMPModelRouteRequest, error) {
-	natives := config.OMPNativeAgentNames()
-	routes := make(map[string]OMPModelRouteRequest, len(natives))
+	agents := profile.OMPAgentNames()
+	routes := make(map[string]OMPModelRouteRequest, len(agents))
 	diverseRoles := make(map[string]struct{}, len(profile.FamilyDiversity.Roles))
 	if profile.FamilyDiversity.Enabled {
 		for _, role := range profile.FamilyDiversity.Roles {
 			diverseRoles[role] = struct{}{}
 		}
 	}
-	for _, native := range natives {
-		resolved, route, err := profile.OMPNativeAgentRoute(native)
+	for _, agent := range agents {
+		resolved, route, err := profile.OMPAgentRoute(agent)
 		if err != nil {
 			return nil, err
 		}
 		_, preferDistinctFamily := diverseRoles[resolved.Role]
 		request := OMPModelRouteRequest{
-			Agent: native, Role: resolved.Role, Capability: resolved.Capability,
+			Agent: agent, Role: resolved.Role, Capability: resolved.Capability,
 			Required: route.Required, DegradedAction: route.DegradedAction,
 			PreferDistinctExecutorFamily: preferDistinctFamily,
 			Candidates:                   make([]OMPRoutingCandidate, 0, len(route.Candidates)),
@@ -56,7 +58,7 @@ func bridgeOMPIntegrationRoutes(
 				Selector: candidate.Selector, Thinking: candidate.Thinking, Family: candidate.Family,
 			})
 		}
-		routes[native] = request
+		routes[agent] = request
 	}
 	return routes, nil
 }
@@ -79,25 +81,28 @@ func projectOMPIntegrationAgents(
 			continue
 		}
 		if route.Required && route.DegradedAction != ompRuntimeDefaultAction {
-			err := fmt.Errorf("required_route_unresolved: %s: %s", resolution.Agent, resolution.Reason)
+			err := fmt.Errorf("required_route_unresolved: %s: %s%s",
+				resolution.Agent, resolution.Reason, ompUnavailableCandidatesDetail(resolution))
 			if hint := ompLoginHint(ompUnavailableCandidateProviders(catalog, route)); hint != "" {
 				err = fmt.Errorf("%w (%s)", err, hint)
 			}
 			return nil, err
 		}
 	}
+	// The compilation is already in the served set's rank order.
 	result := make([]OMPProjectionAgent, 0, len(resolved))
-	for _, native := range config.OMPNativeAgentNames() {
-		resolution, ok := resolved[native]
+	for _, compiled := range compilation.Resolutions {
+		resolution, ok := resolved[compiled.Agent]
 		if !ok {
 			continue
 		}
+		agent := resolution.Agent
 		projection := OMPProjectionAgent{
-			Agent: native, Role: resolution.RequestedRole, Capability: resolution.Capability,
+			Agent: agent, Role: resolution.RequestedRole, Capability: resolution.Capability,
 			Selector: resolution.EffectiveProvider + "/" + resolution.EffectiveModel,
 			Thinking: resolution.Thinking,
 		}
-		for _, candidate := range routes[native].Candidates {
+		for _, candidate := range routes[agent].Candidates {
 			if formatOMPRoutingSelector(candidate) == resolution.EffectiveSelector {
 				continue
 			}
@@ -110,4 +115,18 @@ func projectOMPIntegrationAgents(
 		result = append(result, projection)
 	}
 	return result, nil
+}
+
+// ompUnavailableCandidatesDetail names the candidates a required route tried
+// with the code the CLI plan reports for the same condition, so a generation
+// that stops on a missing model says which one (SPEC-REA-001 S11).
+func ompUnavailableCandidatesDetail(resolution OMPModelRouteResolution) string {
+	if len(resolution.FallbackAttempts) == 0 {
+		return ""
+	}
+	attempts := make([]string, 0, len(resolution.FallbackAttempts))
+	for _, attempt := range resolution.FallbackAttempts {
+		attempts = append(attempts, attempt.Selector+" "+attempt.Reason)
+	}
+	return " (omp_profile_candidate_unavailable: " + strings.Join(attempts, ", ") + ")"
 }

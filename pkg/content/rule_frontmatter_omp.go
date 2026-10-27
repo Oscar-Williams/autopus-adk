@@ -34,9 +34,15 @@ var ompRecognizedKeys = map[string]bool{
 // its body. Measured against omp 17.1.8: a rule reaches the session only when
 // its frontmatter carries a description, so emitting a bare body writes the
 // file to disk where no session ever discovers it. Synthesis never runs when
-// any recognized key survives, which keeps trigger-carrying rules routed to the
-// TTSR engine exactly as before — adding a description to one of those would
-// move it into the always-listed block instead.
+// any recognized key survives, so a source's own frontmatter decides the shape.
+//
+// How omp 18.12.3 routes each shape (read from its bundle, 2026-10-24): a rule
+// with condition or astCondition goes to the TTSR engine first, description or
+// not, and its body arrives as an interrupt when the condition matches;
+// alwaysApply puts the whole body in the system prompt; any other rule with a
+// description is listed as one line (name, globs, description) and its body is
+// read on demand through rule://<name>. Globs are only a hint in that line:
+// nothing injects the body when a matching file is touched.
 func TransformRuleForOMP(raw string) (string, error) {
 	fm, body, err := splitFrontmatter(raw)
 	if err != nil {

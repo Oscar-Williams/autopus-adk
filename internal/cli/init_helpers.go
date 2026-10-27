@@ -11,7 +11,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/insajin/autopus-adk/internal/cli/tui"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/detect"
 )
@@ -28,20 +27,7 @@ var legacyRootGeneratedGitignorePatterns = map[string]string{
 
 // generatePlatformFiles는 플랫폼별 파일을 생성한다.
 func generatePlatformFiles(ctx context.Context, dir string, cfg *config.HarnessConfig, cmd *cobra.Command) error {
-	effectiveCfg := applyFlagCC21Overrides(cfg, globalFlagsFromContext(cmd.Context()))
-
-	for _, p := range cfg.Platforms {
-		descriptor, ok := lookupPlatformDescriptor(p)
-		if !ok {
-			tui.Warnf(cmd.OutOrStdout(), "알 수 없는 플랫폼 %q, 건너뜀", p)
-			continue
-		}
-		if _, err := descriptor.Generate(ctx, dir, effectiveCfg); err != nil {
-			return fmt.Errorf("플랫폼 %q 파일 생성 실패: %w", p, err)
-		}
-		tui.Success(cmd.OutOrStdout(), p)
-	}
-	return nil
+	return generatePlatformFilesWith(ctx, dir, cfg, cmd, driftGenerationSnapshot{})
 }
 
 // detectDefaultPlatforms returns installed, ADK-supported platforms in a stable order.
@@ -81,6 +67,10 @@ func detectInstalledPlatforms() []string {
 // gitignorePatterns는 autopus 관련 .gitignore 패턴 목록이다.
 var gitignorePatterns = []string{
 	".autopus/*-manifest.json",
+	// The Claude permission ledger records what this machine's update added to
+	// its own .claude/settings.json; a committed copy reaches every clone as
+	// state no local write made (applyGitignoreUpdate hints at untracking it).
+	permissionLedgerRel,
 	".autopus/context/signatures.md",
 	".autopus/plugins/",
 	".autopus/orchestra/",
@@ -89,9 +79,13 @@ var gitignorePatterns = []string{
 	".autopus/design/imports/",
 	".autopus/design/verify/",
 	".autopus/canary/",
+	".autopus/metrics/",
 	".autopus/backup/",
 	".autopus/cache/",
 	".autopus/docs/",
+	// /auto reverse behaviour specifications quote a third-party target, so
+	// they stay local in single, module, and meta repositories alike.
+	".autopus/reverse/",
 	".autopus/qa/runs/",
 	".autopus/qa/cache/",
 	".autopus/qa/gui/",
@@ -216,6 +210,8 @@ func updateGitignore(dir string) (gitignoreUpdatePlan, error) {
 // project only through update, and omp's rule and extension discovery is
 // gitignore-aware: an unignored generated surface also fails doctor's hygiene
 // check, so update owning this write is what makes the two entry points agree.
+// An ignore rule does not untrack a committed file, so a permission ledger git
+// still tracks gets one hint line instead of an index change.
 func applyGitignoreUpdate(out io.Writer, dir string) error {
 	plan, err := updateGitignore(dir)
 	if err != nil {
@@ -224,6 +220,7 @@ func applyGitignoreUpdate(out io.Writer, dir string) error {
 	if !plan.Empty() {
 		fmt.Fprintf(out, "  + .gitignore updated (%s)\n", plan.Summary())
 	}
+	hintTrackedPermissionLedger(out, dir)
 	return nil
 }
 

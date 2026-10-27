@@ -28,6 +28,9 @@ func (a *Adapter) generateSettings(cfg *config.HarnessConfig) ([]adapter.FileMap
 			newSettings = mergeSettingsMaps(existing, newSettings)
 		}
 	}
+	if err := a.sweepLegacyReaMCP(newSettings); err != nil {
+		return nil, err
+	}
 
 	out, err := json.MarshalIndent(newSettings, "", "  ")
 	if err != nil {
@@ -69,6 +72,7 @@ func (a *Adapter) generateSettingsWithHooks(cfg *config.HarnessConfig) ([]adapte
 	if err := json.Unmarshal(files[0].Content, &settings); err != nil {
 		return nil, fmt.Errorf("gemini settings JSON 파싱 실패: %w", err)
 	}
+	retractStaleCompletionHandlers(settings)
 	perms := filterUnsupportedAntigravityPermissions(content.DetectPermissions(a.root, cfg.Hooks.Permissions))
 	applyAntigravityHooksAndPermissions(settings, a.configuredLegacyGeminiHooks(cfg), perms)
 	return buildAntigravitySettingsMapping(settings)
@@ -117,7 +121,7 @@ func filterUnsupportedAntigravityPermissions(perms *adapter.PermissionSet) *adap
 
 func applyAntigravityHooksAndPermissions(settings map[string]any, hooks []adapter.HookConfig, perms *adapter.PermissionSet) {
 	if len(hooks) > 0 {
-		removeAuthoredLegacyHooks(settings, append(defaultLegacyHookConfigs(), hooks...))
+		removeAuthoredLegacyHooks(settings, authoredLegacyGeminiHooks(hooks))
 		hooksMap, _ := settings["hooks"].(map[string]any)
 		if hooksMap == nil {
 			hooksMap = make(map[string]any)

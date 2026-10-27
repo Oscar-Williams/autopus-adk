@@ -25,11 +25,11 @@ func TestOMP002_WorkflowParity_GenerateEmitsCanonicalCommandsAndSkills(t *testin
 		want[spec.Name] = true
 		wantWorkflowTargets[filepath.ToSlash(filepath.Join(".omp", "skills", spec.Name, "SKILL.md"))] = true
 	}
-	require.Len(t, want, 20, "workflowSpecs is the canonical twenty-name authority")
+	require.Len(t, want, 21, "workflowSpecs is the canonical twenty-one-name authority")
 	workflow, err := a.prepareWorkflowSkillMappings(configForOMP())
 	require.NoError(t, err)
 	assert.Equal(t, wantWorkflowTargets, mappingTargetSet(workflow),
-		"the workflow emitter, not the extended emitter, must own all twenty targets")
+		"the workflow emitter, not the extended emitter, must own all twenty-one targets")
 	extended, err := a.prepareExtendedSkillMappings(configForOMP())
 	require.NoError(t, err)
 	for _, file := range extended {
@@ -148,7 +148,8 @@ func assertOMPExecutionOwnerSurfaceParity(t *testing.T, commands, skills map[str
 		{name: "auto-status skill", body: skills["auto-status"]},
 	} {
 		assert.Contains(t, surface.body, "execution-owner", "%s lost receipt guidance", surface.name)
-		assert.Contains(t, surface.body, "`hub`", "%s lost OMP-native hub guidance", surface.name)
+		assert.Contains(t, surface.body, "`hub`", "%s lost the older-OMP hub guidance", surface.name)
+		assert.Contains(t, surface.body, "`read proc://`", "%s lost the OMP 18.3+ job guidance", surface.name)
 		assert.Contains(t, surface.body, "user-session roots", "%s claims external session-root visibility", surface.name)
 	}
 }
@@ -215,7 +216,7 @@ func TestOMP002_S5_PlainConfigRemainsByteIdentical(t *testing.T) {
 			require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 			require.NoError(t, os.WriteFile(path, []byte(original), 0o600))
 
-			_, err := NewWithRoot(dir).Generate(context.Background(), configForOMP())
+			_, err := NewWithRoot(dir).Generate(context.Background(), nativeConfigForOMP())
 			require.NoError(t, err)
 			after, readErr := os.ReadFile(path)
 			require.NoError(t, readErr)
@@ -232,7 +233,7 @@ func TestOMP002_S7_ValidateReportsMissingAndTamperedManagedSets(t *testing.T) {
 	a := NewWithRoot(dir)
 	cfg := configForOMP()
 
-	rules, err := a.prepareRuleMappings()
+	rules, err := a.prepareRuleMappings(cfg)
 	require.NoError(t, err)
 	commands, err := a.prepareCommandMappings(cfg)
 	require.NoError(t, err)

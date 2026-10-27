@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 )
 
@@ -16,6 +17,8 @@ type ompModelIntegration struct {
 	probe       OMPModelCatalogProbeResult
 	routing     OMPModelRoutingCompilation
 	projection  OMPModelProjection
+	// claimSurface is autopus mode: the project claim set adds task.disabledAgents.
+	claimSurface bool
 }
 
 // WithModelIntegrationRunner injects metadata and config-readback execution.
@@ -36,7 +39,9 @@ func (a *Adapter) prepareModelIntegration(
 	ctx context.Context,
 	cfg *config.HarnessConfig,
 ) (*ompModelIntegration, error) {
-	if cfg.RoleModelPolicy.Profile == "" {
+	// A pins-only policy (SPEC-MODELUX-003 REQ-MUX3-22) has no profile but
+	// still routes its pinned agents.
+	if cfg.RoleModelPolicy.Profile == "" && len(cfg.RoleModelPolicy.Agents) == 0 {
 		return nil, nil
 	}
 	if err := cfg.RoleModelPolicy.Validate(); err != nil {
@@ -57,16 +62,18 @@ func (a *Adapter) prepareModelIntegration(
 	if err != nil {
 		return nil, err
 	}
+	reaFallback := dropOMPReaAnalysisFallbackRoutes(profile, probe.Catalog, routes)
 	DegradeUnservedDerivedOMPRoutes(profile, probe.Catalog, routes)
 	routing := CompileOMPModelRouting(OMPModelRoutingInput{
-		Catalog: probe.Catalog, CatalogReason: probe.Reason, Routes: routes,
+		Catalog: probe.Catalog, CatalogReason: probe.Reason, Routes: routes, AgentSource: profile.AgentSource,
 	})
 	projected, err := projectOMPIntegrationAgents(probe.Catalog, routes, routing)
 	if err != nil {
 		return nil, err
 	}
+	adapter.ReportReaFallbacks(ctx, ompReaFallbackFacts(reaFallback)...)
 	a.reportDegradedModelRoutes(ompDegradedRoutesNotice(probe.Catalog, routes, routing))
-	projection, err := CompileOMPModelProjection(OMPModelProjectionInput{Agents: projected})
+	projection, err := CompileOMPModelProjection(OMPModelProjectionInput{Agents: projected, AgentSource: profile.AgentSource})
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,12 @@ var (
 	TestDefaultResult        = defaultResult
 	TestBuildLangStep        = buildLangStep
 	TestBuildQualityStep     = buildQualityStep
+	TestQualityOptions       = qualityOptions
 	TestBuildReviewGateStep  = buildReviewGateStep
 	TestBuildMethodologyStep = buildMethodologyStep
 	TestBuildProfileStep     = buildProfileStep
+	TestBuildReaStepFor      = buildReaStepFor
+	TestReaStepTextFor       = reaStepTextFor
+	TestWizardStreams        = wizardStreams
+	TestWizardStepKinds      = wizardStepKinds
 )

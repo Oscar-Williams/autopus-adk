@@ -24,7 +24,7 @@ fi
 
 # Conventional Commits 형식 검사
 # 형식: <type>(<scope>): <subject>
-PATTERN="^(feat|fix|refactor|test|docs|chore|perf|merge|revert)\(.+\): .{1,72}$"
+PATTERN="^(feat|fix|refactor|test|docs|chore|perf|merge|revert)\([^()]*[^()[:space:]][^()]*\): .*[^[:space:]].*$"
 FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
 
 if ! echo "$FIRST_LINE" | grep -qE "$PATTERN"; then

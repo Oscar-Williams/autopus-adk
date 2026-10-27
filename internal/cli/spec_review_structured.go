@@ -43,8 +43,6 @@ func runStructuredSpecReviewOrchestra(ctx context.Context, cfg orchestra.Orchest
 	if backend == nil {
 		return nil, fmt.Errorf("spec review: no execution backend configured")
 	}
-	cleanupHookSession := ownStructuredReviewHookSession(cfg)
-	defer cleanupHookSession()
 
 	parser := &orchestra.OutputParser{}
 	start := time.Now()
@@ -87,18 +85,6 @@ func runStructuredSpecReviewOrchestra(ctx context.Context, cfg orchestra.Orchest
 		Summary:         fmt.Sprintf("structured spec review: %d providers", len(results)),
 		FailedProviders: failed,
 	}, cfg), nil
-}
-
-func ownStructuredReviewHookSession(cfg orchestra.OrchestraConfig) func() {
-	if !cfg.HookMode || strings.TrimSpace(cfg.SessionID) == "" {
-		return func() {}
-	}
-	hookSession, err := orchestra.NewHookSession(cfg.SessionID)
-	if err != nil {
-		return func() {}
-	}
-	hookSession.ApplyProviderHooks(cfg.Providers)
-	return hookSession.Cleanup
 }
 
 func buildStructuredSpecReviewPrompt(basePrompt, schemaJSON string, inlineSchema bool) string {
@@ -154,6 +140,10 @@ func malformedStructuredOutcome(provider string, err error, sourceResp *orchestr
 		}
 		failed.StderrPreview = truncateStructuredReviewError(sourceResp.Error, 240)
 		failed.OutputPreview = truncateStructuredReviewError(sourceResp.Output, 240)
+		// The receipt judges the sandbox from the recorded launch; a provider
+		// that never started has none and claims no sandbox.
+		response.Execution = sourceResp.Execution
+		failed.Execution = sourceResp.Execution
 	}
 	// The receipt projects FailedProvider over the response for a failed
 	// reviewer, so the observed backend must travel on both.

@@ -12,32 +12,45 @@ import (
 
 type ompNativeRPCTrace struct {
 	toolSequence []string
-	hubOps       []string
 	taskCalls    int
+	waitCalls    int
 	pairedCalls  int
 	starts       map[string]string
 	ended        map[string]bool
+	// childSources is the agentSource the task tool reported per child once
+	// the batch was accepted; "bundled" with no model proves the parent gave
+	// neither child a model or tool override.
+	childSources map[string]string
 }
+
+// ompNativeToolSequence is the parent's whole tool lifecycle on omp 18.3+:
+// one batch, then one `wait` per child. `read proc://` is the documented way
+// to list jobs but is not exercised here: under the loopback-only sandbox it
+// first tries to start omp's daemon broker socket, which the sandbox denies
+// after a 10s timeout, and the same timeout is what each `wait` already pays.
+var ompNativeToolSequence = []string{"task", "wait", "wait"}
 
 func runActualOMPNativeRPC(
 	ctx context.Context,
 	executable, scratch, profile, overlay, prompt, allowedEndpoint string,
 	provider *ompNativeProvider,
 ) (ompNativeRPCTrace, error) {
-	trace := ompNativeRPCTrace{starts: make(map[string]string), ended: make(map[string]bool)}
+	trace := ompNativeRPCTrace{
+		starts: make(map[string]string), ended: make(map[string]bool), childSources: make(map[string]string),
+	}
 	cmd := exec.CommandContext(ctx, executable,
 		"--mode", "rpc",
 		"--no-session",
 		"--cwd", scratch,
 		"--model", "s7dummy/"+ompLiveModel,
 		"--config", overlay,
-		"--tools", "task,hub",
+		"--tools", "task,wait",
 		"--auto-approve",
 		"--no-extensions",
 		"--no-rules",
 		"--no-lsp",
 		"--no-pty",
-		"--max-time", "40s",
+		"--max-time", "50s",
 	)
 	cmd.Dir = scratch
 	isolatedEnv, envErr := isolatedOMPLiveEnv(profile, overlay)
@@ -131,7 +144,17 @@ func (trace *ompNativeRPCTrace) consume(frame []byte, provider *ompNativeProvide
 		Args       json.RawMessage `json:"args"`
 		IsError    bool            `json:"isError"`
 		Success    *bool           `json:"success"`
-		Message    struct {
+		Result     struct {
+			Details struct {
+				Progress []struct {
+					ID          string `json:"id"`
+					Agent       string `json:"agent"`
+					AgentSource string `json:"agentSource"`
+					Model       any    `json:"model"`
+				} `json:"progress"`
+			} `json:"details"`
+		} `json:"result"`
+		Message struct {
 			Role       string `json:"role"`
 			StopReason string `json:"stopReason"`
 		} `json:"message"`
@@ -162,32 +185,24 @@ func (trace *ompNativeRPCTrace) consume(frame []byte, provider *ompNativeProvide
 			}
 			trace.taskCalls++
 			trace.toolSequence = append(trace.toolSequence, "task")
-		case "hub":
-			var args struct {
-				IDs       []string `json:"ids"`
-				Op        string   `json:"op"`
-				TimeoutMS int      `json:"timeoutMs"`
+		case "wait":
+			// omp lifts `i` into the frame's intent; nothing else may remain,
+			// since wait takes no job ids or timeout any more.
+			var args map[string]any
+			if json.Unmarshal(event.Args, &args) != nil {
+				return false, fmt.Errorf("native_rpc_wait_arguments_invalid")
 			}
-			if json.Unmarshal(event.Args, &args) != nil || args.Op == "" {
-				return false, fmt.Errorf("native_rpc_hub_arguments_invalid")
+			delete(args, "i")
+			if len(args) != 0 || trace.taskCalls != 1 || trace.waitCalls >= 2 {
+				return false, fmt.Errorf("native_rpc_wait_sequence_invalid")
 			}
-			expected := []string{"list", "jobs", "wait", "jobs", "wait", "list"}
-			if len(trace.hubOps) >= len(expected) || args.Op != expected[len(trace.hubOps)] {
-				return false, fmt.Errorf("native_rpc_hub_sequence_invalid")
+			trace.waitCalls++
+			trace.toolSequence = append(trace.toolSequence, "wait")
+			released := ompNativeAlphaID
+			if trace.waitCalls == 2 {
+				released = ompNativeBetaID
 			}
-			trace.hubOps = append(trace.hubOps, args.Op)
-			trace.toolSequence = append(trace.toolSequence, "hub:"+args.Op)
-			if args.Op == "wait" {
-				expectedID := ompNativeAlphaID
-				if len(trace.hubOps) == 5 {
-					expectedID = ompNativeBetaID
-				}
-				if len(args.IDs) != 1 || args.IDs[0] != expectedID ||
-					args.TimeoutMS < 1 || args.TimeoutMS > 15_000 {
-					return false, fmt.Errorf("native_rpc_hub_wait_arguments_invalid")
-				}
-				provider.release(expectedID)
-			}
+			provider.release(released)
 		default:
 			return false, fmt.Errorf("native_rpc_unexpected_tool:%s", event.ToolName)
 		}
@@ -196,17 +211,26 @@ func (trace *ompNativeRPCTrace) consume(frame []byte, provider *ompNativeProvide
 		if name == "" || event.IsError {
 			return false, fmt.Errorf("native_rpc_tool_end_invalid:%s", name)
 		}
+		if name == "task" {
+			expectedAgents := map[string]string{ompNativeAlphaID: "scout", ompNativeBetaID: "reviewer"}
+			for _, progress := range event.Result.Details.Progress {
+				if expectedAgents[progress.ID] != progress.Agent || progress.Model != nil {
+					return false, fmt.Errorf("native_rpc_child_override:%s", progress.ID)
+				}
+				trace.childSources[progress.ID] = progress.AgentSource
+			}
+			if len(trace.childSources) != len(expectedAgents) {
+				return false, fmt.Errorf("native_rpc_task_progress_incomplete")
+			}
+		}
 		if !trace.ended[event.ToolCallID] {
 			trace.ended[event.ToolCallID] = true
 			trace.pairedCalls++
 		}
 	case "message_end":
 		if event.Message.Role == "assistant" && event.Message.StopReason == "stop" {
-			want := []string{
-				"task", "hub:list", "hub:jobs", "hub:wait", "hub:jobs", "hub:wait", "hub:list",
-			}
-			if strings.Join(trace.toolSequence, "\x00") != strings.Join(want, "\x00") ||
-				trace.pairedCalls != 7 {
+			if strings.Join(trace.toolSequence, "\x00") != strings.Join(ompNativeToolSequence, "\x00") ||
+				trace.pairedCalls != len(ompNativeToolSequence) {
 				return false, fmt.Errorf("native_rpc_terminal_before_lifecycle")
 			}
 			return true, nil

@@ -132,7 +132,7 @@ func allowedOMPProbeBaseEnvironment(key string) bool {
 }
 
 func ompProbeTaskEnvironment(sandbox string) []string {
-	return []string{
+	return append([]string{
 		"HOME=" + filepath.Join(sandbox, "home"),
 		"XDG_CONFIG_HOME=" + filepath.Join(sandbox, "xdg-config"),
 		"XDG_CACHE_HOME=" + filepath.Join(sandbox, "xdg-cache"),
@@ -140,6 +140,17 @@ func ompProbeTaskEnvironment(sandbox string) []string {
 		"XDG_STATE_HOME=" + filepath.Join(sandbox, "xdg-state"),
 		"TMPDIR=" + filepath.Join(sandbox, "tmp"),
 		"PI_CODING_AGENT_DIR=" + filepath.Join(sandbox, "pi-agent"),
+	}, ompProbeNetworkIsolationEnvironment()...)
+}
+
+// ompProbeNetworkIsolationEnvironment closes remote network access for every
+// omp probe: Bun's fetch honours the proxy variables, so a proxy on a closed
+// loopback port fails each remote request at connect time instead of letting
+// the probe wait on a provider or catalog host. Loopback is exempt so local
+// providers and the auth broker stay reachable. The readiness runner and
+// OMPModelProbeProcess share this list; a test pins the two together.
+func ompProbeNetworkIsolationEnvironment() []string {
+	return []string{
 		"NO_PROXY=127.0.0.1,localhost,::1",
 		"no_proxy=127.0.0.1,localhost,::1",
 		"HTTP_PROXY=http://127.0.0.1:1",

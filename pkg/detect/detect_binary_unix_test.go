@@ -12,10 +12,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// A healthy probe's output is captured and trimmed. The limits are the fixture
+// lifetime, not the production ceilings: cliVersionTimeout and the pipe-drain
+// grace measure a hung child, but after the child exits the grace also absorbs
+// the scheduling of this process's own reader goroutine, and under load that
+// turned a printf script into "unknown" with nothing timed here. The
+// production values are pinned by detect_bounds_test.go and exercised by the
+// bound tests below; detectBinary only wires them in.
 func TestDetectBinaryFastVersion(t *testing.T) {
 	script := writeVersionProbeScript(t, "#!/bin/sh\nprintf 'opencode 1.2.3\\n'\n")
 
-	version, installed := detectBinary(script, "--version")
+	version, installed := detectBinaryWithLimits(script, "--version", probeFixtureLifetime, probeFixtureLifetime)
 
 	assert.True(t, installed)
 	assert.Equal(t, "opencode 1.2.3", version)

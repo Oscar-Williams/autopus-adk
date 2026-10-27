@@ -66,6 +66,18 @@ func (a *Adapter) Update(_ context.Context, cfg *config.HarnessConfig) (*adapter
 	return pf, nil
 }
 
+// ResolveUpdateAction is adapter.ResolveAction as this adapter's update applies
+// it: a permission ledger git deleted (another clone untracked it) is written
+// again instead of skipped, since it is the adapter's own record and not a
+// file the user opted out of. The update preview reads it too, so they agree.
+func ResolveUpdateAction(root string, file adapter.FileMapping, old *adapter.Manifest) adapter.UpdateAction {
+	action := adapter.ResolveAction(root, file.TargetPath, file.OverwritePolicy, old)
+	if action == adapter.ActionSkip && filepath.ToSlash(file.TargetPath) == claudePermissionLedgerPath {
+		return adapter.ActionCreate
+	}
+	return action
+}
+
 func (a *Adapter) buildUpdateTransactionPlan(
 	oldManifest *adapter.Manifest,
 	newFiles []adapter.FileMapping,
@@ -74,7 +86,7 @@ func (a *Adapter) buildUpdateTransactionPlan(
 	skippedPaths := make([]string, 0)
 
 	for _, file := range newFiles {
-		action := adapter.ResolveAction(a.root, file.TargetPath, file.OverwritePolicy, oldManifest)
+		action := ResolveUpdateAction(a.root, file, oldManifest)
 		if action == adapter.ActionSkip {
 			skippedPaths = append(skippedPaths, file.TargetPath)
 			continue
@@ -95,13 +107,15 @@ func (a *Adapter) buildUpdateTransactionPlan(
 		}
 	}
 	diff := adapter.BuildManifestDiff(oldManifest, newFiles, PruneRoots())
-	removes, err := a.buildUpdateTransactionRemoves(diff)
+	writes := adapter.TransactionWritesFromFiles(finalFiles, claudeFileMode)
+	markPermissionLedgerExact(writes)
+	removes, err := a.buildUpdateTransactionRemoves(diff, writes)
 	if err != nil {
 		return adapter.TransactionPlan{}, nil, err
 	}
 
 	return adapter.TransactionPlan{
-		Writes:   adapter.TransactionWritesFromFiles(finalFiles, claudeFileMode),
+		Writes:   writes,
 		Removes:  removes,
 		Manifest: manifest,
 	}, pf, nil
@@ -109,7 +123,7 @@ func (a *Adapter) buildUpdateTransactionPlan(
 
 // buildUpdateTransactionRemoves plans every deletion an update performs.
 //
-// Two complementary sources feed it. The manifest diff catches any managed file
+// Three sources feed it. The manifest diff catches any managed file
 // the previous install recorded and this one no longer emits, which is the wide
 // net but only exists while a manifest survives. The obsolete-surface detector
 // catches a closed, hardcoded set of retired layouts regardless of the manifest,
@@ -117,9 +131,13 @@ func (a *Adapter) buildUpdateTransactionPlan(
 // gitignored while the generated files are committed, so a cloned workspace has
 // orphans with no ownership record and a manifest-only prune is structurally
 // blind to them — it rewrites the manifest without them and never proposes the
-// prune again, making the orphan permanent.
+// prune again, making the orphan permanent. The group S declaration
+// (adapter.StaleCompletionHookScripts) adds the retired completion hook
+// scripts, minus any that the transaction's final state still names, so the
+// transaction that retracts a handler is the one that deletes its script.
 func (a *Adapter) buildUpdateTransactionRemoves(
 	diff adapter.ManifestDiff,
+	writes []adapter.TransactionWrite,
 ) ([]adapter.TransactionRemove, error) {
 	removes := adapter.TransactionRemovesFromManifestDiff(diff, false)
 	planned := make(map[string]bool, len(removes))
@@ -138,5 +156,12 @@ func (a *Adapter) buildUpdateTransactionRemoves(
 		planned[path] = true
 		removes = append(removes, adapter.TransactionRemove{Path: path, Recursive: true})
 	}
-	return removes, nil
+	scripts := adapter.StaleCompletionHookScripts(adapterName)
+	for _, remove := range adapter.StaleCompletionScriptRemoves(a.root, scripts, writes) {
+		if !planned[remove.Path] {
+			planned[remove.Path] = true
+			removes = append(removes, remove)
+		}
+	}
+	return adapter.FilterUnsupportedRootGitHookRemoves(a.root, removes), nil
 }

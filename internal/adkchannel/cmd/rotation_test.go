@@ -25,6 +25,11 @@ type rotationCommandFixture struct {
 
 func newRotationCommandFixture(t *testing.T) rotationCommandFixture {
 	t.Helper()
+	return newRotationCommandFixtureFor(t, "Insajin/autopus-adk")
+}
+
+func newRotationCommandFixtureFor(t *testing.T, repository string) rotationCommandFixture {
+	t.Helper()
 	private := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{0x61}, ed25519.SeedSize))
 	public := private.Public().(ed25519.PublicKey)
 	now := time.Now().UTC().Truncate(time.Second)
@@ -51,7 +56,7 @@ func newRotationCommandFixture(t *testing.T) rotationCommandFixture {
 		NextPromotionPublicKey       string `json:"next_promotion_public_key"`
 		NextPromotionPublicKeySHA256 string `json:"next_promotion_public_key_sha256"`
 	}{
-		"adk-key-rotation.v1", "stable", "Insajin/autopus-adk", "v0.50.109",
+		"adk-key-rotation.v1", "stable", repository, "v0.50.109",
 		"canonical-full-bridge", sourceCommit, sourceTree,
 		now.Add(-time.Hour).Format(time.RFC3339), now.Add(time.Hour).Format(time.RFC3339),
 		"test-channel-key", "SHA256:bhW+YA+FZ6G4d9Z8BM/eBss6l0I/fcVmV7k986GupK0",

@@ -4,11 +4,7 @@ name: auto-worktree-isolation
 
 # Worktree Isolation Skill
 
-Integrated skill for worktree isolation in the multi-agent subagent pipeline. Ensures parallel executor agents work in independent git worktrees and safely merge results back into the working branch.
-
-## Overview
-
-When the default subagent pipeline runs Phase 2 with parallel tasks, each executor agent receives `auto pipeline worktree` so Claude Code places it in a separate git worktree. After all parallel agents complete, their branches are merged sequentially (Phase 2.1) before Gate 2 validation.
+Worktree isolation for parallel executor agents in the multi-agent subagent pipeline, on a surface whose subagents have no isolated-workspace option: a dispatched worker reads, writes, and runs commands in whatever checkout it is pointed at. To keep parallel writers apart, the supervisor creates one git worktree per parallel task, dispatches the worker into it, and merges the task branches back into the working branch (Phase 2.1) before Gate 2 validation.
 
 **Ref**: SPEC-WORKTREE-001
 
@@ -17,49 +13,48 @@ When the default subagent pipeline runs Phase 2 with parallel tasks, each execut
 Applied when:
 - Default subagent pipeline mode (no `--team` or `--solo` flag)
 - Phase 2 has tasks with `Mode = "parallel"`
+- The project is a git repository and the task writes files
 
 NOT applied when:
 - `--solo` mode (main session works directly)
-- `--team` mode (Agent Teams manages isolation independently)
+- `--team` mode (a native team profile, where the platform has one, manages its own workspaces)
 - Tasks with `Mode = "sequential"` (use main worktree)
+- Read-only work such as exploration or review
 
-## Agent Tool Usage (R1)
+## Worktree Setup and Dispatch (R1)
 
-For parallel tasks in Phase 2, add `auto pipeline worktree` to Agent() calls:
+Run every git command from the main worktree root. Once per project, keep the worktree directory out of `git status` and file discovery:
 
-```python
-# Parallel execution with worktree isolation
-result_t1 = Agent(
-    description = "Implement task T1 in its isolated owned paths",
-    prompt = "Implement T1: ...",
-    subagent_type = "executor",
-    isolation = "worktree"
-)
-result_t2 = Agent(
-    description = "Implement task T2 in its isolated owned paths",
-    prompt = "Implement T2: ...",
-    subagent_type = "executor",
-    isolation = "worktree"
-)
+```bash
+exclude="$(git rev-parse --git-path info/exclude)"
+grep -qxF '.autopus/worktrees/' "$exclude" || printf '%s\n' '.autopus/worktrees/' >> "$exclude"
 ```
+
+Before dispatching a parallel task, create its worktree on its own branch from the current working-branch commit:
+
+```bash
+git -c gc.auto=0 worktree add -b worktree/SPEC-XXX-001/T1 .autopus/worktrees/SPEC-XXX-001/T1 HEAD
+```
+
+The worktree stays inside the project because file tools here may only reach the workspace directory: a checkout outside it would leave the worker unable to edit its own files.
+
+Dispatch the worker with the surface-native subagent tool. Its assignment names:
+- its working root, the absolute path of `.autopus/worktrees/SPEC-XXX-001/T1`. Every read, edit, and command stays under it (`cd <worktree> && <command>`); the main worktree is read-only for it;
+- its owned paths, relative to that root;
+- its exit: commit the finished change on its branch inside the worktree (`git -c gc.auto=0 commit`), then return `worktree_path`, `branch`, and the commit, or report that it changed nothing.
 
 **Constraints:**
-- Max concurrent worktrees / worktree slot cap: **5**. Overflow tasks are queued by `queue_discipline = "fifo_task_id"` and spawned as slots free.
+- Max concurrent worktrees / worktree slot cap: **5**. Overflow tasks are queued by `queue_discipline = "fifo_task_id"` and dispatched as slots free.
 - Slot evidence records `active_task_ids`, `queued_task_ids`, `slot_count`, `cap`, and reason `worktree_slot_cap`.
-- Required worktree isolation must fail closed with `worktree_isolation_unavailable` unless an explicit `override_reason` is present.
+- Required worktree isolation must fail closed with `worktree_isolation_unavailable` unless an explicit `override_reason` is present. A worktree that cannot be created, or a worker that cannot reach its worktree path, is unavailable isolation, not permission to write in the main worktree.
 - Slot reclaim records exactly one terminal state: `merged`, `discarded`, `preserved_for_manual_review`, or `cleanup_failed`.
-- Collect `worktree_path` and `branch` from each agent return value for Phase 2.1 merge.
+- Collect `worktree_path` and `branch` from each worker receipt for Phase 2.1 merge.
 
-Sequential tasks do NOT use `auto pipeline worktree`:
-
-```python
-# Sequential — main worktree
-result_t3 = Agent(description="Implement dependent task T3", subagent_type="executor", prompt="Implement T3 using T1 result: ...")
-```
+Sequential tasks do NOT get a worktree: dispatch them in the main worktree, after every task they depend on has been merged.
 
 ## File Ownership Conflict Detection (R2)
 
-Before spawning parallel agents, the planner checks all file ownership patterns for conflicts.
+Before dispatching parallel workers, the planner checks all file ownership patterns for conflicts.
 
 **Algorithm:**
 1. Split each pattern into directory prefix and file glob (e.g., `pkg/auth/*.go` → prefix `pkg/auth/`, glob `*.go`)
@@ -89,25 +84,21 @@ Before spawning parallel agents, the planner checks all file ownership patterns 
 
 ### Creation
 
-Claude Code automatically creates a worktree when `auto pipeline worktree` is passed to Agent(). No manual `git worktree add` is needed.
+The supervisor creates each worktree (R1) immediately before dispatching its task. Workers never create, merge, or remove worktrees.
 
 ### Preservation / Cleanup
 
-- Agent returns with `worktree_path` / `branch` (changes exist) → record for Phase 2.1 merge
-- Agent returns without worktree info (no changes) → Claude Code auto-cleans the worktree
-
-### Sequential Task Merge
-
-Merge immediately after the sequential task completes, before spawning the next dependent task. This guarantees the downstream task sees the prior task's changes:
+- Worker returns `worktree_path` / `branch` with a commit → record for Phase 2.1 merge
+- Worker returns no changes → remove the worktree and its branch, and record `discarded`:
 
 ```bash
-git -c gc.auto=0 merge worktree/SPEC-XXX-001/T3
-git worktree remove <path>
+git -c gc.auto=0 worktree remove <path>
+git -c gc.auto=0 branch -d worktree/SPEC-XXX-001/T1
 ```
 
 ### Parallel Task Batch Merge — Phase 2.1
 
-After **all** parallel executors complete, merge their branches sequentially in ascending task-ID order into the working branch:
+After **all** parallel workers complete, merge their branches sequentially in ascending task-ID order into the working branch:
 
 ```
 Phase 2 (parallel)  →  Phase 2.1 (merge T1, T2, … in ID order)  →  Gate 2 (validation)
@@ -121,10 +112,13 @@ git -c gc.auto=0 merge worktree/SPEC-XXX-001/T2
 git worktree remove <path_t2>
 ```
 
+A task that consumes a parallel task's result starts only after Phase 2.1 has merged that branch.
+
 ### Post-Merge Cleanup
 
 ```bash
-git worktree remove <path>   # after each successful merge
+git worktree remove <path>                          # after each successful merge
+git -c gc.auto=0 branch -d worktree/SPEC-XXX-001/T1   # the merged branch
 ```
 
 ## Merge Conflict Handling (R4)
@@ -146,7 +140,7 @@ R2's ownership validation should prevent conflicts. A conflict signals a validat
 
 ### GC Suppression
 
-Prepend `git -c gc.auto=0` to all git commands while parallel executors are running (both main worktree and each isolated worktree). This prevents garbage collection triggered by `git add` or `git commit`.
+Prepend `git -c gc.auto=0` to all git commands while parallel workers are running (both main worktree and each isolated worktree). This prevents garbage collection triggered by `git add` or `git commit`.
 
 ### Shared Resource Lock Retry
 
@@ -165,21 +159,21 @@ On lock error, retry with exponential backoff:
 | 2nd retry | 6 s |
 | 3rd retry | 12 s |
 
-After 3 retries (4 total attempts), abort the affected agent, log the error, and let other parallel agents continue.
+After 3 retries (4 total attempts), abort the affected worker, log the error, and let other parallel workers continue.
 
 ### Failure Cleanup
 
-When an agent fails or is aborted:
+When a worker fails or is aborted:
 
 ```bash
 git worktree remove --force <path>
 ```
 
-Exclude the failed agent's changes from the Phase 2.1 merge list.
+Exclude the failed worker's branch from the Phase 2.1 merge list. Keep the branch and record `preserved_for_manual_review` when it holds commits worth inspecting; otherwise delete it and record `discarded`. Record `cleanup_failed` when the worktree cannot be removed.
 
 ## Branch Naming Convention (R7)
 
-Recommended format (for manual worktrees or future custom branch support):
+Required format (the supervisor names every task branch it creates):
 
 ```
 worktree/{SPEC-ID}/{task-id}
@@ -189,18 +183,16 @@ Examples:
 - `worktree/SPEC-AUTH-001/T1`
 - `worktree/SPEC-WORKTREE-001/T2`
 
-Note: Claude Code auto-generates branch names when `auto pipeline worktree` is used. This convention is advisory for log traceability and manual worktree creation.
-
 ## Multi-Session Parallel Workflow Guide
 
-For large SPECs requiring multiple tmux/terminal sessions:
+For large SPECs requiring multiple terminal sessions:
 
 **Session isolation pattern:**
 - Each session works on a distinct SPEC or non-overlapping task set
 - Apply file ownership separation: session A owns `pkg/auth/`, session B owns `pkg/api/`
 - Never share a task-ID across sessions
 
-**Example — 2 tmux sessions:**
+**Example — 2 sessions:**
 
 ```
 Session A: /auto go SPEC-AUTH-001   # owns pkg/auth/

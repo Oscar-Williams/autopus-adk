@@ -39,9 +39,18 @@ type LearningEntry struct {
 	Packages   []string  `json:"packages"`
 	Pattern    string    `json:"pattern"`
 	Resolution string    `json:"resolution"`
-	Severity   Severity  `json:"severity"`
-	ReuseCount int       `json:"reuse_count"`
-	Line       int       `json:"-"`
+	// Expected, Actual, and Repro carry incident evidence (SPEC-HARNEVAL-002).
+	// Repro is data only: nothing in the harness executes it.
+	Expected   string   `json:"expected,omitempty"`
+	Actual     string   `json:"actual,omitempty"`
+	Repro      string   `json:"repro,omitempty"`
+	Severity   Severity `json:"severity"`
+	ReuseCount int      `json:"reuse_count"`
+	// Scope and Evidence (SPEC-LEARN-003) are absent on older entries, which
+	// read as project scope with unspecified evidence.
+	Scope    string    `json:"scope,omitempty"`
+	Evidence *Evidence `json:"evidence,omitempty"`
+	Line     int       `json:"-"`
 }
 
 // entryIDRegex matches L-{NNN} format (one or more digits after L-).
@@ -58,6 +67,8 @@ type RelevanceQuery struct {
 	Packages []string
 	Keywords []string
 	SpecID   string
+	// Scope filters by effective scope (SPEC-LEARN-003); empty matches all.
+	Scope string
 }
 
 // Summary holds learning summary for sync display (R8).
@@ -68,6 +79,13 @@ type Summary struct {
 	TopPatterns      []PatternStat
 	ImprovementAreas []string
 	Improvements     []string
+	// SPEC-LEARN-003: counts by effective scope and by evidence kind
+	// (unspecified entries are not counted), process lessons with
+	// deterministic evidence, and entries with expected and actual.
+	ScopeCounts        map[string]int
+	EvidenceCounts     map[EvidenceKind]int
+	TemplateCandidates []PatternStat
+	IntakeEligible     int
 }
 
 // RecordOpts holds options for recording a learning entry.
@@ -78,7 +96,15 @@ type RecordOpts struct {
 	Packages   []string
 	Pattern    string
 	Resolution string
+	Expected   string
+	Actual     string
+	Repro      string
 	Severity   Severity
+	Scope      string
+	// The evidence inputs; the kind is derived from them (SPEC-LEARN-003).
+	EvidenceCommand    string
+	EvidenceBeforeExit *int
+	EvidenceAfterExit  *int
 }
 
 // PatternStat tracks reuse frequency of a pattern.

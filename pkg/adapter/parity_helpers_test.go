@@ -25,6 +25,15 @@ var platformRuleExclusions = map[string]map[string]bool{
 	"omp":      {},
 }
 
+// platformRuleAdditions documents rules a platform carries beyond the content
+// sources. An Antigravity CLI agent's tools list does not keep it from MCP
+// servers, so the plugin adds rea-mcp-guard.md, an always_on rule every agy
+// agent loads, which keeps autopus_rea calls to reverse-engineer and the
+// /auto reverse flow (SPEC-REA-001, agy 1.4 smoke of 2026-10-17).
+var platformRuleAdditions = map[string]map[string]bool{
+	"gemini": {"rea-mcp-guard.md": true},
+}
+
 // platformSkillExclusions documents intended per-platform skill gaps.
 var platformSkillExclusions = map[string]map[string]bool{
 	"claude":   {},

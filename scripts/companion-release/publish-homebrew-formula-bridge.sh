@@ -2,14 +2,14 @@
 set -euo pipefail
 umask 077
 
-readonly RELEASE_TAG='v0.50.120'
-readonly RELEASE_VERSION='0.50.120'
+readonly RELEASE_TAG='v0.50.128'
+readonly RELEASE_VERSION='0.50.128'
 readonly RELEASE_POLICY='cask-only'
 readonly TAP_REPOSITORY='Insajin/homebrew-autopus'
 readonly TAP_BRANCH='main'
-readonly PRIOR_TAP_COMMIT='562ce999109bde8734bfe425cf81d70bb13ef582'
+readonly PRIOR_TAP_COMMIT='e92f7e1943940faf1e287ba9d7b31240afd06b90'
 readonly CASK_PATH='Casks/auto.rb'
-readonly PRIOR_CASK_BLOB='e52ea8fa651d0b0ebf3fb9505a4196950f04534b'
+readonly PRIOR_CASK_BLOB='68a22308cf408ed965c726257b4d905f73c06009'
 readonly FORMULA_PATH='Formula/auto.rb'
 readonly FROZEN_FORMULA_BLOB='4ebc6c38925002dec00759823d4dd847a499818a'
 
@@ -146,5 +146,5 @@ fi
 
 verify_frozen_formula
 publish_cask cask Cask "$CASK_PATH" "$cask_target" "$PRIOR_CASK_BLOB" \
-  'Publish signed Cask for v0.50.120' \
-  'published Cask differs from canonical v0.50.120 output and its pinned prior blob'
+  'Publish signed Cask for v0.50.128' \
+  'published Cask differs from canonical v0.50.128 output and its pinned prior blob'

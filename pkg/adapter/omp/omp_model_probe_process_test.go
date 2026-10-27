@@ -119,6 +119,47 @@ printf 'overlay=%s\n' "${PI_CONFIG_FILES-unset}"
 	assert.Equal(t, "unset", ompModelProbeOutputValue(t, string(output), "overlay"))
 }
 
+// omp 18.12.3 `models` refreshes stale catalog rows online before answering,
+// so a probe that inherits open network access measures the operator's
+// network instead of omp (one stalled hop: 10s wall, 0.8s CPU). Both
+// constructors close remote access exactly as the readiness runner does,
+// with loopback left open for local providers and the auth broker.
+func TestOMPModelProbeProcess_RunClosesRemoteNetworkLikeReadinessProbes(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("PI_CODING_AGENT_DIR", "")
+	t.Setenv("HTTPS_PROXY", "http://caller-proxy.invalid:3128")
+	t.Setenv("NO_PROXY", "caller.invalid")
+	executable := writeOMPModelProbeExecutable(t, `#!/bin/sh
+printf 'http=%s\n' "${HTTP_PROXY-unset}"
+printf 'https=%s\n' "${HTTPS_PROXY-unset}"
+printf 'all=%s\n' "${ALL_PROXY-unset}"
+printf 'noproxy=%s\n' "${NO_PROXY-unset}"
+printf 'noproxylower=%s\n' "${no_proxy-unset}"
+`)
+	sandboxed, err := NewOMPModelProbeProcess(executable, 4096)
+	require.NoError(t, err)
+	installed, err := NewOMPInstalledModelProbeProcess(executable, 4096)
+	require.NoError(t, err)
+
+	for name, process := range map[string]*OMPModelProbeProcess{"sandboxed": sandboxed, "installed": installed} {
+		output, runErr := process.Run(context.Background(), "models", "--json", "--no-extensions")
+		require.NoError(t, runErr, name)
+		text := string(output)
+		for _, key := range []string{"http", "https", "all"} {
+			assert.Equal(t, ompClosedProxy, ompModelProbeOutputValue(t, text, key), name+" "+key)
+		}
+		assert.Equal(t, "127.0.0.1,localhost,::1", ompModelProbeOutputValue(t, text, "noproxy"), name)
+		assert.Equal(t, "127.0.0.1,localhost,::1", ompModelProbeOutputValue(t, text, "noproxylower"), name)
+	}
+	// The readiness runner is the other probe surface; the two must not drift.
+	readiness := ompProbeTaskEnvironment(t.TempDir())
+	isolation := ompProbeNetworkIsolationEnvironment()
+	require.Len(t, isolation, 5)
+	for _, entry := range isolation {
+		assert.Contains(t, readiness, entry)
+	}
+}
+
 func TestNewOMPInstalledModelProbeProcess_RejectsUnsafeProfileLocator(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

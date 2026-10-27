@@ -137,9 +137,8 @@ func TestRunSpecReview_AppliesOrchestraMigrationToClaudeProvider(t *testing.T) {
 	cfg := config.DefaultFullConfig("test-project")
 	cfg.Spec.ReviewGate.Providers = []string{"claude"}
 	cfg.Orchestra.Providers["claude"] = config.ProviderEntry{
-		Binary:   "claude",
-		Args:     []string{"--print", "--model", "opus", "--effort", "max"},
-		PaneArgs: []string{"-p", "--model", "opus", "--effort", "max"},
+		Binary: "claude",
+		Args:   []string{"--print", "--model", "opus", "--effort", "max"},
 	}
 	require.NoError(t, config.Save(dir, cfg))
 
@@ -158,6 +157,7 @@ func TestRunSpecReview_AppliesOrchestraMigrationToClaudeProvider(t *testing.T) {
 	defer func() { specReviewRunOrchestra = origRunner }()
 
 	require.NoError(t, runSpecReview(context.Background(), "SPEC-REVIEW-MIGRATE-001", "consensus", 0))
-	assert.Equal(t, config.DefaultClaudeProviderEntry().Args, capturedProvider.Args)
+	// The migrated default argv then gets the read-only projection suffix.
+	assert.Equal(t, withClaudeReadOnlySuffix(config.DefaultClaudeProviderEntry().Args...), capturedProvider.Args)
 	assert.Equal(t, 480*time.Second, capturedProvider.ExecutionTimeout)
 }

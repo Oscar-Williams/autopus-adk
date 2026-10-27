@@ -22,6 +22,10 @@ type InitWizardOpts struct {
 	Accessible      bool     // true for non-TTY / --yes mode
 	Providers       []string // detected orchestra providers
 	ExistingProfile string   // pre-set profile; non-empty skips the profile step
+	Rea             *bool    // pre-set from --rea/--no-rea or an existing decision; non-nil skips the REA step
+
+	Runner NavRunner         // runs each step's form; nil runs RunNav on the terminal (SPEC-TUIUX-001)
+	Resume *InitWizardResult // non-nil starts at the last step with these answers (SPEC-TUIUX-001)
 }
 
 // InitWizardResult holds all wizard selections.
@@ -29,8 +33,9 @@ type InitWizardResult struct {
 	CommentsLang string
 	CommitsLang  string
 	AILang       string
-	Quality      string
+	Quality      string // ultra, balanced, or QualityRoleGroups
 	ReviewGate   bool
+	Rea          *bool // register the project-scope REA MCP; nil leaves it to init's default (SPEC-REA-001)
 	Methodology  string
 	UsageProfile string
 	Cancelled    bool
@@ -49,28 +54,21 @@ func RunInitWizard(opts InitWizardOpts) (*InitWizardResult, error) {
 		return result, nil
 	}
 
-	// Windows safety: huh/bubbletea may hang on cmd.exe or non-Windows Terminal.
-	// Detect by checking TERM_PROGRAM or WT_SESSION (Windows Terminal sets these).
-	if runtime.GOOS == "windows" {
-		if os.Getenv("WT_SESSION") == "" && os.Getenv("TERM_PROGRAM") == "" {
-			fmt.Fprintln(os.Stderr, "  TUI wizard not supported in this terminal. Using defaults.")
-			fmt.Fprintln(os.Stderr, "  Tip: use Windows Terminal or run with --yes flag.")
-			return result, nil
-		}
+	if !FormsSupported(runtime.GOOS, os.Getenv) {
+		fmt.Fprintln(os.Stderr, "  TUI wizard not supported in this terminal. Using defaults.")
+		fmt.Fprintln(os.Stderr, "  Tip: use Windows Terminal or run with --yes flag.")
+		return result, nil
 	}
 
-	steps := buildStepList(opts)
-	step := 0
-	for step < len(steps) {
-		form := steps[step](result)
-		if err := form.Run(); err != nil {
-			// User cancelled (ctrl+c or esc)
-			return &InitWizardResult{Cancelled: true}, nil
-		}
-		step++
-	}
+	return runWizardSteps(opts, result)
+}
 
-	return result, nil
+// FormsSupported reports whether huh forms can run in this terminal.
+// huh/bubbletea may hang on cmd.exe or another legacy Windows console, so
+// on Windows forms need Windows Terminal (WT_SESSION) or a terminal that
+// sets TERM_PROGRAM. getenv is os.Getenv outside tests.
+func FormsSupported(goos string, getenv func(string) string) bool {
+	return goos != "windows" || getenv("WT_SESSION") != "" || getenv("TERM_PROGRAM") != ""
 }
 
 // stepBuilder is a function that creates a huh form for a given step.
@@ -109,6 +107,10 @@ func buildStepList(opts InitWizardOpts) []stepBuilder {
 		entries = append(entries, entry{"reviewgate", func(idx, total int, r *InitWizardResult) *huh.Form {
 			return buildReviewGateStep(idx, total, r, opts)
 		}})
+	}
+
+	if reaStepWanted(opts) {
+		entries = append(entries, entry{"rea", buildReaStep})
 	}
 
 	entries = append(entries, entry{"methodology", func(idx, total int, r *InitWizardResult) *huh.Form {
@@ -151,6 +153,12 @@ func buildLangStep(num, total int, r *InitWizardResult) *huh.Form {
 	).WithTheme(AutopusTheme()).WithWidth(bannerWidth + 10)
 }
 
+// QualityRoleGroups is the quality step's third choice (SPEC-MODELUX-001
+// REQ-MUX-15). It is not a preset name: init hands it to the role-group
+// composition step, which starts from the balanced default and saves a
+// preset the Binding Contract chooses.
+const QualityRoleGroups = "role-groups"
+
 // buildQualityStep creates the quality mode selection step.
 func buildQualityStep(num, total int, r *InitWizardResult) *huh.Form {
 	title := fmt.Sprintf("[%d/%d] Quality Mode", num, total)
@@ -159,13 +167,25 @@ func buildQualityStep(num, total int, r *InitWizardResult) *huh.Form {
 		huh.NewGroup(
 			huh.NewSelect[string]().
 				Title(title).
-				Options(
-					huh.NewOption("Ultra — strict review, high coverage", "ultra"),
-					huh.NewOption("Balanced — pragmatic defaults", "balanced"),
-				).
+				Options(qualityOptions(DetectSystemLang())...).
 				Value(&r.Quality),
 		),
 	).WithTheme(AutopusTheme()).WithWidth(bannerWidth + 10)
+}
+
+// qualityOptions lists the quality step's choices. The role-group label is
+// Korean for ko and English for every other locale, as the composition step
+// that follows it is.
+func qualityOptions(lang string) []huh.Option[string] {
+	roleGroups := "Compose by role — choose a tier for each role group"
+	if lang == "ko" {
+		roleGroups = "역할별 직접 구성 — 역할 그룹마다 등급을 고릅니다"
+	}
+	return []huh.Option[string]{
+		huh.NewOption("Ultra — strict review, high coverage", "ultra"),
+		huh.NewOption("Balanced — pragmatic defaults", "balanced"),
+		huh.NewOption(roleGroups, QualityRoleGroups),
+	}
 }
 
 // buildReviewGateStep creates the review gate confirmation step.
@@ -227,6 +247,7 @@ func defaultResult(opts InitWizardOpts) *InitWizardResult {
 		AILang:       sysLang,
 		Quality:      "balanced",
 		ReviewGate:   len(opts.Providers) >= 2,
+		Rea:          reaDefault(opts),
 		Methodology:  "tdd",
 		UsageProfile: "developer",
 	}

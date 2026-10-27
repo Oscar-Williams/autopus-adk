@@ -29,7 +29,7 @@ func TestCodexCapabilityMatrixProjectsEveryConsumer(t *testing.T) {
 			name: "full support",
 			catalog: `{"models":[
 				{"slug":"gpt-6-astra","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"},{"effort":"ultra"}]},
-				{"slug":"gpt-6-sol","supported_reasoning_levels":[{"effort":"xhigh"}]},
+				{"slug":"gpt-6.1-sol","supported_reasoning_levels":[{"effort":"xhigh"}]},
 				{"slug":"gpt-5.5","supported_reasoning_levels":[{"effort":"xhigh"}]}
 			]}`,
 			rendered:         config.CodexProfile{Model: config.CodexAstraModel, Effort: config.CodexEffortUltra},
@@ -44,7 +44,7 @@ func TestCodexCapabilityMatrixProjectsEveryConsumer(t *testing.T) {
 			name: "effort downgrade",
 			catalog: `{"models":[
 				{"slug":"gpt-6-astra","supported_reasoning_levels":[{"effort":"xhigh"},{"effort":"max"}]},
-				{"slug":"gpt-6-sol","supported_reasoning_levels":[{"effort":"xhigh"}]},
+				{"slug":"gpt-6.1-sol","supported_reasoning_levels":[{"effort":"xhigh"}]},
 				{"slug":"gpt-5.5","supported_reasoning_levels":[{"effort":"xhigh"}]}
 			]}`,
 			rendered:         config.CodexProfile{Model: config.CodexAstraModel, Effort: config.CodexEffortMax},
@@ -90,7 +90,6 @@ func TestCodexCapabilityMatrixProjectsEveryConsumer(t *testing.T) {
 				[]byte(tt.catalog),
 			)
 			assertCodexProviderProfile(t, provider.Args, tt.provider)
-			assertCodexProviderProfile(t, provider.PaneArgs, tt.provider)
 			assert.Equal(t, tt.providerReason, providerResolution.Reason)
 
 			rootResolution := config.ResolveCodexProfile(cfg.Quality.CodexSupervisorProfile(), []byte(tt.catalog))

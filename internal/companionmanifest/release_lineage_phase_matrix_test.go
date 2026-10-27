@@ -13,7 +13,7 @@ import (
 // bootstraps without prior evidence; every later live phase must reach the
 // token check, and every failed or burned coordinate must be refused by the
 // frozen policy rather than silently treated as a new phase.
-func TestLineageVerifier_A0BootstrapsWhileA1ThroughA31WithoutLiveEvidenceFailClosed(t *testing.T) {
+func TestLineageVerifier_A0BootstrapsWhileA1ThroughA37WithoutLiveEvidenceFailClosed(t *testing.T) {
 	script := filepath.Join(repositoryRoot(t), "scripts/companion-release/verify-public-key-lineage.sh")
 	cases := []struct {
 		name    string
@@ -53,6 +53,12 @@ func TestLineageVerifier_A0BootstrapsWhileA1ThroughA31WithoutLiveEvidenceFailClo
 		{name: "A29", tag: "v0.50.118", message: "missing GITHUB_TOKEN"},
 		{name: "A30", tag: "v0.50.119", message: "missing GITHUB_TOKEN"},
 		{name: "A31", tag: "v0.50.120", message: "missing GITHUB_TOKEN"},
+		{name: "A32", tag: "v0.50.121", message: "missing GITHUB_TOKEN"},
+		{name: "A33", tag: "v0.50.122", message: "missing GITHUB_TOKEN"},
+		{name: "A34", tag: "v0.50.123", message: "missing GITHUB_TOKEN"},
+		{name: "A35", tag: "v0.50.125", message: "missing GITHUB_TOKEN"},
+		{name: "A36", tag: "v0.50.127", message: "missing GITHUB_TOKEN"},
+		{name: "A37", tag: "v0.50.128", message: "missing GITHUB_TOKEN"},
 		{name: "failed_A6_tag_75", tag: "v0.50.75", message: frozenReleasePhasePolicy},
 		{name: "failed_A6_tag_76", tag: "v0.50.76", message: frozenReleasePhasePolicy},
 		{name: "failed_A22_tag_93", tag: "v0.50.93", message: frozenReleasePhasePolicy},
@@ -65,6 +71,8 @@ func TestLineageVerifier_A0BootstrapsWhileA1ThroughA31WithoutLiveEvidenceFailClo
 		{name: "failed_A22_tag_100", tag: "v0.50.100", message: frozenReleasePhasePolicy},
 		{name: "burned_A23_tag_110", tag: "v0.50.110", message: frozenReleasePhasePolicy},
 		{name: "burned_A24_tag_112", tag: "v0.50.112", message: frozenReleasePhasePolicy},
+		{name: "burned_A35_tag_124", tag: "v0.50.124", message: frozenReleasePhasePolicy},
+		{name: "burned_A36_tag_126", tag: "v0.50.126", message: frozenReleasePhasePolicy},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {

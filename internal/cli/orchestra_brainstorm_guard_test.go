@@ -36,6 +36,10 @@ type brainstormFixture struct {
 	evidenceDir string
 	captured    *orchestra.OrchestraConfig
 	result      *orchestra.OrchestraResult
+	// beforeExecute, when set, runs inside the guarded window: after the
+	// workspace guard took its before snapshot and before the orchestrator
+	// starts, with the config the run is about to execute.
+	beforeExecute func(cfg *orchestra.OrchestraConfig)
 }
 
 // newBrainstormFixture installs fake claude/codex/agy binaries on PATH, points
@@ -69,6 +73,9 @@ func newBrainstormFixture(t *testing.T, gitRepo bool) *brainstormFixture {
 	originalRun := runOrchestraExecute
 	t.Cleanup(func() { runOrchestraExecute = originalRun })
 	runOrchestraExecute = func(ctx context.Context, cfg orchestra.OrchestraConfig) (*orchestra.OrchestraResult, error) {
+		if fixture.beforeExecute != nil {
+			fixture.beforeExecute(&cfg)
+		}
 		fixture.captured = &cfg
 		result, err := originalRun(ctx, cfg)
 		fixture.result = result
@@ -79,8 +86,6 @@ func newBrainstormFixture(t *testing.T, gitRepo bool) *brainstormFixture {
 
 func (f *brainstormFixture) run(t *testing.T, timeout int, flags OrchestraFlags) error {
 	t.Helper()
-	flags.NoDetach = true
-	flags.SubprocessMode = true
 	flags.TimeoutChanged = true
 	return runOrchestraCommand(context.Background(), "brainstorm", "debate", []string{"codex", "gemini"},
 		timeout, "claude", "brainstorm topic", 1, 0, flags)
@@ -128,7 +133,12 @@ func TestOrchestraBrainstorm_RunsProvidersReadOnlyOutsideRepo(t *testing.T) {
 
 	for _, name := range []string{"codex", "gemini", "claude"} {
 		receipt := fixture.providerReceipt(t, name)
-		assert.Equal(t, orchestra.SandboxModeReadOnly, receipt.SandboxMode, name)
+		wantMode := orchestra.SandboxModeReadOnly
+		if name == "gemini" {
+			// agy's write blocking is headless auto-deny, not plan mode (RFP-3).
+			wantMode = orchestra.SandboxModeUnverified
+		}
+		assert.Equal(t, wantMode, receipt.SandboxMode, name)
 		assert.Equal(t, cfg.ProviderWorkDir, receipt.Cwd, name)
 		assert.Greater(t, receipt.PID, 0, name)
 		assert.NotEmpty(t, receipt.StartedAt, name)
@@ -160,7 +170,8 @@ func TestOrchestraBrainstorm_ContextKeepsRepoCwdWithReadOnlyArgv(t *testing.T) {
 	assert.NotContains(t, codexArgv, "workspace-write")
 	assert.NotContains(t, codexArgv, "--skip-git-repo-check")
 	claudeArgv := strings.Split(fixture.evidence(t, "claude", "argv"), "\n")
-	assert.Subset(t, claudeArgv, []string{"--permission-mode", "plan", "--safe-mode", "--no-session-persistence", "--disable-slash-commands"})
+	assert.Subset(t, claudeArgv, []string{"--permission-mode", "plan", "--safe-mode", "--no-session-persistence", "--disable-slash-commands", "--strict-mcp-config", "--tools=Read,Grep,Glob"})
+	assert.Equal(t, "--tools=Read,Grep,Glob", claudeArgv[len(claudeArgv)-1], "the inline tool allowlist stays the last claude item")
 	geminiArgv := strings.Split(fixture.evidence(t, "agy", "argv"), "\n")
 	assert.Subset(t, geminiArgv, []string{"--mode", "plan", "--sandbox", "--disable-slash-commands"})
 	assert.Equal(t, repo, mustResolvePath(t, fixture.providerReceipt(t, "codex").Cwd))

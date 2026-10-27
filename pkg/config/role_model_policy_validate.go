@@ -19,6 +19,11 @@ func (c RoleModelPolicyConf) Validate() error {
 }
 
 func (c RoleModelPolicyConf) validateForQuality(quality QualityConf) error {
+	// agent_source chooses the OMP agent registry, not a route, so it is
+	// checked on its own and never makes the policy count as configured.
+	if err := validateOMPAgentSource(c.AgentSource); err != nil {
+		return err
+	}
 	if c.Version == "" && c.Profile == "" && c.Family == "" &&
 		c.ConfigMode == "" && len(c.Profiles) == 0 && len(c.Agents) == 0 {
 		return nil
@@ -32,10 +37,13 @@ func (c RoleModelPolicyConf) validateForQuality(quality QualityConf) error {
 	if _, ok := effectiveBuiltinRoleModelConfigMode(c.ConfigMode); !ok {
 		return fmt.Errorf("role_model_policy.config_mode_invalid: %q", c.ConfigMode)
 	}
+	if err := c.validateReservedProfileName(); err != nil {
+		return err
+	}
 	if err := c.validateRootAgentOverlay(); err != nil {
 		return err
 	}
-	if c.Profile != "" {
+	if c.Profile != "" || c.pinsOnly() {
 		// The overlaid profile is what OMP consumes, so trust, attestation,
 		// and route closure are checked against it rather than the profile as
 		// written.
@@ -46,10 +54,11 @@ func (c RoleModelPolicyConf) validateForQuality(quality QualityConf) error {
 		if err := validateRoleModelProfile(name, effective); err != nil {
 			return err
 		}
-		// The native OMP registry has one slot per bundled agent, so a policy
+		// Native mode has one registry slot per bundled agent, so a policy
 		// whose operator-written routes cannot collapse into it is rejected
-		// here rather than halfway through generation.
-		if err := validateOMPNativeAgentCollapse(effective); err != nil {
+		// here rather than halfway through generation. Autopus mode routes
+		// each agent under its own name and only needs every route to resolve.
+		if err := validateOMPAgentRoutes(effective); err != nil {
 			return err
 		}
 	}
@@ -68,7 +77,8 @@ func (c RoleModelPolicyConf) validateForQuality(quality QualityConf) error {
 // SelectedRoleModelProfileForQuality. Re-wrapping such a profile as a declared
 // document would reclassify its derived per-agent rows as operator intent and
 // reject every built-in profile on a native-agent conflict nobody wrote, so
-// provenance travels with the profile instead of being recomputed.
+// provenance and the agent source travel with the profile instead of being
+// recomputed.
 func ValidateResolvedRoleModelProfile(name string, profile RoleModelProfileConf) error {
 	if !IsValidQualityPresetName(name) {
 		return fmt.Errorf("role_model_policy.profile_name_invalid: %q", name)
@@ -76,12 +86,15 @@ func ValidateResolvedRoleModelProfile(name string, profile RoleModelProfileConf)
 	if err := validateRoleModelProfile(name, profile); err != nil {
 		return err
 	}
-	return validateOMPNativeAgentCollapse(profile)
+	return validateOMPAgentRoutes(profile)
 }
 
 // @AX:WARN [AUTO]: role-model profile validation contains 11 if branches.
 // @AX:REASON [AUTO]: version, capability, agent override, trust, diversity, and managed-key constraints must all agree.
 func validateRoleModelProfile(name string, profile RoleModelProfileConf) error {
+	if profile.PinsOnly {
+		return validatePinsOnlyRoleModelProfile(name, profile)
+	}
 	if profile.ConfigMode != RoleModelConfigModeOverlay && profile.ConfigMode != RoleModelConfigModeProjectManaged {
 		return fmt.Errorf("role_model_policy.profiles[%s].config_mode_invalid: %q", name, profile.ConfigMode)
 	}
@@ -250,9 +263,12 @@ func validateSafety(profile string, safety RoleSafetyPolicyConf) error {
 	return nil
 }
 
+// validSelector accepts provider/model. The selector reaches the OMP CLI as
+// its own argv element, so neither half may start with '-'.
 func validSelector(selector string) bool {
 	parts := strings.Split(selector, "/")
 	return len(parts) == 2 && parts[0] != "" && parts[1] != "" &&
+		!strings.HasPrefix(parts[0], "-") && !strings.HasPrefix(parts[1], "-") &&
 		validPolicyToken(parts[0]) && validPolicyToken(parts[1])
 }
 

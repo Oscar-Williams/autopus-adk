@@ -8,17 +8,27 @@ import (
 )
 
 type ciStabilityStep struct {
-	Name string         `yaml:"name"`
-	Uses string         `yaml:"uses"`
-	Run  string         `yaml:"run"`
-	With map[string]any `yaml:"with"`
+	Name string            `yaml:"name"`
+	Uses string            `yaml:"uses"`
+	Run  string            `yaml:"run"`
+	With map[string]any    `yaml:"with"`
+	Env  map[string]string `yaml:"env"`
+}
+
+type ciStabilityStrategy struct {
+	FailFast *bool          `yaml:"fail-fast"`
+	Matrix   map[string]any `yaml:"matrix"`
 }
 
 type ciStabilityJob struct {
-	Name           string            `yaml:"name"`
-	RunsOn         string            `yaml:"runs-on"`
-	TimeoutMinutes int               `yaml:"timeout-minutes"`
-	Steps          []ciStabilityStep `yaml:"steps"`
+	Name           string              `yaml:"name"`
+	RunsOn         string              `yaml:"runs-on"`
+	TimeoutMinutes int                 `yaml:"timeout-minutes"`
+	Needs          []string            `yaml:"needs"`
+	If             string              `yaml:"if"`
+	Strategy       ciStabilityStrategy `yaml:"strategy"`
+	Env            map[string]string   `yaml:"env"`
+	Steps          []ciStabilityStep   `yaml:"steps"`
 }
 
 type ciStabilityWorkflow struct {
@@ -37,7 +47,8 @@ func TestCIWorkflow_StableChecksHaveBoundedTimeouts(t *testing.T) {
 	workflow := readCIStabilityWorkflow(t, ".github/workflows/ci.yaml")
 	// 상한은 "이 job이 이보다 오래 걸리면 무언가 잘못됐다"는 뜻이다.
 	ceilings := map[string]int{
-		"test": 60, "lineage-integration": 60, "e2e": 20, "lint": 20,
+		"build": 30, "test-isolated": 30, "test-packages": 60, "test-cli": 60,
+		"test": 20, "lineage-integration": 60, "e2e": 20, "lint": 20,
 		"static-contracts": 20, "macos-runtime": 30,
 		"omp-native-smoke": 15,
 	}
@@ -47,7 +58,8 @@ func TestCIWorkflow_StableChecksHaveBoundedTimeouts(t *testing.T) {
 			t.Fatalf("CI job %s is missing", id)
 		}
 		// 브랜치 보호 규칙이 check 이름으로 job을 지목하므로 이름은 고정이다.
-		if job.Name != id {
+		// matrix job은 고정된 접두사 뒤에 shard 번호만 붙는다.
+		if job.Name != id && !(len(job.Strategy.Matrix) > 0 && strings.HasPrefix(job.Name, id+" (")) {
 			t.Fatalf("CI job %s check name = %q, want stable %q", id, job.Name, id)
 		}
 		if job.TimeoutMinutes <= 0 {
@@ -59,74 +71,32 @@ func TestCIWorkflow_StableChecksHaveBoundedTimeouts(t *testing.T) {
 	}
 	linter := ciStep(t, workflow.Jobs["lint"], "golangci-lint")
 	if linter.Uses != "golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20" ||
-		linter.With["version"] != "v2.12.2" {
+		linter.With["version"] != "v2.14.0" {
 		t.Fatalf("golangci-lint gate drifted: uses=%q version=%v", linter.Uses, linter.With["version"])
 	}
 
-	// 프로세스 중량 테스트 집합은 Makefile이 단일 출처다. CI가 정규식을 복사해 두면
-	// 로컬 게이트와 CI 게이트가 조용히 갈라지므로, 여기서는 "복사본이 없다"를
-	// 강제한다: 선택자는 Makefile에서 읽혀야 하고, 파싱 실패는 즉시 에러여야 한다.
-	resolver := ciStepRun(t, workflow.Jobs["test"], "Resolve process-heavy test selector")
-	for _, required := range []string{
-		"set -euo pipefail",
-		"sed -n 's/^PROCESS_HEAVY_TESTS ?= //p' Makefile",
-		`[[ -n "$selector" ]]`,
-		"$GITHUB_ENV",
-	} {
-		if !strings.Contains(resolver, required) {
-			t.Fatalf("process-heavy selector must derive from the Makefile; missing %q", required)
-		}
+	// The GoReleaser fixtures download their pinned module; a transient
+	// checksum-database error there must be retried before the tests run.
+	prefetch := ciStepRun(t, workflow.Jobs["lineage-integration"], "Prefetch pinned GoReleaser module")
+	if !strings.Contains(prefetch, "go run "+productionGoReleaserModule+" --version") ||
+		!strings.Contains(prefetch, "for attempt in 1 2 3") {
+		t.Fatalf("GoReleaser prefetch must retry the exact fixture module %s:\n%s", productionGoReleaserModule, prefetch)
 	}
-
-	isolated := ciStepRun(t, workflow.Jobs["test"], "Test process-heavy contracts in isolation")
-	shared := ciStepRun(t, workflow.Jobs["test"], "Test with Coverage")
-	// 두 레인은 같은 선택자를 반대 방향으로 쓴다. 한쪽이 리터럴을 들고 있으면
-	// 집합이 갈라지므로, 양쪽 모두 환경 변수를 경유해야 한다.
-	if !strings.Contains(isolated, `-run "$PROCESS_HEAVY_TESTS"`) {
-		t.Fatal("isolated lane must run exactly the resolved process-heavy selector")
-	}
-	if !strings.Contains(shared, `-skip "$PROCESS_HEAVY_TESTS"`) {
-		t.Fatal("shared lane must skip exactly the resolved process-heavy selector")
-	}
-	if strings.Contains(isolated, "-skip") || strings.Contains(shared, "-run ") {
-		t.Fatal("process-heavy run/skip boundary is not exact")
-	}
-	// 격리의 목적은 공유 스케줄러에서 떼어내는 것이므로 -p 1이 본질이고,
-	// race 게이트는 격리 때문에 약해지면 안 된다.
-	if !strings.Contains(isolated, "-p 1") || !strings.Contains(isolated, "-race") {
-		t.Fatal("isolated lane must serialise packages while keeping the race gate")
-	}
-	// 격리 레인이 조용히 비어도 통과하는 일을 막는 기존 인벤토리 가드는 유지한다.
-	if !strings.Contains(isolated, "TestReleaseHardeningBashContract") {
-		t.Fatal("isolated lane lost its inventory guard against an empty selector")
-	}
-	if ciStepIndex(t, workflow.Jobs["test"], "Test process-heavy contracts in isolation") >=
-		ciStepIndex(t, workflow.Jobs["test"], "Test with Coverage") {
-		t.Fatal("process-heavy contracts must pass before shared race coverage")
-	}
-	// 건너뛴 테스트의 커버리지는 격리 레인 프로파일에 있으므로 합쳐야 총계가 산다.
-	for _, required := range []string{"coverage-isolated.out", "coverage-shared.out", "coverage.out"} {
-		if !strings.Contains(isolated+shared, required) {
-			t.Fatalf("split lanes must merge coverage profiles; missing %q", required)
-		}
-	}
-	if !strings.Contains(readReleaseFile(t, ".github/workflows/ci.yaml"), "COVERAGE_THRESHOLD: \"85\"") {
-		t.Fatal("coverage threshold is not pinned")
-	}
-	if !strings.Contains(shared, "./...") {
-		t.Fatal("CI race coverage gate must cover every Go package")
-	}
-	if strings.Contains(shared, "-tags integration") {
-		t.Fatal("CI race coverage gate must not run executable release integration fixtures")
+	if ciStepIndex(t, workflow.Jobs["lineage-integration"], "Prefetch pinned GoReleaser module") >=
+		ciStepIndex(t, workflow.Jobs["lineage-integration"], "Test non-lineage integration packages") {
+		t.Fatal("GoReleaser prefetch must run before the integration tests")
 	}
 
 	nonLineageRun := ciStepRun(t, workflow.Jobs["lineage-integration"], "Test non-lineage integration packages")
-	// 이 레인의 계약은 "lineage 패키지를 정확히 하나 빼고 나머지를 돈다"이다.
+	// 이 레인의 계약은 "lineage 패키지와 internal/cli를 각각 정확히 하나씩 빼고
+	// 나머지를 돈다"이다 (internal/cli는 test-cli shard가 integration 태그로 돈다).
 	// 스크립트 문면을 베끼는 대신 그 성질을 확인한다.
 	for _, required := range []string{
 		"go list -tags integration ./pkg/companionmanifest",
+		"go list -tags integration ./internal/cli",
 		"go list -tags integration ./...",
 		"lineage_matches == 1",
+		"cli_matches == 1",
 		"-tags integration",
 	} {
 		if !strings.Contains(nonLineageRun, required) {
@@ -154,7 +124,7 @@ func TestCIWorkflow_StableChecksHaveBoundedTimeouts(t *testing.T) {
 
 func TestCIWorkflow_StaticAndMacOSContractsArePullRequestSafe(t *testing.T) {
 	workflow := readCIStabilityWorkflow(t, ".github/workflows/ci.yaml")
-	for _, id := range []string{"test", "lineage-integration", "macos-runtime"} {
+	for _, id := range []string{"test-isolated", "test-packages", "test-cli", "test", "lineage-integration", "macos-runtime"} {
 		checkout := ciUsesStep(t, workflow.Jobs[id], "actions/checkout@")
 		if checkout.With["fetch-depth"] != 0 {
 			t.Fatalf("CI job %s checkout fetch-depth = %v, want 0 for release ancestry checks",

@@ -1,0 +1,73 @@
+{
+  "schema_version": "harness_golden_task.v1",
+  "id": "GT-AGENT-A06",
+  "kind": "agent",
+  "category": "experiment_pair_compatibility",
+  "intent": "Fix observational harness comparison so tasks measured under different comparison conditions are excluded from paired deltas, even when both runs have complete token and elapsed-time measurements. Incompatible pairs must prevent overall completeness while compatible failed-task and retry spend remains visible.",
+  "outcome": "With the generated Codex surface installed, the agent repairs the seeded regression in pkg/experiment/harness_compare.go so every expected oracle test passes again (Seeds omission of the compatibility identity guard, producing false paired deltas across different acceptance/oracle conditions; existing tests cover full experiment completeness and retained failed spend.)",
+  "variants": [],
+  "assertions": [
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/config.toml"
+    },
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/skills/codex-auto/SKILL.md"
+    }
+  ],
+  "corpus_ref": {
+    "file": "scripts/benchmarks/harness/corpus_a.json",
+    "task_id": "a06",
+    "file_sha256": "97c03debd2dd2e9414a585ec3fabc931228ed87167fe98ffc51b3d9abf774101"
+  },
+  "expected_tests": [
+    "TestHarnessIncludesFailedTrialsAndRetries",
+    "TestHarnessIncompatibleIdentityHasNoDelta",
+    "TestHarnessOverallCompletenessRequiresComparablePairsAndCorrections"
+  ],
+  "oracle_mode": "black_box",
+  "black_box_oracle": {
+    "build": "./cmd/auto",
+    "command": [
+      "{artifact}",
+      "telemetry",
+      "harness",
+      "--evidence-json",
+      "{input}/evidence.json",
+      "--format",
+      "json"
+    ],
+    "inputs": [
+      {
+        "path": "evals/harness/oracles/GT-AGENT-A06/evidence.json",
+        "sha256": "0f64e286ed029ae9f5fbd1ac20407866ca3cf29d5686c5201f4aa1c0c28cc514"
+      }
+    ],
+    "assertions": [
+      {
+        "id": "exit",
+        "kind": "exit_code",
+        "exit_code": 0
+      },
+      {
+        "id": "stdout",
+        "kind": "stdout",
+        "expected": {
+          "path": "evals/harness/oracles/GT-AGENT-A06/stdout.json",
+          "sha256": "05e1ca0c9912efc7f969ec96599c640356b2dfeb453fd9f6eeac42fe21d73377"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "benchmark",
+    "ref": "scripts/benchmarks/harness/corpus_a.json#a06"
+  },
+  "status": {
+    "state": "active",
+    "reason": ""
+  }
+}

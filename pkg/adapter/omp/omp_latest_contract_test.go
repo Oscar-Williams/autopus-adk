@@ -27,10 +27,10 @@ func TestOMPGenerate_UsesOnlyNativeSkillsAndCommandsWithoutBaseConfig(t *testing
 	paths := manifestPaths(t, root)
 	assert.Greater(t, countPathsWithPrefix(paths, ".omp/skills/"), 20)
 	assert.Equal(t, len(workflowSpecs), countPathsWithPrefix(paths, ".omp/commands/"))
-	assert.Equal(t, 0, countPathsWithPrefix(paths, ".omp/agents/"))
+	assert.Equal(t, 17, countPathsWithPrefix(paths, ".omp/agents/"))
 	assert.Equal(t, 14, countPathsWithPrefix(paths, ompRuleDir+"/"+ompRuleFilePrefix))
-	assert.NotContains(t, paths, configFile)
-	assert.NoFileExists(t, filepath.Join(root, configFile))
+	assert.Contains(t, paths, configFile)
+	assert.FileExists(t, filepath.Join(root, configFile))
 	for _, path := range paths {
 		assert.False(t, strings.HasPrefix(path, ".agents/skills/"), path)
 		assert.False(t, strings.HasPrefix(path, ".agents/commands/"), path)
@@ -43,10 +43,29 @@ func TestOMPGenerate_UsesOnlyNativeSkillsAndCommandsWithoutBaseConfig(t *testing
 	assert.Contains(t, frontmatter[1], "goal")
 }
 
+// agent_source: native keeps the v0.50.125 latest surface: no agent
+// definitions and no base config.
+func TestOMPGenerate_NativeSourceUsesOnlyNativeSkillsAndCommandsWithoutBaseConfig(t *testing.T) {
+	root := t.TempDir()
+	cfg := config.DefaultFullConfig("omp-native")
+	cfg.Platforms = []string{"omp"}
+	cfg.RoleModelPolicy.AgentSource = config.OMPAgentSourceNative
+	require.NoError(t, config.Save(root, cfg))
+
+	_, err := NewWithRoot(root).Generate(context.Background(), cfg)
+	require.NoError(t, err)
+
+	paths := manifestPaths(t, root)
+	assert.Equal(t, 0, countPathsWithPrefix(paths, ".omp/agents/"))
+	assert.NotContains(t, paths, configFile)
+	assert.NoFileExists(t, filepath.Join(root, configFile))
+}
+
 func TestOMPGenerate_PreservesUserBaseConfigWhenNoManagedClaimsExist(t *testing.T) {
 	root := t.TempDir()
 	cfg := config.DefaultFullConfig("omp-user-config")
 	cfg.Platforms = []string{"omp"}
+	cfg.RoleModelPolicy.AgentSource = config.OMPAgentSourceNative
 	require.NoError(t, config.Save(root, cfg))
 	path := filepath.Join(root, configFile)
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
@@ -105,7 +124,13 @@ func TestOMPValidateExpectedMappings_RejectsSymlinkParentBeforeReading(t *testin
 }
 
 func TestOMPValidate_AllowsMissingBaseConfigButRejectsWeakSensitivePermissions(t *testing.T) {
-	root := generateLatestOMP(t)
+	root := t.TempDir()
+	cfg := config.DefaultFullConfig("omp-latest")
+	cfg.Platforms = []string{"omp"}
+	cfg.RoleModelPolicy.AgentSource = config.OMPAgentSourceNative
+	require.NoError(t, config.Save(root, cfg))
+	_, err := NewWithRoot(root).Generate(context.Background(), cfg)
+	require.NoError(t, err)
 	adapter := NewWithRoot(root)
 
 	findings, err := adapter.Validate(context.Background())

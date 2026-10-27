@@ -12,6 +12,7 @@ const (
 
 type RuntimeConf struct {
 	StatusLine StatusLineRuntimeConf `yaml:"-"`
+	ReaMCP     ReaMCPAction          `yaml:"-"`
 }
 
 type StatusLineRuntimeConf struct {

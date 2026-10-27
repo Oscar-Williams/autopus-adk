@@ -3,6 +3,7 @@ package omp
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -12,9 +13,12 @@ const (
 	ompNativeCredential    = "AUTOPUS_NATIVE_CREDENTIAL_MUST_NOT_LEAK"
 	ompNativeAlphaID       = "NativeAlpha"
 	ompNativeBetaID        = "NativeBeta"
-	ompNativeSharedContext = "Read-only native lifecycle smoke. Do not modify files or use process or network tools. Return only the required five-field receipt through yield."
+	ompNativeSharedContext = "Read-only native lifecycle smoke. Do not modify files or use process or network tools. Your final message is the required five-field JSON receipt and nothing else."
 	ompNativeAlphaTask     = "NATIVE_CHILD_ALPHA: inspect `.omp/skills/agent-pipeline/SKILL.md` read-only and return its strict receipt naming exactly that path without modifying anything."
 	ompNativeBetaTask      = "NATIVE_CHILD_BETA: inspect `.omp/rules/autopus-branding.md` read-only and return its strict receipt naming exactly that path without modifying anything."
+	// ompNativeSolutionSpace fills the item field omp 18.3+ requires on every
+	// task; nothing about the smoke's children is open to decide.
+	ompNativeSolutionSpace = "one fix: path given, receipt fields given"
 )
 
 type ompNativeChildReceipt struct {
@@ -25,26 +29,10 @@ type ompNativeChildReceipt struct {
 	NextRequiredStep string   `json:"next_required_step"`
 }
 
-func ompNativeReceiptSchema() map[string]any {
-	stringArray := func() map[string]any {
-		return map[string]any{"type": "array", "items": map[string]any{"type": "string"}}
-	}
-	return map[string]any{
-		"type":                 "object",
-		"additionalProperties": false,
-		"properties": map[string]any{
-			"owned_paths":        stringArray(),
-			"changed_files":      stringArray(),
-			"verification":       stringArray(),
-			"blockers":           stringArray(),
-			"next_required_step": map[string]any{"type": "string"},
-		},
-		"required": []string{
-			"owned_paths", "changed_files", "verification", "blockers", "next_required_step",
-		},
-	}
-}
-
+// ompNativeTaskArguments is the one batch the smoke issues. omp 18.3+ has no
+// per-task outputSchema or schemaMode: a child's final message is its result,
+// so the receipt shape is asked for in the shared context and verified where
+// the parent receives it (ompNativeRequireOutputReceipt).
 func ompNativeTaskArguments() map[string]any {
 	return map[string]any{
 		"i":       "Spawning read-only lifecycle probes",
@@ -52,11 +40,11 @@ func ompNativeTaskArguments() map[string]any {
 		"tasks": []any{
 			map[string]any{
 				"name": ompNativeAlphaID, "agent": "scout", "task": ompNativeAlphaTask,
-				"outputSchema": ompNativeReceiptSchema(), "schemaMode": "strict",
+				"solutionSpace": ompNativeSolutionSpace,
 			},
 			map[string]any{
 				"name": ompNativeBetaID, "agent": "reviewer", "task": ompNativeBetaTask,
-				"outputSchema": ompNativeReceiptSchema(), "schemaMode": "strict",
+				"solutionSpace": ompNativeSolutionSpace,
 			},
 		},
 	}
@@ -96,7 +84,15 @@ func validateOMPNativeTaskArguments(args any) error {
 	return nil
 }
 
+// validateOMPNativeParentTools pins the parent surface omp/18.12.3 offers for
+// `--tools task,wait`. The task item carries `model` and `tools` since omp
+// 18.3 let a parent pick a child's model or tool list; the smoke's batch sets
+// neither, and the task tool's progress details prove both children ran as
+// bundled agents without an override (ompNativeRPCTrace.childSources).
 func validateOMPNativeParentTools(tools []json.RawMessage) error {
+	if names := ompNativeToolNames(tools); len(names) != 2 || !names["task"] || !names["wait"] {
+		return fmt.Errorf("parent tools drifted: %v", names)
+	}
 	parameters, ok := ompNativeToolParameters(tools, "task")
 	if !ok {
 		return fmt.Errorf("task tool missing")
@@ -110,54 +106,54 @@ func validateOMPNativeParentTools(tools []json.RawMessage) error {
 	tasks := ompNativeMap(properties["tasks"])
 	items := ompNativeMap(tasks["items"])
 	itemProperties := ompNativeMap(items["properties"])
-	if !ompNativeExactKeys(itemProperties, "agent", "name", "outputSchema", "schemaMode", "task") {
-		return fmt.Errorf("task item shape drifted")
+	if !ompNativeExactKeys(itemProperties, "agent", "model", "name", "solutionSpace", "sourceSession", "task", "tools") ||
+		!ompNativeStringSet(items["required"], "solutionSpace", "task") {
+		encoded, _ := json.Marshal(items)
+		return fmt.Errorf("task item shape drifted: items=%s", encoded)
 	}
-	taskDefinition := ompNativeToolDefinition(tools, "task")
-	if !strings.Contains(taskDefinition, "scout") || !strings.Contains(taskDefinition, "reviewer") {
-		return fmt.Errorf("bundled agents missing from task definition")
+	listed, err := ompTaskDefinitionAgentNames(ompNativeToolDefinition(tools, "task"))
+	if err != nil {
+		return fmt.Errorf("task definition: %w", err)
 	}
-	for _, forbidden := range []string{"effort", "model", "thinking", "isolated"} {
-		if _, exists := itemProperties[forbidden]; exists {
-			return fmt.Errorf("unexpected child override field %s", forbidden)
+	for _, agent := range []string{"scout", "reviewer"} {
+		if !slices.Contains(listed, agent) {
+			return fmt.Errorf("bundled agent %s missing from task definition: %v", agent, listed)
 		}
 	}
-	hub, ok := ompNativeToolParameters(tools, "hub")
+	wait, ok := ompNativeToolParameters(tools, "wait")
 	if !ok {
-		return fmt.Errorf("hub tool missing")
+		return fmt.Errorf("wait tool missing")
 	}
-	hubOp, _ := json.Marshal(ompNativeMap(hub["properties"])["op"])
-	for _, op := range []string{"list", "jobs", "wait"} {
-		if !strings.Contains(string(hubOp), `"`+op+`"`) {
-			return fmt.Errorf("hub op %s missing", op)
-		}
+	additional, isBool := wait["additionalProperties"].(bool)
+	if !ompNativeExactKeys(ompNativeMap(wait["properties"]), "i") || !isBool || additional {
+		encoded, _ := json.Marshal(wait)
+		return fmt.Errorf("wait shape drifted: %s", encoded)
 	}
 	return nil
 }
 
 // ompNativeChildToolContract is the toolset a spawned child must present, per
-// bundled agent. Before the native cutover the project shipped its own
-// `.omp/agents/<role>.md`, so every child carried one ADK-authored toolset
-// (bash/glob/grep/read). Children are now OMP's bundled agents, whose
-// capabilities differ by agent and are OMP's to declare: `scout` investigates
-// without a shell, `reviewer` gets bash, lsp, and ast_grep. `hub` is injected
-// by the runtime for background children and belongs to neither definition.
+// bundled agent, as OMP declares it: `scout` investigates without a shell,
+// `reviewer` gets bash and, since it declares `spawns: [scout]`, task and
+// wait. `find`, `lsp`, and `ast_grep` sit in the bundled definitions but are
+// runtime gated (an index, a language server, an installed ast-grep), so
+// they are not required; a superset still passes, the write set never may.
+// omp 18.3+ gives a child neither `hub` nor `yield`: its final message is its
+// result, and `wait` replaced `hub` for the one child that may spawn.
 //
-// Measured against omp/17.2.7 `omp agents unpack`.
+// Measured against omp/18.12.3 (`omp agents unpack` and the child requests
+// the fake provider receives).
 var ompNativeChildToolContract = map[string]struct {
 	required  []string
 	forbidden []string
 }{
 	ompNativeAlphaID: {
-		required:  []string{"glob", "grep", "hub", "read", "web_search", "yield"},
-		forbidden: []string{"bash", "edit", "task", "write"},
+		required:  []string{"glob", "grep", "read", "web_search"},
+		forbidden: []string{"bash", "edit", "hub", "task", "wait", "write", "yield"},
 	},
 	ompNativeBetaID: {
-		// `lsp` and `ast_grep` sit in the bundled definition but are runtime
-		// gated (a language server, an installed ast-grep), so they are not
-		// required here. A superset still passes; the write set never may.
-		required:  []string{"bash", "glob", "grep", "hub", "read", "task", "web_search", "yield"},
-		forbidden: []string{"edit", "write"},
+		required:  []string{"bash", "glob", "grep", "read", "task", "wait", "web_search"},
+		forbidden: []string{"edit", "hub", "write", "yield"},
 	},
 }
 
@@ -177,16 +173,35 @@ func validateOMPNativeChildTools(child string, tools []json.RawMessage) error {
 			return fmt.Errorf("%s child exposed %s", child, forbidden)
 		}
 	}
-	yieldParameters, ok := ompNativeToolParameters(tools, "yield")
-	if !ok {
-		return fmt.Errorf("yield tool missing")
+	return nil
+}
+
+// ompNativeRequireOutputReceipt checks that the parent received the child's
+// final message verbatim: omp renders a settled job as a `<task-result>`
+// whose `<output>` block is the text the child ended on, and that text must
+// decode to exactly the expected five-field receipt.
+func ompNativeRequireOutputReceipt(text, id, agent string) error {
+	header := fmt.Sprintf(`<task-result id=%q agent=%q status="completed"`, id, agent)
+	_, after, found := strings.Cut(text, header)
+	if !found {
+		return fmt.Errorf("%s completed task-result missing", id)
 	}
-	if !ompNativeContainsReceiptSchema(yieldParameters) {
-		encoded, _ := json.Marshal(yieldParameters)
-		if len(encoded) > 4000 {
-			encoded = encoded[:4000]
-		}
-		return fmt.Errorf("strict five-field yield schema missing: %s", encoded)
+	_, after, found = strings.Cut(after, "<output>")
+	if !found {
+		return fmt.Errorf("%s output missing", id)
+	}
+	raw, _, found := strings.Cut(after, "</output>")
+	if !found {
+		return fmt.Errorf("%s output unterminated", id)
+	}
+	var got ompNativeChildReceipt
+	if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &got); err != nil {
+		return fmt.Errorf("%s output is not the JSON receipt: %w", id, err)
+	}
+	actual, _ := json.Marshal(got)
+	expected, _ := json.Marshal(ompNativeExpectedReceipt(id))
+	if string(actual) != string(expected) {
+		return fmt.Errorf("%s receipt drifted: %s", id, actual)
 	}
 	return nil
 }
@@ -232,31 +247,6 @@ func ompNativeToolParameters(tools []json.RawMessage, name string) (map[string]a
 		}
 	}
 	return nil, false
-}
-
-func ompNativeContainsReceiptSchema(value any) bool {
-	switch typed := value.(type) {
-	case map[string]any:
-		properties := ompNativeMap(typed["properties"])
-		if ompNativeExactKeys(properties,
-			"blockers", "changed_files", "next_required_step", "owned_paths", "verification") &&
-			ompNativeStringSet(typed["required"],
-				"blockers", "changed_files", "next_required_step", "owned_paths", "verification") {
-			return true
-		}
-		for _, child := range typed {
-			if ompNativeContainsReceiptSchema(child) {
-				return true
-			}
-		}
-	case []any:
-		for _, child := range typed {
-			if ompNativeContainsReceiptSchema(child) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func ompNativeMap(value any) map[string]any {

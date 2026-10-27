@@ -53,11 +53,20 @@ var ompLegacyCoordinationTokens = []string{
 }
 
 // NormalizeOMPSemanticReferences translates legacy coordination examples into
-// native OMP tool calls without adding unrelated workflow instructions.
+// native OMP tool calls without adding unrelated workflow instructions, naming
+// the Autopus agents.
 func NormalizeOMPSemanticReferences(body string) string {
+	return NormalizeOMPSemanticReferencesWith(body, PlatformReferenceOptions{})
+}
+
+// NormalizeOMPSemanticReferencesWith is NormalizeOMPSemanticReferences under opts.
+func NormalizeOMPSemanticReferencesWith(body string, opts PlatformReferenceOptions) string {
+	native := opts.ompNative()
 	body = NormalizeOMPResourcePaths(body)
-	body = normalizeOMPLegacyDispatchBlocks(body)
-	body = ompInlineDispatchCodeRe.ReplaceAllStringFunc(body, normalizeOMPInlineDispatchCode)
+	body = normalizeOMPLegacyDispatchBlocks(body, native)
+	body = ompInlineDispatchCodeRe.ReplaceAllStringFunc(body, func(call string) string {
+		return normalizeOMPInlineDispatchCode(call, native)
+	})
 	body = strings.NewReplacer(
 		"Agent() calls", "task batch items",
 		"Agent() call", "task batch item",
@@ -73,9 +82,11 @@ func NormalizeOMPSemanticReferences(body string) string {
 		"spawn_agent(...)", "task batch",
 	).Replace(body)
 	body = ompLegacySpawnCallRe.ReplaceAllStringFunc(body, func(string) string {
-		return renderOMPTaskBatch([]ompLegacyDispatch{{}})
+		return renderOMPTaskBatch([]ompLegacyDispatch{{}}, native)
 	})
-	body = ompLegacyNamedCallRe.ReplaceAllStringFunc(body, normalizeOMPNamedLegacyCall)
+	body = ompLegacyNamedCallRe.ReplaceAllStringFunc(body, func(call string) string {
+		return normalizeOMPNamedLegacyCall(call, native)
+	})
 	body = ompLegacyTaskToolRe.ReplaceAllStringFunc(body, func(call string) string {
 		match := ompLegacyTaskToolRe.FindStringSubmatch(call)
 		dispatch := ompLegacyDispatch{}
@@ -85,9 +96,9 @@ func NormalizeOMPSemanticReferences(body string) string {
 		if len(match) > 2 {
 			dispatch.task = match[2]
 		}
-		return renderOMPTaskBatch([]ompLegacyDispatch{dispatch})
+		return renderOMPTaskBatch([]ompLegacyDispatch{dispatch}, native)
 	})
-	body = normalizeOMPInlineLegacyCalls(body)
+	body = normalizeOMPInlineLegacyCalls(body, native)
 	body = ompIsolationRe.ReplaceAllString(body, `conditional per-item isolation`)
 	body = strings.NewReplacer(
 		"auto pipeline worktree", `task item with conditional isolation after schema inspection`,
@@ -97,19 +108,19 @@ func NormalizeOMPSemanticReferences(body string) string {
 		"task tool →", "task batch:",
 		"task tool", "task",
 		"subagent_type", "agent",
-		"send_input", "hub message",
+		"send_input", "agent message",
 		"prompt =", "task =",
 		"prompt=", "task=",
-		"wait_agent", "hub job wait",
-		"close_agent", "hub cancellation",
+		"wait_agent", "job wait",
+		"close_agent", "job cancellation",
 		"TodoWrite", "todo operation",
 		"TaskCreate", "todo append operation",
 		"TaskUpdate", "todo state operation",
 		"TaskList", "todo view operation",
 		"TaskGet", "todo view operation",
 		"TeamCreate", "task batch",
-		"TeamDelete", "hub cancellation",
-		"SendMessage", "hub message",
+		"TeamDelete", "job cancellation",
+		"SendMessage", "agent message",
 		"ToolSearch", "available tool discovery",
 		"AskUserQuestion", "ask the user directly",
 		"request_user_input", "ask the user directly",
@@ -142,12 +153,12 @@ func hasOMPLegacyCoordination(body string) bool {
 	return ompIsolationRe.MatchString(body)
 }
 
-func normalizeOMPLegacyDispatchBlocks(body string) string {
+func normalizeOMPLegacyDispatchBlocks(body string, native bool) string {
 	return ompFencedCodeRe.ReplaceAllStringFunc(body, func(block string) string {
 		if !hasOMPLegacyDispatch(block) {
 			return block
 		}
-		return renderOMPTaskBatch(parseOMPLegacyCalls(block))
+		return renderOMPTaskBatch(parseOMPLegacyCalls(block), native)
 	})
 }
 
@@ -155,7 +166,7 @@ func hasOMPLegacyDispatch(body string) bool {
 	return ompLegacyCallRe.MatchString(body) || strings.Contains(body, "spawn_agent")
 }
 
-func normalizeOMPInlineDispatchCode(call string) string {
+func normalizeOMPInlineDispatchCode(call string, native bool) string {
 	inner := strings.TrimSuffix(strings.TrimPrefix(call, "`"), "`")
 	dispatch := ompLegacyDispatch{}
 	if match := ompLegacyCallRe.FindStringSubmatch(inner); len(match) > 1 {
@@ -166,7 +177,7 @@ func normalizeOMPInlineDispatchCode(call string) string {
 		dispatch.isolated = ompIsolationRe.MatchString(match[1])
 	}
 	result := "`task` batch"
-	if agent := ompNativeDispatchAgent(dispatch.agent); agent != "" {
+	if agent := ompDispatchAgent(dispatch.agent, native); agent != "" {
 		result += " selecting agent `" + agent + "`"
 	}
 	if dispatch.isolated {
@@ -175,7 +186,7 @@ func normalizeOMPInlineDispatchCode(call string) string {
 	return result
 }
 
-func normalizeOMPNamedLegacyCall(call string) string {
+func normalizeOMPNamedLegacyCall(call string, native bool) string {
 	match := ompLegacyNamedCallRe.FindStringSubmatch(call)
 	if len(match) < 2 {
 		return call
@@ -188,13 +199,14 @@ func normalizeOMPNamedLegacyCall(call string) string {
 	case "TaskList", "TaskGet":
 		return `todo with {"i":"Inspecting parent-owned progress","op":"view"}`
 	case "TeamCreate":
-		return renderOMPTaskBatch([]ompLegacyDispatch{{}})
+		return renderOMPTaskBatch([]ompLegacyDispatch{{}}, native)
+	// omp/18.3.0 replaced the hub tool, so a call names both generations' forms.
 	case "TeamDelete", "close_agent":
-		return `hub with {"i":"Cancelling abandoned work","op":"cancel","ids":["<job id>"]}`
+		return `write proc://<job id>/kill (OMP 18.3+) or hub with {"i":"Cancelling abandoned work","op":"cancel","ids":["<job id>"]} (older OMP)`
 	case "SendMessage", "send_input":
-		return `hub with {"i":"Following up with an existing worker","op":"send","to":"<same agent id>","message":"<follow-up>"}`
+		return `write agent://<same agent id> with the follow-up as content (OMP 18.3+) or hub with {"i":"Following up with an existing worker","op":"send","to":"<same agent id>","message":"<follow-up>"} (older OMP)`
 	case "wait_agent":
-		return `hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]}`
+		return `wait (OMP 18.3+) or hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]} (older OMP)`
 	case "ToolSearch":
 		return "available tool discovery"
 	case "AskUserQuestion", "request_user_input":
@@ -204,7 +216,7 @@ func normalizeOMPNamedLegacyCall(call string) string {
 	}
 }
 
-func normalizeOMPInlineLegacyCalls(body string) string {
+func normalizeOMPInlineLegacyCalls(body string, native bool) string {
 	matches := ompLegacyCallRe.FindAllStringIndex(body, -1)
 	if len(matches) == 0 {
 		return body
@@ -222,7 +234,7 @@ func normalizeOMPInlineLegacyCalls(body string) string {
 			j++
 		}
 		b.WriteString(body[cursor:start])
-		b.WriteString(renderOMPTaskBatch(dispatches))
+		b.WriteString(renderOMPTaskBatch(dispatches, native))
 		if j > i+1 {
 			b.WriteString("\n")
 		}

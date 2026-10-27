@@ -80,7 +80,9 @@ fi
 #
 # Measured 2026-09-03, same plan generator and workload, binary swapped:
 #
-#   omp/17.2.7  8 compactions, median reduction cleared 2000 bp   -> in use
+#   omp/17.2.7  8 compactions, median reduction cleared 2000 bp   -> measured good
+#               (the pin until 2026-10-20; still admitted, so moving back
+#               to it stays the rollback path)
 #   omp/18.1.2  emits "snapcompact would not reduce context locally." (6x)
 #   omp/18.1.5  2 compactions, median reduction 0 bp              -> refused
 #
@@ -89,6 +91,14 @@ fi
 #   omp/18.1.13 2 compactions, median reduction 895 bp / 2000     -> refused
 #               (v18.1.8 fixed the opaque-reasoning refusal: 0 bp became
 #               895 bp, still under the floor, still 2 compactions vs 8)
+#
+# Measured 2026-10-23, same v1 oracle, model gpt-6.1-sol and window 262144
+# (17.2.7 ran gpt-5.6-sol, so this is not a binary-only swap), v0.50.127
+# release canary, signed into omp-context-evidence-v0.50.127 and published:
+#
+#   omp/18.12.3 10 compactions, median reduction 3429 bp / 2000   -> in use
+#               (40/40 calls, 14/14 gates; the burned v0.50.126 attempt
+#               measured the same 10 and 3429 bp on 2026-10-20)
 #
 # Clearing a refusal is a measurement, not an edit. The measurement is the
 # release canary itself: move the pin with --measure, advance the coordinate,
@@ -99,8 +109,8 @@ fi
 # upstream change that plausibly alters compaction (a newer version) is worth a
 # cohort.
 case "$to_version" in
-  17.2.7)
-    : # the pin in use; measured good
+  17.2.7 | 18.12.3)
+    : # measured good: 18.12.3 is the pin in use, 17.2.7 the pin it replaced
     ;;
   18.1.2 | 18.1.5)
     probe_admits_refusal 'oracle=v1 compactions=2/2 median_reduction_bp=0/2000, measured 2026-09-03' ||

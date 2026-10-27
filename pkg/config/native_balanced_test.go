@@ -19,13 +19,18 @@ func TestNativeBalancedAgentCandidateMatchesApprovedRolePlacement(t *testing.T) 
 		require.True(t, ok, agent)
 		codex, ok := q.NativeBalancedAgentCandidate(QualityProviderCodex, agent)
 		require.True(t, ok, agent)
+		if agent == "reverse-engineer" {
+			assert.Equal(t, "anthropic/claude-opus-5-5@high", claude.Selector+"@"+claude.Thinking)
+			assert.Equal(t, "openai-codex/gpt-6.1-sol@xhigh", codex.Selector+"@"+codex.Thinking)
+			continue
+		}
 		assert.Equal(t, "max", codex.Thinking, agent)
 		if top[agent] {
 			assert.Equal(t, "anthropic/claude-fable-5-1", claude.Selector, agent)
 			assert.Equal(t, "max", claude.Thinking, agent)
 			assert.Equal(t, "openai-codex/gpt-6-astra", codex.Selector, agent)
 		} else {
-			assert.Equal(t, "anthropic/claude-sonnet-5", claude.Selector, agent)
+			assert.Equal(t, "anthropic/claude-sonnet-5-5", claude.Selector, agent)
 			assert.Equal(t, "openai-codex/gpt-6-luna", codex.Selector, agent)
 			if routine[agent] {
 				assert.Equal(t, "high", claude.Thinking, agent)

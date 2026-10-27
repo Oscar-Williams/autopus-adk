@@ -22,7 +22,7 @@ func writePwdRecordingProvider(t *testing.T, dir, name, pwdFile, output string) 
 	}
 	path := filepath.Join(dir, name)
 	script := "#!/bin/sh\ncat >/dev/null\npwd > " + shellSingleQuote(pwdFile) + "\nprintf '%s' " + shellSingleQuote(output) + "\n"
-	require.NoError(t, os.WriteFile(path, []byte(script), 0o755))
+	writeExecutableFixture(t, path, script, 0o755)
 	return path
 }
 
@@ -97,32 +97,6 @@ func TestRunProvider_WithoutWorkDirRecordsInheritedCwd(t *testing.T) {
 	assert.Equal(t, mustEvalSymlinks(t, cwd), mustEvalSymlinks(t, strings.TrimSpace(string(recorded))))
 }
 
-func TestProviderSandboxMode_InfersFromArgv(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name     string
-		provider ProviderConfig
-		args     []string
-		want     string
-	}{
-		{name: "policy stamp wins", provider: ProviderConfig{SandboxMode: SandboxModeReadOnly}, args: []string{"--dangerously-skip-permissions"}, want: SandboxModeReadOnly},
-		{name: "codex workspace write", args: []string{"exec", "--sandbox", "workspace-write", "-m", "gpt"}, want: SandboxModeWorkspaceWrite},
-		{name: "codex inline sandbox", args: []string{"exec", "--sandbox=read-only"}, want: SandboxModeReadOnly},
-		{name: "claude plan permission", args: []string{"--print", "--permission-mode", "plan"}, want: SandboxModeReadOnly},
-		{name: "claude bypass", args: []string{"--print", "--dangerously-skip-permissions"}, want: SandboxModeUnrestricted},
-		{name: "gemini boolean sandbox flag is not a value", args: []string{"--print", "", "--sandbox", "--disable-slash-commands"}, want: SandboxModeUnrestricted},
-		{name: "no restriction declared", args: []string{"--print", "--model", "opus"}, want: SandboxModeUnrestricted},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tt.want, providerSandboxMode(tt.provider, tt.args))
-		})
-	}
-}
-
 func TestBuildProviderRunReceipts_TimedOutAttemptKeepsLaunchProvenance(t *testing.T) {
 	t.Parallel()
 
@@ -156,29 +130,6 @@ func TestBuildProviderRunReceipts_TimedOutAttemptKeepsLaunchProvenance(t *testin
 	assert.Equal(t, SandboxModeReadOnly, codex.SandboxMode)
 	assert.Equal(t, "2026-09-06T10:00:00Z", codex.StartedAt)
 	assert.Equal(t, "2026-09-06T10:00:30Z", codex.EndedAt)
-}
-
-func TestBuildInteractiveLaunchCommand_ReadOnlyOmitsBypassAndEntersWorkDir(t *testing.T) {
-	t.Parallel()
-
-	workDir := "/tmp/autopus-brainstorm-xyz"
-	claude := ProviderConfig{Name: "claude", Binary: "claude", PaneArgs: []string{"--model", "opus", "--permission-mode", "plan"}}
-	launch := paneLaunchFor(OrchestraConfig{WorkingDir: "/repo", ProviderWorkDir: workDir, ReadOnly: true})
-
-	cmd := buildInteractiveLaunchCommand(claude, "", launch)
-	assert.Equal(t, "cd "+shellQuote(workDir)+" && claude --model opus --permission-mode plan", cmd)
-	assert.NotContains(t, cmd, "--dangerously-skip-permissions")
-
-	gemini := ProviderConfig{Name: "gemini", Binary: "agy", PromptViaArgs: true}
-	geminiCmd := buildInteractiveLaunchCommand(gemini, "prompt", launch)
-	assert.NotContains(t, geminiCmd, "--dangerously-skip-permissions")
-	assert.True(t, strings.HasPrefix(geminiCmd, "cd "+shellQuote(workDir)+" && agy"), geminiCmd)
-
-	// Without ReadOnly the legacy bypass stays and the pane enters WorkingDir.
-	legacy := paneLaunchFor(OrchestraConfig{WorkingDir: "/repo"})
-	legacyCmd := buildInteractiveLaunchCommand(claude, "", legacy)
-	assert.Contains(t, legacyCmd, "--dangerously-skip-permissions")
-	assert.True(t, strings.HasPrefix(legacyCmd, "cd '/repo' && claude"), legacyCmd)
 }
 
 func mustEvalSymlinks(t *testing.T, path string) string {

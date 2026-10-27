@@ -16,7 +16,7 @@ import (
 // @AX:REASON: [AUTO] Freshness re-exec, self-update, workspace detection, preview, platform updates, and rollback paths converge in its RunE handler.
 func newUpdateCmd() *cobra.Command {
 	var dir string
-	var selfFlag, checkOnly, force, yesFlag, previewMode, workspaceFlag, localFlag bool
+	var selfFlag, checkOnly, force, yesFlag, previewMode, workspaceFlag, localFlag, reaOn, reaOff bool
 	var targetVersion, statusLine, workspaceOnly string
 	var freshnessReexec updateFreshnessNonceFlag
 	freshnessGate := newUpdateFreshnessGate()
@@ -24,15 +24,8 @@ func newUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [all|repo]",
 		Short: "Update autopus harness files",
-		Long: "설치된 하네스 파일을 업데이트합니다.\n\n" +
-			"보존 범위는 파일 종류에 따라 다릅니다.\n" +
-			"  - 마커 밖 사용자 내용(AGENTS.md, CLAUDE.md 등): 보존됩니다. AUTOPUS 마커 구간만 교체합니다.\n" +
-			"  - 마커 안 내용: 보존되지 않습니다. 매 업데이트마다 재생성됩니다.\n" +
-			"  - 그 외 생성 파일(대부분 overwrite 정책): 사용자 수정이 보존되지 않고 덮어쓰입니다.\n" +
-			"    덮어쓰기 전 원본은 .autopus/backup/<timestamp>/transaction/<platform>/<경로>에 복사됩니다.\n" +
-			"  - 사용자가 삭제한 생성 파일: 다시 만들지 않고 건너뜁니다.\n\n" +
-			"--preview(--plan/--dry-run)로 변경 예정 파일과 각 파일의 처리 방식을 먼저 확인할 수 있습니다.",
-		Args: cobra.MaximumNArgs(1),
+		Long:  updateCmdLong,
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if globalFlagsFromContext(cmd.Context()).AutoMode {
 				yesFlag = true
@@ -83,6 +76,9 @@ func newUpdateCmd() *cobra.Command {
 			if !localFlag && !workspaceFlag && shouldAutoWorkspaceUpdate(dir) {
 				workspaceFlag = true
 			}
+			if reaErr := checkReaFlags(reaOn, reaOff, workspaceFlag); reaErr != nil {
+				return reaErr
+			}
 			if workspaceFlag {
 				return runWorkspaceUpdate(cmd, dir, workspaceOnly, yesFlag, previewMode, statusLine)
 			}
@@ -116,6 +112,7 @@ func newUpdateCmd() *cobra.Command {
 				return err
 			}
 
+			rea := resolveUpdateRea(cmd, dir, cfg, reaOn, reaOff, previewMode)
 			if previewMode {
 				previewCfg, configReasons, cloneErr := prepareUpdatePreviewConfig(
 					dir,
@@ -137,6 +134,7 @@ func newUpdateCmd() *cobra.Command {
 					)
 				}
 				configReasons = appendGitignorePreviewReason(configReasons, dir)
+				configReasons = appendConfigPreviewReason(configReasons, rea.previewReason(dir, previewCfg))
 
 				migrated, migrateErr := config.MigrateOrchestraConfig(previewCfg)
 				if migrateErr != nil {
@@ -167,20 +165,15 @@ func newUpdateCmd() *cobra.Command {
 				preview.Items = appendConfigPreviewItem(preview.Items, dir, configReasons)
 
 				printPreview(cmd.OutOrStdout(), "auto update", preview.Hint, preview.Items)
+				reportOMPAgentSurface(cmd.OutOrStdout(), dir, "omp", effectiveCfg, true)
 				return nil
 			}
 
 			addedPlatforms := newlyDetectedPlatforms(cfg)
 
 			// Persist config migrations before rendering platform-owned files.
-			orchestraMigrated, migrateErr := config.MigrateOrchestraConfig(cfg)
-			if migrateErr != nil {
-				return fmt.Errorf("orchestra 마이그레이션 실패: %w", migrateErr)
-			}
-			if orchestraMigrated || (designConfigMissing && cfg.Design.Enabled) {
-				if saveErr := config.Save(dir, cfg); saveErr != nil {
-					return fmt.Errorf("마이그레이션 설정 저장 실패: %w", saveErr)
-				}
+			if persistErr := persistUpdateConfigMigrations(cmd.OutOrStdout(), dir, cfg, designConfigMissing); persistErr != nil {
+				return persistErr
 			}
 			if len(addedPlatforms) > 0 {
 				fmt.Fprintf(cmd.OutOrStdout(), "  + 새 플랫폼 감지: %s\n", strings.Join(addedPlatforms, ", "))
@@ -198,6 +191,7 @@ func newUpdateCmd() *cobra.Command {
 			if !yesFlag {
 				promptLanguageSettings(cmd, dir, cfg)
 			}
+			rea.prepare(cmd, cfg, composeGate{Yes: yesFlag, Check: checkOnly, Detected: addedPlatforms})
 			statusLineSummary, statusLineErr := applyStatusLineMode(cmd, dir, cfg, statusLine, isStdinTTY() && !yesFlag)
 			if statusLineErr != nil {
 				return statusLineErr
@@ -213,6 +207,12 @@ func newUpdateCmd() *cobra.Command {
 				}
 			}
 
+			// The composition step, before the supervisor migration saves cfg (SPEC-MODELUX-001 REQ-MUX-13).
+			var composeAbort error
+			snapshot := updateComposeStep(cmd, dir, cfg, composeGate{Yes: yesFlag, Check: checkOnly, Detected: addedPlatforms, Abort: &composeAbort})
+			if composeAbort != nil {
+				return composeAbort
+			}
 			ctx := cmd.Context()
 			supervisorMigrated, supervisorErr := migrateLegacyCodexSupervisorPolicy(dir, cfg)
 			if supervisorErr != nil {
@@ -231,7 +231,8 @@ func newUpdateCmd() *cobra.Command {
 			reportUpdateTargets(cmd.OutOrStdout(), cfg.Platforms, addedPlatforms)
 			for _, p := range cfg.Platforms {
 				fmt.Fprintf(cmd.OutOrStdout(), "  → Updating %s...\n", updatePlatformLabel(p))
-				supported, updateErr := updateHarnessPlatform(ctx, dir, p, effectiveCfg)
+				reportOMPAgentSurface(cmd.OutOrStdout(), dir, p, effectiveCfg, true)
+				supported, updateErr := updateHarnessPlatformWith(ctx, dir, p, effectiveCfg, snapshot)
 				if !supported {
 					fmt.Fprintf(cmd.OutOrStdout(), "  경고: 알 수 없는 플랫폼 %q, 건너뜀\n", p)
 					continue
@@ -250,12 +251,13 @@ func newUpdateCmd() *cobra.Command {
 			var addedUpdated int
 			var addedCodexUpdated bool
 			var addedErrors []string
-			cfg, addedUpdated, addedCodexUpdated, addedErrors = updateDetectedHarnessPlatforms(
-				ctx, dir, cfg, addedPlatforms, globalFlagsFromContext(cmd.Context()), cmd.OutOrStdout(),
+			cfg, addedUpdated, addedCodexUpdated, addedErrors = updateDetectedHarnessPlatformsWith(
+				ctx, dir, cfg, addedPlatforms, globalFlagsFromContext(cmd.Context()), cmd.OutOrStdout(), snapshot,
 			)
 			updated += addedUpdated
 			codexUpdated = codexUpdated || addedCodexUpdated
 			platformErrors = append(platformErrors, addedErrors...)
+			platformErrors = append(platformErrors, rea.finishUpdate(cmd.OutOrStdout(), dir, cfg)...)
 			if supervisorMigrated {
 				if codexUpdated {
 					fmt.Fprintln(cmd.OutOrStdout(), "  + Codex supervisor model now inherits the user default")
@@ -291,6 +293,7 @@ func newUpdateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&workspaceFlag, "workspace", false, "메타 워크스페이스의 하위 Git 리포까지 업데이트")
 	cmd.Flags().StringVar(&workspaceOnly, "only", "", "--workspace 대상 필터 (쉼표 구분 repo path/name)")
 	cmd.Flags().BoolVar(&localFlag, "local", false, "workspace 자동 감지를 끄고 현재 repo만 업데이트")
+	registerReaFlags(cmd, &reaOn, &reaOff)
 	cmd.Flags().Var(&freshnessReexec, updateFreshnessReexecFlag, "internal one-shot freshness re-exec nonce")
 	_ = cmd.Flags().MarkHidden(updateFreshnessReexecFlag)
 	return cmd

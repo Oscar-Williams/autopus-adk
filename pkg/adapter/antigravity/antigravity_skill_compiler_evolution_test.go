@@ -120,18 +120,22 @@ func TestAntigravityAgents_ProjectNativeToolsWithoutChangingBodyOrSkills(t *test
 	mirrorPath := filepath.Join(root, ".agents", "plugins", "autopus", "agents", "executor.md")
 	native := readAntigravityAgentContract(t, nativePath)
 	mirror := readAntigravityAgentContract(t, mirrorPath)
+	// agy 1.4 resolves these names; Gemini CLI's replace, glob, and
+	// run_shell_command keep it from constructing the agent.
 	wantTools := []string{
 		"read_file",
 		"write_file",
-		"replace",
+		"edit_file",
 		"grep_search",
-		"glob",
-		"run_shell_command",
+		"find_by_name",
+		"run_command",
 	}
 
 	assert.Equal(t, wantTools, native.Frontmatter.Tools)
 	assert.Equal(t, wantTools, mirror.Frontmatter.Tools)
-	assert.Equal(t, []string{"tdd", "ddd", "debugging", "ast-refactoring"}, native.Frontmatter.Skills)
+	// ddd and ast-refactoring are long-tail skills the default split surface
+	// does not install, so the declaration names only what Gemini received.
+	assert.Equal(t, []string{"tdd", "debugging"}, native.Frontmatter.Skills)
 	assert.Equal(t, native.Frontmatter.Skills, mirror.Frontmatter.Skills)
 	assert.Contains(t, native.Body, "# Executor Agent")
 	assert.Contains(t, native.Body, "Phase 1.5 Test Constraint")

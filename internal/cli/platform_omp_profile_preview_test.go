@@ -52,6 +52,7 @@ func planOMPProfileJSON(
 
 func TestOMPProfilePlanPreviewsEveryBundledAgentWithoutWrites(t *testing.T) {
 	root, runner := writeOMPBalancedProject(t)
+	markOMPProjectNative(t, root)
 	before, err := os.ReadFile(filepath.Join(root, autopusConfigName))
 	require.NoError(t, err)
 	entriesBefore, err := os.ReadDir(root)
@@ -95,6 +96,7 @@ func TestOMPProfilePlanPreviewsEveryBundledAgentWithoutWrites(t *testing.T) {
 // though implementation and routine roles also run on it.
 func TestOMPProfilePlanKeepsRepresentativeModelForCollapsedAgents(t *testing.T) {
 	root, runner := writeOMPBalancedProject(t)
+	markOMPProjectNative(t, root)
 
 	anthropic := planOMPProfileJSON(t, root, runner, "balanced")
 	for _, agent := range []string{"task", "reviewer", "security-reviewer"} {
@@ -104,7 +106,7 @@ func TestOMPProfilePlanKeepsRepresentativeModelForCollapsedAgents(t *testing.T) 
 	}
 	for _, agent := range []string{"scout", "sonic"} {
 		row := agentPreviewRow(t, anthropic, agent)
-		assert.Equal(t, "anthropic/claude-sonnet-5", row.EffectiveSelector, agent)
+		assert.Equal(t, "anthropic/claude-sonnet-5-5", row.EffectiveSelector, agent)
 		assert.Equal(t, "high", row.EffectiveThinking, agent)
 	}
 	for _, row := range anthropic.Agents {
@@ -203,16 +205,17 @@ func TestOMPProfilePlanRejectsUnavailableChoiceInJSONWithoutFakeSuccess(t *testi
 // borrows, so one pin moves both rows rather than silently applying to one.
 func TestOMPProfilePlanReportsAgentOverrideSourceForRootPin(t *testing.T) {
 	root, runner := writeOMPBalancedProject(t)
+	markOMPProjectNative(t, root)
 
 	payload := planOMPProfileJSON(
-		t, root, runner, "balanced", "--agent", "validator=anthropic/claude-sonnet-5:max",
+		t, root, runner, "balanced", "--agent", "validator=anthropic/claude-sonnet-5-5:max",
 	)
 
 	for _, native := range []string{"sonic", "task"} {
 		row := agentPreviewRow(t, payload, native)
 		assert.Equal(t, ompProfileSourceAgent, row.Source, native)
 		assert.Equal(t, "validator", row.PolicyKey, native)
-		assert.Equal(t, "anthropic/claude-sonnet-5", row.EffectiveSelector, native)
+		assert.Equal(t, "anthropic/claude-sonnet-5-5", row.EffectiveSelector, native)
 		assert.Equal(t, "max", row.EffectiveThinking, native)
 	}
 	assert.Equal(t, []string{"validator"}, payload.Persisted.Agents)
@@ -221,6 +224,7 @@ func TestOMPProfilePlanReportsAgentOverrideSourceForRootPin(t *testing.T) {
 
 func TestOMPProfilePlanKeepsExplicitCustomProfileAndItsFallbackVisible(t *testing.T) {
 	root, runner, profile := writeSelectedOMPProfile(t)
+	markOMPProjectNative(t, root)
 	route := profile.Capabilities[config.CapabilityFastValidation]
 	route.Candidates = []config.RoleModelCandidateConf{
 		{Selector: "openai/disabled-coder", Thinking: "high", Family: "openai"},
@@ -249,6 +253,7 @@ func TestOMPProfilePlanKeepsExplicitCustomProfileAndItsFallbackVisible(t *testin
 
 func TestOMPProfilePlanTextListsOrderedCandidatesAndSources(t *testing.T) {
 	root, runner := writeOMPBalancedProject(t)
+	markOMPProjectNative(t, root)
 	dir := root
 
 	text := executeOMPSubcommand(

@@ -6,9 +6,12 @@ coverage.out
 *.dylib
 .DS_Store
 *.out
+__pycache__/
+*.pyc
 
 # Autopus-ADK generated/runtime files
 .autopus/*-manifest.json
+.autopus/claude-code-permissions.json
 .autopus/context/signatures.md
 .autopus/plugins/
 .autopus/orchestra/
@@ -17,6 +20,7 @@ coverage.out
 .autopus/design/imports/
 .autopus/design/verify/
 .autopus/canary/
+.autopus/metrics/
 .autopus/backup/
 .autopus/cache/
 .autopus/docs/
@@ -86,3 +90,6 @@ credentials.enc
 !.env.example
 /tmp/autopus-*/
 runtime-a2a-canary-local-probe.md
+
+# Autopus-ADK generated files
+.autopus/reverse/

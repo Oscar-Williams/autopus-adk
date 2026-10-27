@@ -3,7 +3,6 @@ package antigravity
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -59,6 +58,11 @@ func (a *Adapter) Detect(_ context.Context) (bool, error) {
 
 // Generate creates Antigravity CLI files based on the harness config.
 func (a *Adapter) Generate(_ context.Context, cfg *config.HarnessConfig) (*adapter.PlatformFiles, error) {
+	// A refused REA change ends the run before any file is written.
+	reaMCP, reaChanged, err := a.planReaPluginMCP(antigravityReaAction(cfg))
+	if err != nil {
+		return nil, err
+	}
 	antigravitySkillDir := filepath.Join(a.root, ".gemini", "skills", "autopus")
 	if err := os.MkdirAll(antigravitySkillDir, 0755); err != nil {
 		return nil, fmt.Errorf(".gemini/skills/autopus 디렉터리 생성 실패: %w", err)
@@ -116,7 +120,7 @@ func (a *Adapter) Generate(_ context.Context, cfg *config.HarnessConfig) (*adapt
 
 	// Copy agent content files (full mode)
 	if cfg.IsFullMode() {
-		agentFiles, err := a.renderAgentFiles()
+		agentFiles, err := a.renderAgentFiles(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("제미니 에이전트 파일 복사 실패: %w", err)
 		}
@@ -163,20 +167,16 @@ func (a *Adapter) Generate(_ context.Context, cfg *config.HarnessConfig) (*adapt
 		return nil, err
 	}
 	files = append(files, resourceFiles...)
+	if reaChanged {
+		if err := a.writeReaPluginMCP(reaMCP); err != nil {
+			return nil, err
+		}
+	}
 
 	files, err = rewriteSanitizedAntigravityMappings(a.root, files)
 	if err != nil {
 		return nil, err
 	}
-	completionHookAssets, err := prepareAntigravityCompletionHookAssets()
-	if err != nil {
-		return nil, err
-	}
-	rollbackHooks, err := applyAntigravityManagedHookAssets(a.root, completionHookAssets)
-	if err != nil {
-		return nil, err
-	}
-	files = append(files, completionHookAssets...)
 
 	pf := &adapter.PlatformFiles{
 		Files:    files,
@@ -185,7 +185,7 @@ func (a *Adapter) Generate(_ context.Context, cfg *config.HarnessConfig) (*adapt
 
 	m := adapter.ManifestFromFiles(adapterName, pf)
 	if err := m.Save(a.root); err != nil {
-		return nil, errors.Join(fmt.Errorf("매니페스트 저장 실패: %w", err), rollbackHooks())
+		return nil, fmt.Errorf("매니페스트 저장 실패: %w", err)
 	}
 
 	return pf, nil

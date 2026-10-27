@@ -31,6 +31,10 @@ type Adapter struct {
 	codexVersion        string
 	codexFallbackWriter io.Writer
 	codexFallbackSeen   map[string]struct{}
+	pluginBaseVersion   *string
+	// reaFallbacks holds the REA analysis-rung fallbacks the last surface
+	// preparation took; applyPreparedFiles reports them once the files land.
+	reaFallbacks []adapter.ReaFallback
 }
 
 // Option customizes a Codex adapter.
@@ -51,6 +55,16 @@ func WithCLIVersion(version string) Option {
 	return func(a *Adapter) {
 		a.codexVersionProbed = true
 		a.codexVersion = version
+	}
+}
+
+// WithPluginBaseVersion pins the generator version the plugin manifest takes
+// its semver base from, instead of the version this binary was built with. A
+// hermetic evaluation uses it so every build of one source tree produces the
+// same surface; the value is normalized exactly like a build version.
+func WithPluginBaseVersion(generatorVersion string) Option {
+	return func(a *Adapter) {
+		a.pluginBaseVersion = &generatorVersion
 	}
 }
 
@@ -104,6 +118,7 @@ func (a *Adapter) applyPreparedFiles(
 		return nil, fmt.Errorf("매니페스트 로드 실패: %w", err)
 	}
 	newFiles, err := a.prepareFilesWithManifest(cfg, oldManifest)
+	reaFallbacks := a.takeReaFallbacks()
 	if err != nil {
 		return nil, err
 	}
@@ -114,6 +129,7 @@ func (a *Adapter) applyPreparedFiles(
 	if _, err := adapter.ApplyTransaction(a.root, adapterName, plan); err != nil {
 		return nil, err
 	}
+	adapter.ReportReaFallbacks(ctx, reaFallbacks...)
 	return files, nil
 }
 

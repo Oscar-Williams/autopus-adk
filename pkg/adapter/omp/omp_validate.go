@@ -44,11 +44,15 @@ func (a *Adapter) validateInstalledSurface(ctx context.Context) ([]adapter.Valid
 	if modelCtx == nil {
 		modelCtx = context.Background()
 	}
-	_, err = a.prepareModelIntegration(modelCtx, cfg)
+	integration, err := a.prepareModelIntegration(modelCtx, cfg)
 	if err != nil {
 		return findings, err
 	}
-	rules, err := a.prepareRuleMappings()
+	agents, err := a.expectedOMPAgentMappings(cfg, integration)
+	if err != nil {
+		return findings, err
+	}
+	rules, err := a.prepareRuleMappings(cfg)
 	if err != nil {
 		return findings, err
 	}
@@ -78,6 +82,7 @@ func (a *Adapter) validateInstalledSurface(ctx context.Context) ([]adapter.Valid
 	expected = append(expected, extended...)
 	expected = append(expected, commands...)
 	expected = append(expected, contextMappings...)
+	expected = append(expected, agents...)
 	findings = append(findings, a.validateOMPExpectedMappings(expected)...)
 	findings = append(findings, a.validateOMPManifestIntegrity(expected)...)
 	findings = append(findings, a.validateOMPSensitivePermissions()...)

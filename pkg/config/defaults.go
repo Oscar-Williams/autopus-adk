@@ -16,6 +16,21 @@ const (
 	GeminiOrchestraTimeoutSeconds = 480
 )
 
+// DefaultEditGuard is what an unset hooks.edit_guard resolves to
+// (SPEC-EDITGUARD-001 REQ-EG-12). DefaultFullConfig leaves the key unset instead
+// of writing this value: config decoding rejects unknown keys, so a saved
+// `edit_guard` line would make every older binary fail to load the file.
+const DefaultEditGuard = true
+
+// IsEditGuardEnabled reports whether hook generation registers the edit guard.
+// An explicit value wins; nil means unset and resolves to DefaultEditGuard.
+func (h HooksConf) IsEditGuardEnabled() bool {
+	if h.EditGuard == nil {
+		return DefaultEditGuard
+	}
+	return *h.EditGuard
+}
+
 // DefaultCodexProviderEntry returns the canonical Codex orchestra provider entry.
 func DefaultCodexProviderEntry() ProviderEntry {
 	return CodexProviderEntryForQuality(QualityConf{Default: "balanced"})
@@ -28,9 +43,8 @@ func CodexProviderEntryForQuality(quality QualityConf) ProviderEntry {
 		Binary:      "codex",
 		ModelPolicy: ProviderModelPolicyQuality,
 		// SPEC-ORCH-021 REQ-014/015: `exec --sandbox workspace-write` (no deprecated --full-auto);
-		// reasoning effort aligned to autopus.yaml. Pane argv stays interactive (no leading `exec`).
+		// reasoning effort aligned to autopus.yaml.
 		Args:          []string{"exec", "--json", "--sandbox", "workspace-write", "-m", profile.Model, "-c", `model_reasoning_effort="` + profile.Effort + `"`},
-		PaneArgs:      []string{"-m", profile.Model, "-c", `model_reasoning_effort="` + profile.Effort + `"`},
 		PromptViaArgs: false,
 		Subprocess: SubprocessProvConf{
 			SchemaFlag: "--output-schema",
@@ -80,6 +94,8 @@ func DefaultFullConfig(projectName string) *HarnessConfig {
 			Enforce:    true,
 			ReviewGate: true,
 		},
+		// EditGuard stays unset so a fresh autopus.yaml carries no key an
+		// older binary rejects; IsEditGuardEnabled resolves it to true.
 		Hooks: HooksConf{
 			PreCommitArch:  true,
 			PreCommitLore:  true,
@@ -99,8 +115,8 @@ func DefaultFullConfig(projectName string) *HarnessConfig {
 			Providers: map[string]ProviderEntry{
 				"claude": DefaultClaudeProviderEntry(),
 				// SPEC-ORCH-021 REQ-014/015: prompt is the value of --print (injected into the ""
-				// slot); pane argv carries no --print (interactive session).
-				"gemini": {Binary: "agy", Args: []string{"--print", ""}, PaneArgs: []string{}, PromptViaArgs: true, InteractiveInput: "stdin", Subprocess: SubprocessProvConf{OutputFormat: "text", Timeout: GeminiOrchestraTimeoutSeconds}},
+				// slot).
+				"gemini": {Binary: "agy", Args: []string{"--print", ""}, PromptViaArgs: true, Subprocess: SubprocessProvConf{OutputFormat: "text", Timeout: GeminiOrchestraTimeoutSeconds}},
 				"codex":  DefaultCodexProviderEntry(),
 			},
 			Commands: map[string]CommandEntry{
@@ -125,7 +141,7 @@ func DefaultFullConfig(projectName string) *HarnessConfig {
 						"spec-writer": "fable",
 						"annotator":   "opus", "devops": "opus", "executor": "opus",
 						"explorer": "opus", "frontend-specialist": "opus",
-						"perf-engineer": "opus", "tester": "opus",
+						"perf-engineer": "opus", "reverse-engineer": "opus", "tester": "opus",
 						"ux-validator": "opus", "validator": "opus",
 					},
 				},
@@ -174,13 +190,12 @@ func DefaultFullConfig(projectName string) *HarnessConfig {
 		},
 		Features: FeaturesConf{
 			CC21: CC21FeaturesConf{
-				Enabled:                 false,
-				EffortEnabled:           false,
-				MonitorEnabled:          false,
-				TaskCreatedEnabled:      false,
-				InitialPromptEnabled:    false,
-				TaskCreatedMode:         "warn",
-				MonitorPatternTimeoutMS: 30000,
+				Enabled:              false,
+				EffortEnabled:        false,
+				MonitorEnabled:       false,
+				TaskCreatedEnabled:   false,
+				InitialPromptEnabled: false,
+				TaskCreatedMode:      "warn",
 			},
 		},
 	}

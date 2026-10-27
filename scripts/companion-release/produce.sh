@@ -141,13 +141,23 @@ fi
 
 notary_container="$temp_dir/auto.zip"
 notary_response="$temp_dir/notarytool.json"
+notary_error="$temp_dir/notarytool-error.txt"
 identity_details="$temp_dir/codesign-details.txt"
 "$ditto_tool" -c -k --sequesterRsrc --keepParent "$artifact_path" "$notary_container" \
   >/dev/null 2>&1 || fail 'notarizable container creation failed'
+# notary_fail prints notarytool's stderr and JSON response before failing.
+notary_fail() {
+  report_codesign_diagnostic 'notarytool' "$notary_error"
+  report_codesign_diagnostic 'notarytool response' "$notary_response"; fail "$1"
+}
+# notarytool names the rejection (an unaccepted developer agreement, a revoked
+# key, an Invalid verdict) only on stderr and in its JSON response. Both were
+# discarded, so two failed v0.50.121 attempts left nothing but "submission
+# failed". Neither carries the API key material, only its ID and the response.
 "$xcrun_tool" notarytool submit "$notary_container" \
   --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" --issuer "$APPLE_API_ISSUER" \
-  --wait --output-format json >"$notary_response" 2>/dev/null \
-  || fail 'notarytool submission failed'
+  --wait --output-format json >"$notary_response" 2>"$notary_error" \
+  || notary_fail 'notarytool submission failed'
 
 if ! notary_status=$("$plutil_tool" -extract status raw -o - "$notary_response" 2>/dev/null); then
   fail 'notarytool response is missing status'
@@ -157,15 +167,17 @@ if ! notary_id=$("$plutil_tool" -extract id raw -o - "$notary_response" 2>/dev/n
 fi
 uuid_pattern='^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[1-5][0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$'
 [[ "$notary_status" == 'Accepted' && "$notary_id" =~ $uuid_pattern ]] \
-  || fail 'notarization was not Accepted with a valid submission UUID'
+  || notary_fail 'notarization was not Accepted with a valid submission UUID'
 
 designated_requirement='identifier "co.autopus.adk" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and certificate leaf[subject.OU] = "GP2PFA2PUV" and notarized'
-if ! "$codesign_tool" --verify --strict --all-architectures --verbose=2 \
-  --check-notarization "-R=$designated_requirement" "$artifact_path" \
-  >"$identity_details" 2>&1; then
-  report_codesign_diagnostic 'codesign verify' "$identity_details"
-  fail 'code-sign designated requirement verification failed'
-fi
+# Identity, anchor and team fail at once. Only the notarized clause is retried:
+# Apple's ticket lookup can lag an Accepted verdict (v0.50.124 release).
+for notarization_wait in - 0 10 20 30 45 60; do
+  [[ "$notarization_wait" == - ]] && requirement=${designated_requirement% and notarized} || { /bin/sleep "$notarization_wait"; requirement=$designated_requirement; }
+  "$codesign_tool" --verify --strict --all-architectures --verbose=2 --check-notarization "-R=$requirement" "$artifact_path" >"$identity_details" 2>&1 && { [[ "$notarization_wait" == - ]] || break; continue; }
+  [[ "$notarization_wait" != - && "$notarization_wait" != 60 ]] && continue
+  report_codesign_diagnostic 'codesign verify' "$identity_details"; fail 'code-sign designated requirement verification failed'
+done
 "$codesign_tool" -dv --verbose=4 "$artifact_path" >"$identity_details" 2>&1 \
   || fail 'code-sign identity inspection failed'
 grep -Fqx 'Identifier=co.autopus.adk' "$identity_details" \

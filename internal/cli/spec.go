@@ -55,18 +55,22 @@ func newSpecValidateCmd() *cobra.Command {
 	var strict bool
 
 	cmd := &cobra.Command{
-		Use:   "validate <spec-dir>",
+		Use:   "validate <spec-dir|SPEC-ID>",
 		Short: "Validate a SPEC document",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			doc, err := spec.Load(args[0])
+			target, err := resolveGatesTarget(args[0])
+			if err != nil {
+				return err
+			}
+			doc, err := spec.Load(target.SpecDir)
 			if err != nil {
 				return fmt.Errorf("SPEC 로드 실패: %w", err)
 			}
 
 			errs := spec.ValidateSpec(doc)
 			if strict {
-				errs = spec.ValidateSpecSet(args[0], doc)
+				errs = spec.ValidateSpecSet(target.SpecDir, doc)
 			}
 			if len(errs) == 0 {
 				fmt.Println("SPEC 검증 통과")

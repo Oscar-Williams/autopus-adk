@@ -28,6 +28,10 @@ type ompProfileApplyOptions struct {
 	agents   []ompProfileAgentAssignment
 	plan     bool
 	jsonMode bool
+	// pinsOnly replaces the profile, family, and agents with pins exactly:
+	// the autopus-mode OMP tab's pins-only policy (newOMPPinsOnlyApplyOptions).
+	pinsOnly bool
+	pins     map[string]config.RoleAgentOverrideConf
 }
 
 // ompProfileAgentAssignment pins or clears one agent's root-level override.
@@ -49,6 +53,9 @@ func newOMPProfileApplyOptions(
 ) (ompProfileApplyOptions, error) {
 	if !config.IsValidQualityPresetName(name) {
 		return ompProfileApplyOptions{}, ompProfilePlanError{reason: "profile_name_invalid"}
+	}
+	if name == config.PinsOnlyRoleModelProfileName {
+		return ompProfileApplyOptions{}, ompProfilePlanError{reason: "profile_name_reserved"}
 	}
 	canonicalFamily, err := normalizeOMPRoleModelFamily(family)
 	if err != nil {

@@ -1,0 +1,71 @@
+{
+  "schema_version": "harness_golden_task.v1",
+  "id": "GT-AGENT-A02",
+  "kind": "agent",
+  "category": "telemetry_call_identity",
+  "intent": "Fix usage aggregation so separate model calls and retries within the same run retain their own spend. Repeated copies of the same call must still count once, and contradictory receipts for the same call must block a trustworthy total.",
+  "outcome": "With the generated Codex surface installed, the agent repairs the seeded regression in pkg/telemetry/usage_aggregate.go so every expected oracle test passes again (Seeds accidental run-level rather than call-level deduplication; existing oracle covers copies, distinct retry calls, and conflicting duplicates.)",
+  "variants": [],
+  "assertions": [
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/config.toml"
+    },
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/skills/codex-auto/SKILL.md"
+    }
+  ],
+  "corpus_ref": {
+    "file": "scripts/benchmarks/harness/corpus_a.json",
+    "task_id": "a02",
+    "file_sha256": "97c03debd2dd2e9414a585ec3fabc931228ed87167fe98ffc51b3d9abf774101"
+  },
+  "expected_tests": [
+    "TestAggregateUsage_DuplicateIdentity_DeduplicatesOrBlocksOnConflict"
+  ],
+  "oracle_mode": "black_box",
+  "black_box_oracle": {
+    "build": "./cmd/auto",
+    "command": [
+      "{artifact}",
+      "telemetry",
+      "team",
+      "--evidence-json",
+      "{input}/team.json",
+      "--format",
+      "json"
+    ],
+    "inputs": [
+      {
+        "path": "evals/harness/oracles/GT-AGENT-A02/team.json",
+        "sha256": "e5968709fd1ce0b059e2108eddcafd813e376844c0396a279956b99d10011f90"
+      }
+    ],
+    "assertions": [
+      {
+        "id": "exit",
+        "kind": "exit_code",
+        "exit_code": 0
+      },
+      {
+        "id": "stdout",
+        "kind": "stdout",
+        "expected": {
+          "path": "evals/harness/oracles/GT-AGENT-A02/stdout.json",
+          "sha256": "beac58a3e529c8b9ddc20b65f26a280cd05e149b491f73d45d6820f3598f6bd6"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "benchmark",
+    "ref": "scripts/benchmarks/harness/corpus_a.json#a02"
+  },
+  "status": {
+    "state": "active",
+    "reason": ""
+  }
+}

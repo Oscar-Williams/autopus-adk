@@ -303,7 +303,8 @@ days, so the guard is a verdict table with the same three states, and clearing a
 refusal is a measurement rather than an edit:
 
 ```
-17.2.7            -> in use, measured good
+18.12.3           -> in use, measured good (10 compactions, 3429 bp, 2026-10-23)
+17.2.7            -> measured good, the pin until 2026-10-20; still admitted
 18.1.2 | 18.1.5   -> refused with compactions=2/2 median_reduction_bp=0/2000
 18.1.13           -> refused with compactions=2/2 median_reduction_bp=895/2000
 anything else     -> refused as unmeasured; --measure moves it for one cohort
@@ -392,3 +393,109 @@ warn  upstream latest is v18.1.5; the pin is v17.2.7. Advancing is its own task
       because the reduction floor is measured in the canary, not declared: run
       scripts/release-tools/advance-omp-pin.sh 18.1.5
 ```
+
+## Moved 2026-10-20: omp/18.12.3, unmeasured, for gpt-6.1-sol
+
+The A36 (`v0.50.126`) canary on omp/17.2.7 with `gpt-5.6-sol` stopped at call 4
+with `managed active OMP usage delta is empty`. It was not the pin and not an ADK
+regression: v0.50.125, which passed on 2026-10-12, failed the same way that day.
+Four distinct single-turn `gpt-5.6-sol` requests sent back to back through the
+gateway answered three times and then returned
+`Codex is at capacity, please try again later (code=turn_rate_limit_exceeded)`,
+and canary call 4 is the fourth turn inside about ten seconds. Gateway 18.2.10
+turned that error into an empty `stop` with zero usage, and 17.2.7 retried the
+empty stop and dropped it, which is why the run reported usage, not the limit.
+
+`gpt-6.1-sol` did not hit the limit, but the 17.2.7 catalog has no
+`gpt-6.1-sol`, so the release model needs a newer pin. omp/18.12.3 passed the
+launch contract (`--measure`: asset digest `f2a657b3…`, managed protocol v2),
+ran the unchanged managed RPC path through a 40-call cohort against a loopback
+fake gateway, and passed a live 12-call prefix of the cohort with
+`gpt-6.1-sol`:
+
+| pair | full input | optimized input | optimized compacted |
+|---|---|---|---|
+| 1 | 29891 | 29891 | no |
+| 2 | 54143 | 50352 | yes |
+| 3 | 78395 | 74604 | no |
+| 4 | 102647 | 76482 | yes |
+| 5 | 126899 | 100734 | no |
+| 6 | 151151 | 75600 | yes |
+
+18.12.3 compacts every second optimized call, including the one-turn session
+17.2.7 refused with "Nothing to compact", so the gap widens with history. That
+is a trend, not the verdict: the reduction floor is measured by the next
+`release-prep.sh --apply`. Record its numbers in the `advance-omp-pin.sh`
+table and in `ompContextReductionVerified` either way.
+
+### Measured 2026-10-23: omp/18.12.3 clears the floor and is the pin in use
+
+The A36 (`v0.50.127`) `release-prep.sh --apply` ran the full 40-call cohort on
+omp/18.12.3 with `gpt-6.1-sol` and context window 262144. Every gate passed,
+the report was signed, and release `v0.50.127` (GitHub release `421737046`,
+immutable) was published on it. It is the first published release whose
+evidence names an 18.x OMP: every evidence tag before `v0.50.126` that carries
+a v1 report names omp/17.2.7, and `v0.50.126` was never published (below).
+
+The evidence is the orphan tag `omp-context-evidence-v0.50.127`, tag object
+`7f7a8451f33a665306d6bcc923315f08eef3eac4`, commit
+`510d462be882a9e8607a8c95c852ae253eba6125`. Its
+`omp-context-promotion-report.v1.json` states:
+
+| field | value |
+|---|---|
+| `runtime.omp_version`, `runtime.omp_executable_sha256` | `omp/18.12.3`, `sha256:f2a657b3…` (the pinned digest) |
+| `runtime.auto_version`, `candidate.revision` | `0.50.127`, `81186d0c` (the commit the release tag names) |
+| `policy.policy_id`, `policy.min_reduction_basis_points` | `omp-context-active-v1`, `2000`: oracle v1, the same policy digest as every 17.2.7 evidence tag |
+| `gates[multi-compaction-admission].observed_value` | `10/20`: **10 compactions** |
+| `gates[token-reduction].observed_value` | `3429` against `2000`: **median reduction 3429 bp** |
+| `gates[].status` | `passed` for all 14 |
+| `observations` | 40 calls, AB/BA 10/10, `retry_count` 0 and `quality_score` 10000 on every call |
+| `model_scope_digest` | `sha256:a723a6f9…`: all five phases on `openai-codex/gpt-6.1-sol` |
+
+The model and the window are not plain fields. `model_scope_digest` is the
+sha256 of the five sorted `phase=openai-codex/gpt-6.1-sol` entries, and
+recomputing it gives the value above. The window is hashed into
+`provider_authority_digest` together with the credential, so it cannot be
+recomputed offline; `release-prep.sh` refuses any window other than the
+production `pipelineOMPActiveDefaultContextWindow`, 262144, before the canary
+starts.
+
+The median also recomputes from `observations[].input_tokens`: the per-pair
+reductions are `[0,701,484,2550,2063,5000,4309,6280,5599,7059]` in both
+segments, and the median of the 20 is (2550 + 4309) / 2 = 3429 in the
+integer division `medianOMPContextCanaryV1` uses. Every compaction lands on
+an even optimized call, with pre and post ACKs 10/10, which is the cadence the
+live 12-call prefix above showed.
+
+| | omp/17.2.7 (v0.50.125) | omp/18.12.3 (v0.50.127) |
+|---|---|---|
+| model | `gpt-5.6-sol` | `gpt-6.1-sol` |
+| compaction cycles | 8 | **10** |
+| median reduction | 2334 bp | **3429 bp** |
+| every other gate | pass | pass |
+
+The model changed with the binary, so the gap between the columns is not
+attributable to OMP alone. What the measurement settles is narrower and
+sufficient: 18.12.3 clears the attested 20% floor on the release workload with
+the release model.
+
+The burned `v0.50.126` attempt measured it first. Its cohort on 2026-10-20
+passed with identical numbers (`10/20`, `3429`, 14 of 14 gates) and was signed
+into `omp-context-evidence-v0.50.126` (tag object
+`6e4f7507650d5181e7172d80f72f435c918967e3`, commit
+`4787c4a5d54e741da4882b2e4c7be6a4698b6918`). That attestation expired while
+the release job waited for approval, and the coordinate burned with it; see
+[release-v0.50.127.md](release-v0.50.127.md). It counts as a second
+measurement of the same verdict, never as release evidence to reuse.
+
+Recorded where the verdict is read:
+
+- `advance-omp-pin.sh` admits 18.12.3 without `--measure`. 17.2.7 stays
+  admitted as measured good, so moving back to it is still the rollback path.
+- `ompContextReductionVerified` gains `omp/18.12.3` and keeps `omp/17.2.7`.
+  The doctor row reports what this repository measured for the installed OMP,
+  not which version is pinned, and 17.2.7 was measured clearing the floor.
+- `TestOMPContextReductionVerified_AdmittedByThePinScriptWithoutMeasure` runs
+  the pin script for every version in that list, so a verdict recorded in one
+  place and not the other fails CI instead of reaching an operator.

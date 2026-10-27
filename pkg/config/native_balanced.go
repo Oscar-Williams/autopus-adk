@@ -4,7 +4,8 @@ import "maps"
 
 // NativeBalancedAgentCandidate projects the same role matrix used by OMP onto
 // the native Claude/Codex agent defaults. A different explicit tier retains
-// the existing custom-tier path; an override never changes a sibling's route.
+// the existing custom-tier path, and so does any explicit effort
+// (SPEC-MODELUX-003 REQ-MUX3-02); an override never changes a sibling's route.
 // Historical complete default layouts remain standard without rewriting YAML.
 func (q QualityConf) NativeBalancedAgentCandidate(provider, agent string) (RoleModelCandidateConf, bool) {
 	provider, ok := NormalizeQualityProvider(provider)
@@ -23,6 +24,9 @@ func (q QualityConf) NativeBalancedAgentCandidate(provider, agent string) (RoleM
 			return RoleModelCandidateConf{}, false
 		}
 	}
+	if _, explicit := q.AgentEffort(provider, agent); explicit {
+		return RoleModelCandidateConf{}, false
+	}
 	family := builtinRoleModelFamilyAnthropic
 	if provider == QualityProviderCodex {
 		family = builtinRoleModelFamilyOpenAI
@@ -31,10 +35,14 @@ func (q QualityConf) NativeBalancedAgentCandidate(provider, agent string) (RoleM
 }
 
 func balancedTierForRung(rung balancedRoleRung) string {
-	if rung == balancedRungTop {
+	switch rung {
+	case balancedRungTop:
 		return "fable"
+	case balancedRungAnalysis:
+		return "opus"
+	default:
+		return "sonnet"
 	}
-	return "sonnet"
 }
 
 // defaultBalancedAgentTiers returns a fresh map for caller-owned quality
@@ -47,28 +55,13 @@ func defaultBalancedAgentTiers() map[string]string {
 	return agents
 }
 
-// These exact layouts were shipped as complete default presets. A partial
-// map or any different value is user customization, not an upgrade marker.
-var historicalBalancedDefaults = []map[string]string{
-	{
-		"architect": "fable", "planner": "fable", "security-auditor": "fable",
-		"debugger": "opus", "deep-worker": "opus", "executor": "opus",
-		"reviewer": "opus", "spec-writer": "opus",
-		"annotator": "sonnet", "devops": "sonnet", "explorer": "sonnet",
-		"frontend-specialist": "sonnet", "perf-engineer": "sonnet",
-		"tester": "sonnet", "ux-validator": "sonnet", "validator": "sonnet",
-	},
-	{
-		"architect": "opus", "debugger": "sonnet", "devops": "sonnet",
-		"executor": "sonnet", "explorer": "sonnet", "planner": "opus",
-		"reviewer": "sonnet", "security-auditor": "opus", "spec-writer": "opus",
-		"tester": "sonnet", "validator": "sonnet",
-	},
-}
-
+// isHistoricalBalancedDefault reports whether agents is a shipped balanced
+// layout the runtime keeps on the standard placement (registry rows marked
+// runtimeStandard). A partial map or any different value is user
+// customization, not an upgrade marker.
 func isHistoricalBalancedDefault(agents map[string]string) bool {
-	for _, previous := range historicalBalancedDefaults {
-		if maps.Equal(agents, previous) {
+	for _, row := range historicalQualityPresets {
+		if row.preset == "balanced" && row.runtimeStandard && maps.Equal(agents, row.agents) {
 			return true
 		}
 	}

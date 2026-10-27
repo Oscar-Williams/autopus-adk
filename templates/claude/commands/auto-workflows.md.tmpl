@@ -627,14 +627,14 @@ IMPORTANT: You MUST execute this step via the Bash tool. Do NOT skip to Step 4 o
 For `STRATEGY=debate`, execute the explicit debate branch:
 
 ```bash
-auto orchestra brainstorm "{structured idea}" --strategy debate --providers {PROVIDERS} --rounds 2 --judge {invoking_provider} --no-detach --format json
+auto orchestra brainstorm "{structured idea}" --strategy debate --providers {PROVIDERS} --rounds 2 --judge {invoking_provider} --format json
 ```
 
 For `consensus`, `pipeline`, or `fastest`, execute the requested strategy
 without `--rounds` or `--judge`:
 
 ```bash
-auto orchestra brainstorm "{structured idea}" --strategy {STRATEGY} --providers {PROVIDERS} --no-detach --format json
+auto orchestra brainstorm "{structured idea}" --strategy {STRATEGY} --providers {PROVIDERS} --format json
 ```
 
 Omit `--providers` only when the user did not supply an explicit provider list.
@@ -645,16 +645,12 @@ merged brainstorm result.
 - `--multi` flag is ALWAYS active for idea — orchestra is the default engine
 - `--ultrathink` combines with orchestra: run orchestra first, then use Sequential Thinking to deepen the judge's analysis
 - `--rounds 2` is debate-only. For another requested strategy, omit this flag and execute the requested strategy without relabeling it.
-- The orchestra engine owns pane collection, informed revision, anonymization, and judge lifecycle. Do not reconstruct those phases in the workflow prompt.
+- The orchestra engine owns provider collection, informed revision, anonymization, and judge lifecycle. Do not reconstruct those phases in the workflow prompt.
 - Every provider in the resolved configured debate set, including Claude, must participate in both Round 1 and Round 2; judge selection must not remove a participant.
 - The blind judge must use the invoking provider in a fresh isolated provider session and preserve every dissenting idea in the result appendix. It must not reuse or share Round 1/2 participant session context, history, or tool state.
 
-**Fallback rule**: If the first Bash call returns an error, display the exact
-error and retry the same orchestra engine once with `--subprocess`,
-`--no-detach`, and `--format json`, preserving the selected
-strategy/providers and debate-only
-flags. Only when that same-engine retry also fails may native agents be
-considered. Native fallback requires runtime evidence that every provider in the
+**Fallback rule**: If the Bash call returns an error, display the exact error.
+Only after that error may native agents be considered. Native fallback requires runtime evidence that every provider in the
 resolved configured debate set, including Claude, participates in both rounds
 and that the invoking provider runs the separate blind judge in a fresh isolated
 provider session without reusing either participant session.
@@ -1193,6 +1189,87 @@ Pass each phase result into the next dependent prompt. For independent Route A
 writers, optional worktree isolation is allowed only when the runtime schema
 exposes it, and every isolated result must be integrated before validation.
 
+#### Route A Phase 2 Entry: Agent Team Auto-Selection
+
+When a Route A run enters Phase 2, the CLI decides once whether the first ready
+wave runs as a native Agent Team. The session copies facts in and follows the
+decision; it never decides on its own. Each teammate is a separate Claude
+session, so a team run uses more tokens; the feature is experimental.
+
+1. This section runs only when `TOPOLOGY_FLAG_COUNT == 0`, exactly once, before
+   any Phase 2 dispatch. A `--continue` run that resumes from a checkpoint where
+   Phase 2 already finished skips this section and prints no `Agent Team:` line.
+2. Do steps (a)–(d) in ONE Bash tool call from `WORKING_DIR`, because shell
+   variables such as `FACTS` do not survive between Bash tool calls.
+   (a) Create `FACTS="$(mktemp)"` and `TEAM_JSON="$(mktemp)"`.
+   (b) Copy the Phase 1 assignment table into `FACTS`, done units included:
+   `Unit` → `id`, `Execution` → `execution` (`worker` or `inline`),
+   `Owned paths` → `owned_paths` (literal paths or one trailing `/**`),
+   `Depends on` → `depends_on`, and `done: true` for a unit that is already
+   complete. Write it with the quoted heredoc below (`<<'JSON'`) so the shell
+   expands nothing in the facts; never use `echo` or an unquoted heredoc. A plan
+   without a table, for example a compact route that kept one unit, writes
+   `"units": []`, which decides `fewer_than_two_ready`.
+
+```bash
+cat >"$FACTS" <<'JSON'
+{"version": 1,
+ "flags": {"team": false, "workflow": false, "solo": false},
+ "units": [{"id": "T1", "execution": "worker", "owned_paths": ["pkg/a/**"], "depends_on": [], "done": false}]}
+JSON
+```
+
+   (c) Run this snippet exactly as written. It discards stderr so a diagnostic
+   never becomes a second line:
+
+```sh
+if ! auto workflow triage --topology --facts-json "$FACTS" --format json >"$TEAM_JSON" 2>/dev/null || [ ! -s "$TEAM_JSON" ]; then
+  printf '%s\n' 'Agent Team: off — auto workflow triage --topology failed; running subagents'
+  : >"$TEAM_JSON"
+fi
+rm -f "$FACTS"
+```
+
+   (d) Print the decision with `cat "$TEAM_JSON"`, then remove the file with
+   `rm -f "$TEAM_JSON"`.
+3. If `TEAM_JSON` is empty, the snippet already printed the fixed failure line.
+   Print no other `Agent Team:` line and run Route A Phase 2.
+4. If `decision.route` is `subagent`, print `decision.line` and run Route A
+   Phase 2 unchanged. No named teammate is launched.
+5. If `decision.route` is `team`, load the team tool schemas with ToolSearch
+   `select:SendMessage,TaskCreate,TaskUpdate,TaskList,TaskGet`. A team needs
+   only `SendMessage` and the `name` parameter of the `Agent` tool; the shared
+   task-list tools are optional, and current Claude Code releases enable them
+   only in some configurations. If either one is missing,
+   print `decision.tools_fallback_line` instead of `decision.line` and run
+   Route A Phase 2. The CLI cannot tell a subagent from the top-level
+   session, whose environments Claude Code marks alike, so this check is what
+   keeps a session without the team tools, such as a subagent, on subagents.
+   When both are present, print `decision.line` and run exactly the
+   `decision.team_units` under the Route B lifecycle: named teammates
+   `builder-1` … `builder-n` in `team_units` order, one per unit, each prompt
+   carrying its unit assignment, the Phase 2 prompt items (requirement, owned
+   and forbidden paths, acceptance, gate decisions, minimality ladder), and
+   the Route B receipt fields. When the task-list tools loaded, also record
+   one shared task per unit; without them the lead tracks the units itself.
+   Launch no `tester` or `guardian` teammate.
+
+A run prints exactly one `Agent Team:` line: `decision.line`,
+`decision.tools_fallback_line`, or the snippet's failure line.
+"Print" means: copy the JSON string value verbatim as its own line of your
+reply text, before the Phase 2 dispatch. Do not translate, paraphrase, or
+fold it into a sentence, and write `Agent Team:` nowhere else in the run,
+including the completion report. The message that starts Phase 2 carries
+this line as its text, ahead of its tool call: the first `Agent` dispatch,
+or the first edit or command when the lead implements a unit inline. A
+message that starts Phase 2 with no text skipped the print.
+
+After the team wave, send every teammate a shutdown request and wait for every
+acknowledgement. Then implement exactly the `decision.followup_units` (the
+Phase 2 units that are neither in `team_units` nor done) under the Route A
+Phase 2 rules, and never re-run a done unit. Only after that, enter Gate 2 and
+continue under Route A.
+
 #### Route B: Native Agent Team (`--team`)
 
 `--team` uses Claude Code's native implicit team. It never dispatches a Workflow.
@@ -1201,13 +1278,18 @@ Preflight:
 1. Claude Code is 2.1.246 or newer.
 2. `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` is present in the current session.
 3. The session is interactive.
-4. The current schemas for `Agent`, `SendMessage`, and shared task-list tools are loaded.
+4. The `Agent` tool exposes its `name` parameter and the `SendMessage` schema is loaded.
 
 If preflight fails, report the blocker and suggest Route A. Do not silently
 switch to `--workflow`.
 
-The lead creates shared tasks with disjoint `owned_paths` and explicit
-`forbidden_paths`, then launches named teammates:
+The shared task-list tools (`TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet`)
+are optional. Request them in the same ToolSearch call as `SendMessage` and use
+them when they load; current Claude Code releases enable them only in some
+configurations. Without them the lead keeps the assignment table itself.
+
+The lead assigns disjoint `owned_paths` and explicit `forbidden_paths`, then
+launches named teammates, each carrying its assignment in its prompt:
 
 ```python
 Agent(
@@ -1238,14 +1320,18 @@ Agent(
 )
 ```
 
-Named teammates share the working tree and task list. Do not pass call-level
-isolation, permission mode, effort, or a manual team identifier. Coordinate
-assignments and blockers through `SendMessage` using the runtime-exposed schema.
-Reject receipts with missing fields or out-of-scope changes.
+Named teammates share the working tree, and the task list when it exists. Do
+not pass call-level isolation, permission mode, effort, or a team identifier:
+the session has a single implicit team and the runtime ignores a team name.
+Coordinate assignments and blockers through `SendMessage` using the
+runtime-exposed schema. A unit is complete when its teammate returns its
+result or reports it through `SendMessage`; the lead records the five receipt
+fields and rejects receipts with missing fields or out-of-scope changes.
 
-At every terminal state, send each live teammate a shutdown request, wait for
-acknowledgements, and let Claude perform automatic team cleanup. Never edit or
-delete native runtime team configuration manually.
+At every terminal state, send each live teammate a `shutdown_request` through
+`SendMessage`, wait for its `shutdown_response`, and let Claude perform
+automatic team cleanup. Never edit or delete native runtime team configuration
+manually.
 
 Reference: `.claude/skills/agent-teams/SKILL.md`
 
@@ -1464,7 +1550,7 @@ Display: `권한 모드: {bypass | safe}`
 WHEN `.autopus/learnings/pipeline.jsonl` exists, THE SYSTEM SHALL query for entries matching the current SPEC's file paths, packages, or domain keywords:
 
 ```bash
-auto learn query --spec {SPEC_ID}
+auto learn query --spec {SPEC_ID} --top 5 --mark-reused
 ```
 
 If the command fails or is unavailable, read `.autopus/learnings/pipeline.jsonl` directly, parse JSON entries, and match by:
@@ -1472,7 +1558,7 @@ If the command fails or is unavailable, read `.autopus/learnings/pipeline.jsonl`
 2. Package names from SPEC requirements
 3. Domain keywords from SPEC title
 
-Inject the top 5 matching entries (max 2000 tokens) into the planner prompt as a `## Previous Learnings` section. Display:
+`--top 5` prints the five best matches and `--mark-reused` counts them as injected, which feeds the sync summary's top patterns. When the fallback below reads the file directly, nothing counts the reuse. Inject those entries (max 2000 tokens) into the planner prompt as a `## Previous Learnings` section. Display:
 
 ```
 💡 관련 학습 패턴 {N}개 주입됨
@@ -1729,7 +1815,7 @@ When `--multi` flag is set, activate the risk-tiered review policy:
 Execute the synchronous typed review and forward explicit providers unchanged:
 
 ```bash
-auto orchestra review {review paths} --risk-tier {RISK_TIER} --strategy {STRATEGY} --providers {PROVIDERS} --no-detach --format json
+auto orchestra review {review paths} --risk-tier {RISK_TIER} --strategy {STRATEGY} --providers {PROVIDERS} --format json
 ```
 
 Omit `--providers` only when absent. Require
@@ -2104,6 +2190,10 @@ Use QAMESH when the task is project-level deterministic QA execution or evidence
 - Use `auto qa run --format json` to execute deterministic project QA and produce QAMESH run-index/evidence output.
 - Use `auto qa explore --dry-run --format json` before explicit GUI exploration, and run it only for local/staging Journey Packs with allowed origins, forbidden actions, deterministic oracles, and redacted artifact retention.
 - Use `auto qa scenario init --format json` to write an example user scenario and `auto qa scenario compile --format json` to render `.autopus/qa/scenarios/*.yaml` into Playwright specs under the project's own `testDir`. `--dry-run` validates and renders without writing.
+- Use `auto qa go <SPEC-ID>` to run the whole chain in one command: generate, show coverage and confirm (skip with `--auto`), promote, compile, then `auto qa loop`. `--agent` defaults to the first installed CLI and `--lane` to `browser-staging` when a pack declares it; the generated QA files become the loop branch's first commit. Without a SPEC-ID it compiles the existing scenarios and runs the loop.
+- Use `auto qa scenario generate --spec <SPEC-ID> --agent <claude|codex|gemini|opencode> --format json` to draft test scenarios (`.autopus/qa/test-scenarios/`) and v2 user scenarios from the SPEC's acceptance criteria into `candidates/`. Every expected value must trace to a criterion; uncovered criteria are reported, never invented. `auto qa scenario promote --all` moves validated candidates into place.
+- Use `auto qa record --origin <url> --id <id>` (Playwright codegen) or `auto qa record import --from <file.js|file.jsonl>` to turn a recorded session into a `recording` candidate, and `auto qa discover --origin <url>` to crawl a read-only regression `baseline` candidate, which is not a correctness proof.
+- Use `auto qa loop --lane <lane> --agent <platform> --format json` to run, re-run failures once to detect flakes, triage (`environment | flaky | test_drift | test_defect | product_defect | unknown`), and fix on branch `autopus/qa-loop/<run-id>`. Its diff guard rejects a fix outside its class's paths and any change to an expected value. Review and merge the loop branch; never re-apply a rejected fix by hand.
 - Use `auto qa release --dry-run --format json` to inspect release lanes, setup gaps, blocker rules, redacted command previews, sibling SPEC readiness, and the `canary-explicit` post-deploy smoke bridge lane before executing a release gate; use `auto qa release --roadmap --format json` for roadmap governance.
 - Use `auto qa evidence` when a producer already wrote a QAMESH manifest and the task is validation, redaction, and publication.
 - Use `auto qa feedback` to turn existing failed QAMESH evidence into provider-specific repair prompt bundles.
@@ -2125,7 +2215,7 @@ Use QAMESH when the task is project-level deterministic QA execution or evidence
 ### Scenario Authoring Contract
 
 - `.autopus/qa/scenarios/*.yaml` is the project's declaration of what a user sees. The harness never invents assertions; it only translates the declaration into the runner dialect. `schema_version: qamesh.scenario.v1`, `id`, `title`, `journey`, and `screens[]` are required; an omitted `origin` is inherited from the named Journey Pack's `allowed_origins[0]`, so a compiled spec can only navigate where the guard already allows.
-- The step vocabulary is read-only and closed: `expect_title`, `expect_url`, `expect_text`, `expect_role`, `expect_count`. `click`, `fill`, and `press` are not fields in the schema, so a compiled scenario cannot trip the `gui.forbidden_actions` guard — that is a safety property, not an omission. Write mutating flows as hand-authored specs instead.
+- `qamesh.scenario.v1` steps are read-only (`expect_title`, `expect_url`, `expect_text`, `expect_role`, `expect_count`): such a scenario compiles with `@explore` and cannot trip the `gui.forbidden_actions` guard. `qamesh.scenario.v2` adds `intent_source` (`acceptance | recording | baseline`) and action steps (`click`, `fill`, `press`, `check`, `select`, `wait_url`); a scenario with any action compiles with `@journey`, never `@explore`, and runs under a `playwright` pack in `browser-staging`. In an `acceptance` scenario every expect step carries an `ac` listed in `acceptance_refs`, and credentials use `value_env`, never literals.
 - Elements are addressed by ARIA role only, matching the pack's `selector_strategy: role-first`; a CSS escape hatch would let compiled specs contradict the strategy the pack advertises. An unknown key or unknown role rejects the whole file.
 - Each screen compiles to exactly one runner test that pushes an `autopus-screen` annotation. The capture producer records it as the step's `screen_ref`, which is what makes `gui.screen_matrix` genuinely enforceable. A hand-authored spec with no annotation derives `screen_ref` from its first `goto`, so a path-keyed matrix row is satisfied with no edit.
 - `compile` reports the `screen_matrix` projection instead of writing it into the pack, because the generated pack carries explanatory comments that a YAML round-trip would destroy. Paste the reported rows into the pack to enforce declared coverage.
@@ -2283,7 +2373,7 @@ Escalate to `/auto plan` when the fix touches an auth, billing, data, migration,
 WHEN `.autopus/learnings/pipeline.jsonl` exists, THE SYSTEM SHALL query for entries matching the error context (file path, package, error pattern):
 
 ```bash
-auto learn query --files {affected_files} --keywords "{error_description}"
+auto learn query --files {affected_files} --keywords "{error_description}" --top 5 --mark-reused
 ```
 
 If matching entries found, display:
@@ -2301,9 +2391,20 @@ IMPORTANT: You MUST write a failing test that reproduces the bug before making a
 
 - Write the minimal test case that demonstrates the failure
 - Confirm it fails: `go test ./... -run TestXxx`
-- If no test is possible (e.g., CLI-only), document the reproduction steps explicitly
+- Confirm it compiles and fails on the bug assertion, not on a build error or an unrelated failure
+- If no test is possible (e.g., CLI-only), document the reproduction steps explicitly; there is nothing to lock (see Pre-Completion Verification)
 
-> **⏭ POST-STEP**: Failing test written. NEXT REQUIRED STEP: Step 2: Root Cause Analysis. Do NOT skip to Step 3.
+Once the test fails on the bug assertion, lock it before changing any code. `<test-path>` is the test file's path relative to the current directory; single-quote it when it holds spaces or shell metacharacters. Exit 1 means nothing was locked: check the path and rerun. Run the lock, and the unlock of Step 4.5, from the project root nearest to the test: the closest directory above it that holds `autopus.yaml`. From an enclosing project both exit 1 and name that root.
+
+```bash
+auto fix lock -- <test-path>
+```
+
+While the lock is active, the edit guard denies file-editing tool calls on the test with `[fix_lock]`. Fix the code under test instead; if the test itself is wrong, stop and ask the user.
+
+Do NOT run auto fix unlock before Step 4 verification passes.
+
+> **⏭ POST-STEP**: Failing test written and locked. NEXT REQUIRED STEP: Step 2: Root Cause Analysis. Do NOT skip to Step 3.
 
 #### [REQUIRED] Step 2: Root Cause Analysis
 
@@ -2332,15 +2433,28 @@ go test -race ./...
 
 **Fallback rule**: Only if the Bash call returns an error, display the exact error to the user and ask for fallback approval.
 
+#### [REQUIRED] Step 4.5: Complete — Release the Lock (MUST call Bash tool)
+
+After Step 4 passes, release the reproduction test lock and read its verdict:
+
+```bash
+auto fix unlock --json -- <test-path>
+```
+
+Exit 0 means every verdict is `unchanged`. Exit 3 (`modified`, `missing`, or `unverifiable`) means the locked test changed after it was locked, through any channel: the fix is not complete. Report the verdict, stop, and ask the user. Do NOT re-lock or rewrite the test to get an `unchanged` verdict. Exit 1 means the unlock did not complete (no lock for the path, or a removal error that leaves locks active): the fix is not complete either. Report the error, stop, and ask the user.
+
 ### [REQUIRED] Pre-Completion Verification
 
 Before reporting the fix as complete, verify ALL steps were executed:
 
 - [ ] Step 1: Failing test written (or reproduction steps documented)
+- [ ] Step 1: Reproduction test locked once it failed on the bug assertion
 - [ ] Step 2: Root cause identified and documented
 - [ ] Step 2: caller/shared root-cause evidence recorded or symptom-only plan marked `revise-target`
 - [ ] Step 3: Minimal fix applied
 - [ ] Step 4: Bash tool called — `go test -race ./...` passed
+- [ ] Step 4.5: Lock verdict is unchanged (any other verdict: not complete, stop and ask the user)
+- [ ] A fix without a test records `lock: not applicable` in place of the lock and verdict items
 
 IF any item is unchecked → return to that step. Do NOT report completion.
 
@@ -2349,15 +2463,16 @@ IF any item is unchecked → return to that step. Do NOT report completion.
 WHEN the fix is successfully verified (Step 4 passed), THE SYSTEM SHALL record the fix pattern:
 
 ```bash
-auto learn record --type fix_pattern --files {changed_files} --pattern "{error → root cause → resolution}" --spec {SPEC_ID_if_available}
+auto learn record --type fix_pattern --files {changed_files} --pattern "{error → root cause → resolution}" --spec-id {SPEC_ID_if_available} \
+  --scope {project|process} --evidence-command "{the Step 1 reproduction test command}" \
+  --evidence-before-exit {its exit code in Step 1} --evidence-after-exit {its exit code in Step 4}
 ```
 
-If the command fails, append directly to `.autopus/learnings/pipeline.jsonl`:
-```json
-{"id":"L-{next}","timestamp":"{now}","type":"fix_pattern","phase":"fix","files":[...],"packages":[...],"pattern":"{error description}","resolution":"{how it was fixed}","severity":"low","reuse_count":0}
-```
+The evidence flags record the execution contrast behind the lesson (SPEC-LEARN-003): the store marks the entry `deterministic` only when that command failed before the fix and passed after it, and `llm_only` otherwise. Use the exit codes you observed; never invent them. Use `--scope process` only for a lesson about how the agent works that would hold in any project (for example "reopen produced files to verify them"); a lesson about this repository's code is `project`. A fix without a reproduction test omits the three evidence flags.
 
-Display:
+If the command fails, report the `auto learn record` error and skip the learning capture. Do NOT append to or edit `.autopus/learnings/pipeline.jsonl` directly: only `auto learn record` redacts secrets before an entry reaches the tracked store.
+
+Display (only after the record succeeded):
 ```
 💡 수정 패턴 학습됨: "{one-line pattern summary}"
 ```
@@ -2443,12 +2558,12 @@ Forward explicit strategy and provider choices unchanged. Omit `--providers`
 only when it was not supplied.
 
 ```bash
-auto orchestra review {review paths} --risk-tier {RISK_TIER} --strategy {STRATEGY} --providers {PROVIDERS} --no-detach --format json
+auto orchestra review {review paths} --risk-tier {RISK_TIER} --strategy {STRATEGY} --providers {PROVIDERS} --format json
 ```
 
 Require `schema=orchestration_cli_result.v1` and an embedded
-`receipt.schema=orchestration_run_receipt.v1`; a detached job ID or untyped
-prose does not satisfy this synchronous discovery gate. Freeze the discovery
+`receipt.schema=orchestration_run_receipt.v1`; untyped prose does not satisfy
+this discovery gate. Freeze the discovery
 findings, preserve dissent, and set
 `critical_veto=true` for an unresolved Critical security/correctness finding.
 Delegate focused repairs, run deterministic validation, then verify only the
@@ -2664,10 +2779,10 @@ WHEN `.autopus/learnings/pipeline.jsonl` exists, THE SYSTEM SHALL:
 **Step 1: Auto-Prune (R9)**
 
 ```bash
-auto learn prune --max-age 90d
+auto learn prune --days 90
 ```
 
-If the command fails, read the file directly and remove entries older than 90 days. Display only if entries were pruned:
+If the command fails (including `eval_links_unreadable`), report the failure and leave `.autopus/learnings/pipeline.jsonl` unchanged. Do NOT read the file directly to remove or rewrite entries: only `auto learn prune` applies the store's retention rules and redacts lines it cannot parse. Display only if entries were pruned:
 ```
 정리: {N}개 학습 항목 만료 삭제 (90일 초과)
 ```
@@ -2677,18 +2792,20 @@ If the command fails, read the file directly and remove entries older than 90 da
 Display a learning summary BEFORE the completion bar:
 
 ```bash
-auto learn summary --since-last-sync
+auto learn summary --top 3
 ```
 
-If the command fails, generate from the JSONL file directly:
+Show its `Template candidates` lines (process lessons with deterministic evidence) as candidates for the user to review; never edit rules, skills, or templates from them. When it prints an `Intake:` line, suggest `auto eval harness intake --all-eligible` to the user without running it: promotion into the golden set stays a human step.
+
+The summary covers the whole store: there is no per-sync window. If the command fails, generate the same figures from the JSONL file directly:
 ```
 🐙 학습 요약 ────────────────────────
-  신규 기록: {N}개 (gate_fail: {n}, review_issue: {n}, ...)
+  전체 기록: {N}개 (gate_fail: {n}, review_issue: {n}, ...)
   반복 패턴 Top 3:
     1. "{pattern}" — {reuse_count}회 주입됨
     2. "{pattern}" — {reuse_count}회
     3. "{pattern}" — {reuse_count}회
-  개선 영역: {이전 sync 대비 줄어든 실패 유형}
+  개선 영역: {기록이 2개 이상인 package}
 ```
 
 WHERE no learning entries exist, display: `학습 요약: 신규 항목 없음 ✓`

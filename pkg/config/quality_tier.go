@@ -7,7 +7,7 @@ import "strings"
 const (
 	ClaudeFableModel  = "claude-fable-5-1"
 	ClaudeOpusModel   = "claude-opus-5-5"
-	ClaudeSonnetModel = "claude-sonnet-5"
+	ClaudeSonnetModel = "claude-sonnet-5-5"
 	ClaudeHaikuModel  = "claude-haiku-4-5"
 )
 
@@ -16,8 +16,8 @@ const (
 // accounting, and the OMP role matrix all key off exactly these names.
 var canonicalAgentNames = []string{
 	"annotator", "architect", "debugger", "deep-worker", "devops", "executor",
-	"explorer", "frontend-specialist", "perf-engineer", "planner", "reviewer",
-	"security-auditor", "spec-writer", "tester", "ux-validator", "validator",
+	"explorer", "frontend-specialist", "perf-engineer", "planner", "reverse-engineer",
+	"reviewer", "security-auditor", "spec-writer", "tester", "ux-validator", "validator",
 }
 
 // agentNameAliases folds workflow phase-role spelling onto agent file names.
@@ -28,6 +28,7 @@ var agentNameAliases = map[string]string{
 	"deep_worker":         "deep-worker",
 	"frontend_specialist": "frontend-specialist",
 	"perf_engineer":       "perf-engineer",
+	"reverse_engineer":    "reverse-engineer",
 	"ux_validator":        "ux-validator",
 }
 

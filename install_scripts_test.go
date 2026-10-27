@@ -181,21 +181,26 @@ func TestOMPNativeSmokeCIPinsExactBinaryAndTest(t *testing.T) {
 		`set -euo pipefail`,
 		`[[ "$(uname -m)" == 'arm64' ]]`,
 		`trap cleanup_omp EXIT`,
-		`https://github.com/can1357/oh-my-pi/releases/download/v17.2.7/omp-darwin-arm64`,
-		`expected='cd2f47545cb3f8eb5e15c91bc9054d73967774652e020b432e294803d1b71ea0'`,
+		// The pin is the release canary's: scripts/companion-release/
+		// materialize-omp-release-canary.sh downloads the same asset.
+		`https://github.com/can1357/oh-my-pi/releases/download/v18.12.3/omp-darwin-arm64`,
+		`expected='f2a657b3320fcafa23055053940a45b26a8d3254e1412a158838013d670d6ec5'`,
 		`/usr/bin/shasum -a 256 "$omp_binary"`,
 		`/bin/chmod 0555 "$omp_binary"`,
-		`[[ "$("$omp_binary" --version)" == 'omp/17.2.7' ]]`,
+		`[[ "$("$omp_binary" --version)" == 'omp/18.12.3' ]]`,
 		`export AUTOPUS_OMP_NATIVE_LIVE=1`,
 		`export AUTOPUS_OMP_LIVE_EXECUTABLE="$omp_binary"`,
-		// The two smokes now run through one `live_smoke` helper. It anchors the
+		// The smokes now run through one `live_smoke` helper. It anchors the
 		// selector itself, so the anchored literal no longer appears at the call
 		// site -- what must stay pinned is the helper's own guarantee, asserted
 		// below, plus the exact test name each call names.
 		`live_smoke TestOMPNativeTaskHubLiveSmoke ./pkg/adapter/omp`,
+		// The default autopus mode gets its own smoke on the same pinned
+		// binary: project agent discovery and the task.disabledAgents claim.
+		`live_smoke TestOMPAutopusAgentSurfaceLiveSmoke ./pkg/adapter/omp`,
 		`-run "^${name}\$"`,
-		// `go test -run` exits 0 on a selector that matches nothing, and both
-		// smokes t.Skip when their environment does not reach them. The helper
+		// `go test -run` exits 0 on a selector that matches nothing, and every
+		// smoke t.Skips when its environment does not reach it. The helper
 		// asserts the selector inventory before running, then requires the named
 		// `--- PASS` and forbids any skip -- without these three a rename or a
 		// missing binary reports a verified live probe having run nothing.
@@ -216,14 +221,15 @@ func TestOMPNativeSmokeCIPinsExactBinaryAndTest(t *testing.T) {
 			t.Fatalf("omp-native-smoke must contain %q", fragment)
 		}
 	}
-	// Exactly two smokes, each named once. The helper definition is
+	// Exactly three smokes, each named once. The helper definition is
 	// `live_smoke()` with no space, so `"live_smoke "` counts call sites only --
 	// that count is what pins the inventory now that the anchored selector lives
 	// inside the helper rather than at each call.
-	if strings.Count(section, "live_smoke ") != 2 ||
+	if strings.Count(section, "live_smoke ") != 3 ||
 		strings.Count(section, "live_smoke TestOMPNativeTaskHubLiveSmoke") != 1 ||
+		strings.Count(section, "live_smoke TestOMPAutopusAgentSurfaceLiveSmoke") != 1 ||
 		strings.Count(section, "live_smoke TestOMPRules_LiveSessionReceivesEverySourceRule") != 1 {
-		t.Fatal("omp-native-smoke must run exactly the two anchored Go smokes through live_smoke")
+		t.Fatal("omp-native-smoke must run exactly the three anchored Go smokes through live_smoke")
 	}
 	for _, forbidden := range []string{"./...", "${{ secrets.", "AUTOPUS_OMP_LIVE=1"} {
 		if strings.Contains(section, forbidden) {

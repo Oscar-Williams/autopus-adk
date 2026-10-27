@@ -2,6 +2,7 @@ package cli
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 
 	"gopkg.in/yaml.v3"
@@ -71,6 +72,11 @@ func marshalAutopusConfig(original []byte, cfg *config.HarnessConfig) ([]byte, e
 	if cfg == nil || cfg.Validate() != nil {
 		return nil, errors.New("autopus_config_invalid")
 	}
+	if policy := cfg.RoleModelPolicy; policy.Version == "" && policy.Profile == "" && policy.Family == "" &&
+		policy.ConfigMode == "" && policy.AgentSource == "" && len(policy.Profiles) == 0 && len(policy.Agents) == 0 {
+		// The OMP tab cleared every pin and nothing else is set: the key goes.
+		return replaceAutopusConfigSection(original, "role_model_policy", nil)
+	}
 	return replaceAutopusConfigSection(original, "role_model_policy", cfg.RoleModelPolicy)
 }
 
@@ -78,11 +84,23 @@ func marshalAutopusConfig(original []byte, cfg *config.HarnessConfig) ([]byte, e
 // autopus.yaml and leaves every sibling node untouched, so a caller that owns
 // one section never reformats the rest of a user's file. Comments inside the
 // replaced section do not survive: the section is re-encoded from the typed
-// value, which is the only representation the harness validates against.
+// value, which is the only representation the harness validates against. The
+// retired orchestra keys are the one exception among the siblings: they are
+// dropped, so no writer carries them forward (SPEC-PANERM-001 REQ-10). The
+// result is returned only once it parses back to the rewritten tree, every
+// alias resolving to the same data, loads as config.Load would load it, and
+// activates no ${NAME} placeholder the original kept literal.
 func replaceAutopusConfigSection(original []byte, key string, section any) ([]byte, error) {
 	document, _, err := parseAutopusConfigDocument(original)
 	if err != nil {
 		return nil, err
+	}
+	if _, err := config.PruneRetiredKeysForRewrite(document); err != nil {
+		return nil, err
+	}
+	if section == nil {
+		removeAutopusConfigKey(document.Content[0], key)
+		return encodeAutopusConfigRewrite(original, document)
 	}
 	sectionData, err := yaml.Marshal(section)
 	if err != nil {
@@ -108,9 +126,41 @@ func replaceAutopusConfigSection(original []byte, key string, section any) ([]by
 			sectionDocument.Content[0],
 		)
 	}
+	return encodeAutopusConfigRewrite(original, document)
+}
+
+// removeAutopusConfigKey drops one top-level key and its value.
+func removeAutopusConfigKey(mapping *yaml.Node, key string) {
+	for index := 0; index+1 < len(mapping.Content); index += 2 {
+		if mapping.Content[index].Value == key {
+			mapping.Content = append(mapping.Content[:index], mapping.Content[index+2:]...)
+			return
+		}
+	}
+}
+
+// encodeAutopusConfigRewrite returns the rewritten document only once it
+// parses back to the same tree, loads as config.Load would load it, and
+// activates no placeholder the original kept literal.
+func encodeAutopusConfigRewrite(original []byte, document *yaml.Node) ([]byte, error) {
 	encoded, err := yaml.Marshal(document)
 	if err != nil {
 		return nil, errors.New("autopus_config_marshal_failed")
 	}
+	var check yaml.Node
+	if yaml.Unmarshal(encoded, &check) != nil || !sameYAMLData(&check, document) {
+		return nil, errors.New("autopus_config_rewrite_unsafe")
+	}
+	if _, err := config.ParseConfig(encoded); err != nil {
+		return nil, fmt.Errorf("autopus_config_rewrite_invalid: %w", err)
+	}
+	if activated, err := placeholdersActivated(original, encoded); err != nil || activated {
+		return nil, errRewriteActivatesPlaceholder
+	}
 	return encoded, nil
 }
+
+// errRewriteActivatesPlaceholder refuses a section rewrite whose re-encoded
+// document would hold a ${NAME} placeholder config.Load expands at a path the
+// original did not: yaml.Marshal spells "\x24{NAME}" or !!binary in plain text.
+var errRewriteActivatesPlaceholder = errors.New("autopus_config_rewrite_activates_placeholder")

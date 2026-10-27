@@ -14,10 +14,24 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  test:
-    name: test
+  # The unit gate is split across runners instead of one 54-minute job. The
+  # internal/cli package alone ran 2474s of its 2700s per-binary budget under
+  # -race with coverage (main push run 39884824784), so it is cut into shards
+  # by scripts/ci/testshard and the rest of the work runs in parallel jobs:
+  #
+  #   build           compile, cross-compile, benchmark contracts, vet
+  #   test-isolated   process-heavy tests, one package at a time (-p 1)
+  #   test-packages   every package except internal/cli, race + coverage
+  #   test-cli        internal/cli shards, race + coverage, then the
+  #                   integration-tagged lane for the same shard
+  #   test            aggregator: every job above passed, the shards cover
+  #                   internal/cli exactly, merged coverage meets the threshold
+  #
+  # The job named `test` stays the single check that means "unit gate passed".
+  build:
+    name: build
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -40,6 +54,29 @@ jobs:
           GOOS=windows GOARCH=amd64 go build ./...
           GOOS=darwin GOARCH=arm64 go build ./...
           GOOS=linux GOARCH=arm64 go build ./...
+
+      # Intake, promote, and reject refuse every write on Windows
+      # (SPEC-HARNEVAL-002 REQ-HC-11), and the //go:build windows tests that pin
+      # it compile nowhere else. Vet type-checks them here; the windows-runtime
+      # job runs them.
+      - name: Vet Windows intake tests
+        run: GOOS=windows GOARCH=amd64 go vet ./pkg/harneval/intake/
+
+      - name: Vet
+        run: go vet ./...
+
+  test-isolated:
+    name: test-isolated
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
 
       # 프로세스 중량 테스트 목록은 Makefile 의 PROCESS_HEAVY_TESTS 가 단일
       # 출처다. CI 가 정규식을 복사해 두면 로컬 게이트와 CI 게이트가 조용히
@@ -68,22 +105,253 @@ jobs:
             -run "$PROCESS_HEAVY_TESTS" \
             -coverprofile=coverage-isolated.out ./...
 
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-isolated
+          path: coverage-isolated.out
+          if-no-files-found: error
+          retention-days: 3
+
+  test-packages:
+    name: test-packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve process-heavy test selector
+        shell: bash
+        run: |
+          set -euo pipefail
+          selector="$(sed -n 's/^PROCESS_HEAVY_TESTS ?= //p' Makefile)"
+          [[ -n "$selector" ]]
+          printf 'PROCESS_HEAVY_TESTS=%s\n' "$selector" >> "$GITHUB_ENV"
+
       # 공유 레인은 격리 레인과 정확히 같은 집합을 건너뛴다. 건너뛴 테스트의
-      # 커버리지는 격리 레인이 남긴 프로파일에 그대로 있으므로 두 프로파일을
+      # 커버리지는 격리 레인이 남긴 프로파일에 있고, 집계 job 이 두 프로파일을
       # 합쳐 총계를 유지한다 - 임계값은 건드리지 않는다.
-      - name: Test with Coverage
+      #
+      # internal/cli is the one package left out: test-cli runs it in shards,
+      # and the count check below fails if it ever stops being listed exactly
+      # once, so it cannot fall out of both jobs.
+      - name: Test every package except internal/cli with Coverage
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_package="$(go list ./internal/cli)"
+          all_packages="$(go list ./...)"
+          packages=()
+          cli_matches=0
+          while IFS= read -r package; do
+            if [[ "$package" == "$cli_package" ]]; then
+              cli_matches=$((cli_matches + 1))
+            else
+              packages+=("$package")
+            fi
+          done <<<"$all_packages"
+          ((cli_matches == 1))
+          ((${#packages[@]} > 0))
+          # The per-binary timeout must stay above a healthy run of the slowest
+          # package here (pkg/adapter/omp ran 1081s on main run 39884824784),
+          # and the job budget above must hold it.
+          go test -race -count=1 -timeout=45m \
+            -skip "$PROCESS_HEAVY_TESTS" \
+            -coverprofile=coverage-packages.out "${packages[@]}"
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-packages
+          path: coverage-packages.out
+          if-no-files-found: error
+          retention-days: 3
+
+  # Each leg owns the internal/cli tests whose name hashes to its index, runs
+  # them under -race with coverage, then runs the same shard of the
+  # integration-tagged lane. The partition comes from `go test -list`, so a new
+  # test lands in a shard on its own, and testshard fails the leg if any test
+  # would be left out or selected twice. SHARD_TOTAL is the matrix size, so
+  # adding a shard is one more matrix entry.
+  test-cli:
+    name: test-cli (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    env:
+      SHARD_INDEX: ${{ strategy.job-index }}
+      SHARD_TOTAL: ${{ strategy.job-total }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Resolve process-heavy test selector
+        shell: bash
+        run: |
+          set -euo pipefail
+          selector="$(sed -n 's/^PROCESS_HEAVY_TESTS ?= //p' Makefile)"
+          [[ -n "$selector" ]]
+          printf 'PROCESS_HEAVY_TESTS=%s\n' "$selector" >> "$GITHUB_ENV"
+
+      # Listing with the lane's own -race and -coverprofile flags warms the
+      # build cache the test run reuses. The final comparison asks the real
+      # `go test` front end which tests the expression selects: it must be
+      # exactly the names this shard was assigned.
+      - name: Plan the unit shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          lane=unit
+          go test -race -count=1 -coverprofile="$RUNNER_TEMP/list-cover.out" -list . ./internal/cli > "$RUNNER_TEMP/cli-list-$lane.txt"
+          go run ./scripts/ci/testshard plan -lane "$lane" \
+            -total "$SHARD_TOTAL" -index "$SHARD_INDEX" -skip "$PROCESS_HEAVY_TESTS" \
+            -names "$RUNNER_TEMP/cli-names-$lane.txt" -manifest "$RUNNER_TEMP/manifest-$lane.txt" \
+            < "$RUNNER_TEMP/cli-list-$lane.txt" > "$RUNNER_TEMP/cli-run-$lane.expr"
+          selected="$(go test -list "$(<"$RUNNER_TEMP/cli-run-$lane.expr")" ./internal/cli | awk '/^(Test|Example|Fuzz)/' | LC_ALL=C sort)"
+          planned="$(LC_ALL=C sort "$RUNNER_TEMP/cli-names-$lane.txt")"
+          if [[ "$selected" != "$planned" ]]; then
+            echo "::error::go test -list selected a different set than the $lane shard plan; the shard would not run what it was assigned"
+            diff <(printf '%s\n' "$planned") <(printf '%s\n' "$selected") | head -20 || true
+            exit 1
+          fi
+
+      # @AX:REASON [AUTO]: A shard run must be bound to its planned expression and the same process-heavy skip as every other lane.
+      - name: Test internal/cli shard with Coverage
         shell: bash
         run: |
           set -euo pipefail
           go test -race -count=1 -timeout=20m \
+            -run "$(<"$RUNNER_TEMP/cli-run-unit.expr")" \
             -skip "$PROCESS_HEAVY_TESTS" \
-            -coverprofile=coverage-shared.out ./...
-          mode="$(head -n 1 coverage-shared.out)"
-          [[ "$mode" == "$(head -n 1 coverage-isolated.out)" ]]
+            -coverprofile=coverage-cli.out ./internal/cli
+
+      - name: Plan the integration shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          lane=integration
+          go test -count=1 -tags integration -list . ./internal/cli > "$RUNNER_TEMP/cli-list-$lane.txt"
+          go run ./scripts/ci/testshard plan -lane "$lane" \
+            -total "$SHARD_TOTAL" -index "$SHARD_INDEX" \
+            -names "$RUNNER_TEMP/cli-names-$lane.txt" -manifest "$RUNNER_TEMP/manifest-$lane.txt" \
+            < "$RUNNER_TEMP/cli-list-$lane.txt" > "$RUNNER_TEMP/cli-run-$lane.expr"
+          selected="$(go test -tags integration -list "$(<"$RUNNER_TEMP/cli-run-$lane.expr")" ./internal/cli | awk '/^(Test|Example|Fuzz)/' | LC_ALL=C sort)"
+          planned="$(LC_ALL=C sort "$RUNNER_TEMP/cli-names-$lane.txt")"
+          if [[ "$selected" != "$planned" ]]; then
+            echo "::error::go test -list selected a different set than the $lane shard plan; the shard would not run what it was assigned"
+            diff <(printf '%s\n' "$planned") <(printf '%s\n' "$selected") | head -20 || true
+            exit 1
+          fi
+
+      - name: Test internal/cli shard with the integration tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          go test -count=1 -timeout=10m -tags integration \
+            -run "$(<"$RUNNER_TEMP/cli-run-integration.expr")" ./internal/cli
+
+      - name: Collect shard evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir shard-evidence
+          cp coverage-cli.out shard-evidence/
+          cp "$RUNNER_TEMP/manifest-unit.txt" "$RUNNER_TEMP/manifest-integration.txt" shard-evidence/
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-coverage-cli-${{ strategy.job-index }}
+          path: shard-evidence
+          if-no-files-found: error
+          retention-days: 3
+
+  # `if: !cancelled()` makes this job run, and fail, when an upstream job
+  # failed. Without it a failed `needs` would mark this check skipped, and a
+  # skipped check does not block a merge. The first step turns every
+  # non-success result into a failure of the check named `test`.
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [build, test-isolated, test-packages, test-cli]
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Require every unit job to succeed
+        shell: bash
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<<"$NEEDS"
+          if ! jq -e 'length > 0 and all(.[]; .result == "success")' <<<"$NEEDS" >/dev/null; then
+            echo "::error::a unit job did not succeed, so the unit gate has not passed"
+            exit 1
+          fi
+
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: ci-coverage-*
+          path: coverage-artifacts
+
+      # Every shard of both internal/cli lanes must have reported, from the same
+      # universe of tests, and together they must own every test exactly once.
+      - name: Verify internal/cli shards cover every test
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          manifests=(coverage-artifacts/ci-coverage-cli-*/manifest-*.txt)
+          go run ./scripts/ci/testshard verify -lanes unit,integration "${manifests[@]}"
+
+      # Profiles from the isolated lane, the other packages, and every
+      # internal/cli shard overlap on blocks that more than one lane touches.
+      # `go tool cover` adds the counts of identical blocks, so the merged
+      # total is the coverage of the union of everything that ran.
+      - name: Merge coverage and enforce the threshold
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          profiles=(
+            coverage-artifacts/ci-coverage-isolated/coverage-isolated.out
+            coverage-artifacts/ci-coverage-packages/coverage-packages.out
+            coverage-artifacts/ci-coverage-cli-*/coverage-cli.out
+          )
+          cli_profiles=(coverage-artifacts/ci-coverage-cli-*/coverage-cli.out)
+          cli_manifests=(coverage-artifacts/ci-coverage-cli-*/manifest-unit.txt)
+          # Exactly one profile per reporting unit shard, and at least one shard.
+          ((${#cli_profiles[@]} > 0))
+          ((${#cli_profiles[@]} == ${#cli_manifests[@]}))
+          mode="$(head -n 1 "${profiles[0]}")"
+          for profile in "${profiles[@]}"; do
+            [[ -s "$profile" ]]
+            [[ "$(head -n 1 "$profile")" == "$mode" ]]
+          done
           {
             printf '%s\n' "$mode"
-            tail -n +2 coverage-shared.out
-            tail -n +2 coverage-isolated.out
+            for profile in "${profiles[@]}"; do
+              tail -n +2 "$profile"
+            done
           } > coverage.out
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
           echo "Total coverage: ${COVERAGE}%"
@@ -94,9 +362,6 @@ jobs:
           fi
         env:
           COVERAGE_THRESHOLD: "85"
-
-      - name: Vet
-        run: go vet ./...
 
   lineage-integration:
     name: lineage-integration
@@ -111,23 +376,51 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # The executable GoReleaser fixtures `go run` the pinned module, which
+      # downloads and checksum-verifies hundreds of modules. A single transient
+      # sum.golang.org HTTP/2 error there failed this job on v0.50.119 and again
+      # after it, so fetch the module once with bounded retries and let the tests
+      # start from a verified module cache. Checksum verification is unchanged.
+      - name: Prefetch pinned GoReleaser module
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            if go run github.com/goreleaser/goreleaser/v2@v2.17.0 --version >/dev/null; then
+              exit 0
+            fi
+            echo "::warning::GoReleaser module prefetch attempt ${attempt} failed"
+            sleep $((attempt * 15))
+          done
+          exit 1
+
       # @AX:REASON [AUTO]: Keep the bounded GoReleaser warm-up off the shared package scheduler so its 30-minute budget is deterministic.
+      #
+      # internal/cli is left out as well: its integration lane ran 760s of this
+      # step's 900s per-binary budget on main run 39884824784, so test-cli runs
+      # it in shards. The count check fails if it ever stops being listed
+      # exactly once, so it cannot fall out of both jobs.
       - name: Test non-lineage integration packages
         shell: bash
         run: |
           set -euo pipefail
           lineage_package="$(go list -tags integration ./pkg/companionmanifest)"
+          cli_package="$(go list -tags integration ./internal/cli)"
           all_packages="$(go list -tags integration ./...)"
           packages=()
           lineage_matches=0
+          cli_matches=0
           while IFS= read -r package; do
             if [[ "$package" == "$lineage_package" ]]; then
               lineage_matches=$((lineage_matches + 1))
+            elif [[ "$package" == "$cli_package" ]]; then
+              cli_matches=$((cli_matches + 1))
             else
               packages+=("$package")
             fi
           done <<<"$all_packages"
           ((lineage_matches == 1))
+          ((cli_matches == 1))
           ((${#packages[@]} > 0))
           go test -count=1 -timeout=15m -tags integration "${packages[@]}"
 
@@ -162,10 +455,16 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # The linter must be built with a Go at least as new as the go.mod
+      # toolchain line, and its bundled x/tools must read that toolchain's
+      # export data. v2.12.2 (go1.26.2) refuses a go1.27.3 target outright, and
+      # v2.13.0 through v2.13.2 fail to import "cmp" ("export data version 5 is
+      # greater than maximum supported version 4"). v2.14.0 is the first
+      # release that lints this module on go1.27.3 with zero issues.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
         with:
-          version: v2.12.2
+          version: v2.14.0
           args: --timeout=5m
 
   static-contracts:
@@ -196,6 +495,68 @@ jobs:
             bash -n "$script"
           done < <(git ls-files -z '*.sh')
 
+  # SPEC-HARNEVAL-001 deterministic harness gate. The check must always be
+  # reported, so there is no workflow paths filter and no job-level if or
+  # needs: the job itself decides. A pull request is evaluated when its
+  # --no-renames diff meets the derived harness input set (renames list both
+  # paths); every other event, including the release workflow_call, is
+  # evaluated unconditionally. The run fails the job on any failure reason.
+  harness-eval:
+    name: harness-eval
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+
+      - name: Evaluate harness surfaces
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          out="${RUNNER_TEMP}/harness-eval"
+          auto_bin="${RUNNER_TEMP}/auto-harness-eval"
+          mkdir -p "$out"
+          go build -trimpath -o "$auto_bin" ./cmd/auto
+          decide=(eval harness applicable --event "$EVENT_NAME" --format json)
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            git diff --name-only --no-renames "${BASE_SHA}...${HEAD_SHA}" > "$out/changed-files.txt"
+            decide+=(--changed-files "$out/changed-files.txt")
+          fi
+          "$auto_bin" "${decide[@]}" > "$out/applicable.json"
+          status="$(jq -er .status "$out/applicable.json")"
+          reason="$(jq -er .reason "$out/applicable.json")"
+          if [[ "$status" == not_applicable ]]; then
+            printf '### harness-eval: not_applicable\n\n- %s: no changed path meets the harness input set.\n' \
+              "$reason" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$status" != applicable ]]; then
+            echo "::error::auto eval harness applicable returned status '${status}'"
+            exit 1
+          fi
+          echo "harness-eval: evaluating (${reason})"
+          "$auto_bin" eval harness run --format json --output "$out/result.json" \
+            --summary "$GITHUB_STEP_SUMMARY" > /dev/null
+
+      - name: Upload harness eval result
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: harness-eval
+          path: ${{ runner.temp }}/harness-eval
+          if-no-files-found: warn
+          retention-days: 14
+
   omp-native-smoke:
     name: omp-native-smoke
     permissions:
@@ -211,14 +572,14 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run pinned OMP native task hub and rule delivery smokes
+      - name: Run pinned OMP native task hub, agent surface, and rule delivery smokes
         shell: bash
         run: |
           set -euo pipefail
           umask 077
           [[ "$(uname -s)" == 'Darwin' ]]
           [[ "$(uname -m)" == 'arm64' ]]
-          omp_binary="${RUNNER_TEMP}/omp-v17.2.7-darwin-arm64"
+          omp_binary="${RUNNER_TEMP}/omp-v18.12.3-darwin-arm64"
           omp_bin_dir="${RUNNER_TEMP}/omp-path-shim"
           [[ ! -e "$omp_binary" && ! -L "$omp_binary" ]]
           [[ ! -e "$omp_bin_dir" && ! -L "$omp_bin_dir" ]]
@@ -230,15 +591,15 @@ jobs:
           /usr/bin/curl --proto '=https' --proto-redir '=https' --tlsv1.2 \
             --fail --location --silent --show-error \
             --output "$omp_binary" \
-            'https://github.com/can1357/oh-my-pi/releases/download/v17.2.7/omp-darwin-arm64'
-          expected='cd2f47545cb3f8eb5e15c91bc9054d73967774652e020b432e294803d1b71ea0'
+            'https://github.com/can1357/oh-my-pi/releases/download/v18.12.3/omp-darwin-arm64'
+          expected='f2a657b3320fcafa23055053940a45b26a8d3254e1412a158838013d670d6ec5'
           actual=$(/usr/bin/shasum -a 256 "$omp_binary" | /usr/bin/awk '{print $1}')
           [[ "$actual" == "$expected" ]]
           /bin/chmod 0555 "$omp_binary"
-          [[ "$("$omp_binary" --version)" == 'omp/17.2.7' ]]
+          [[ "$("$omp_binary" --version)" == 'omp/18.12.3' ]]
           # `go test -run '^Name$'` exits 0 with "no tests to run" when the
-          # selector matches nothing, and both smokes t.Skip themselves when
-          # AUTOPUS_OMP_* or the omp binary do not reach them. Either way this
+          # selector matches nothing, and every smoke t.Skips itself when
+          # AUTOPUS_OMP_* or the omp binary do not reach it. Either way this
           # job would report a verified live probe having executed nothing, so
           # assert the selector inventory before the run the way the
           # process-heavy selector is asserted above, then require an explicit
@@ -262,10 +623,15 @@ jobs:
               return 1
             fi
           }
+          # The task hub smoke runs on the native agent source; the agent
+          # surface smoke proves the default autopus mode on the same binary:
+          # exactly the 17 Autopus agents and task are listed, since the
+          # task.disabledAgents claim hides every bundled agent but task.
           (
             export AUTOPUS_OMP_NATIVE_LIVE=1
             export AUTOPUS_OMP_LIVE_EXECUTABLE="$omp_binary"
             live_smoke TestOMPNativeTaskHubLiveSmoke ./pkg/adapter/omp
+            live_smoke TestOMPAutopusAgentSurfaceLiveSmoke ./pkg/adapter/omp
           )
           # The rule-delivery oracle resolves `omp` from PATH, so publish the same
           # verified binary under its plain name instead of downloading it twice.
@@ -280,7 +646,7 @@ jobs:
   macos-runtime:
     name: macos-runtime
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -383,6 +749,30 @@ jobs:
             exit 1
           fi
 
+      - name: Test signed harness lane digest chain
+        shell: bash
+        run: |
+          set -euo pipefail
+          # SPEC-HARNEVAL-003 S5 needs a darwin build (the tests carry
+          # //go:build darwin). Same rule as the installer step: the listed
+          # TestEvalHarnessE2E_ tests must meet the floor, and exactly those
+          # tests must report PASS, so neither a rename nor a skip passes.
+          filter='^TestEvalHarnessE2E_'
+          minimum=1
+          log="$(mktemp)"
+          listed="$(go test -list "$filter" ./internal/cli | awk '/^TestEvalHarnessE2E_/' | sort -u | tr '\n' ' ')"
+          read -ra listed_tests <<<"$listed"
+          if [[ "${#listed_tests[@]}" -lt "$minimum" ]]; then
+            echo "::error::-run '${filter}' lists ${#listed_tests[@]} test(s) in ./internal/cli, below the declared ${minimum}: [${listed}]"
+            exit 1
+          fi
+          CODEX_HOME="$(mktemp -d)" go test -count=1 -timeout=10m -v ./internal/cli -run "$filter" 2>&1 | tee "$log"
+          observed="$(sed -n 's/^--- PASS: \([^ ]*\).*/\1/p' "$log" | sort -u | tr '\n' ' ')"
+          if [[ "$observed" != "$listed" ]]; then
+            echo "::error::-run '${filter}' listed [${listed}] but only [${observed}] reported PASS; the difference skipped or never ran"
+            exit 1
+          fi
+
   windows-runtime:
     name: windows-runtime
     runs-on: windows-latest
@@ -460,6 +850,34 @@ jobs:
               exit 1
             fi
           done < <(sed -n 's/^--- SKIP: \([^ ]*\).*/\1/p' "$log" | sort -u)
+
+      - name: Test Windows intake write refusals
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Intake, promote, and reject refuse every write on Windows with
+          # platform_unsupported (SPEC-HARNEVAL-002 REQ-HC-11). The
+          # //go:build windows tests that pin it carry PlatformUnsupported in
+          # their names, so compare the PASS set with `go test -list` for the
+          # same filter: a renamed test would otherwise leave "no tests to run"
+          # behind a green gate. The floor is the four refusals of intake,
+          # promote, reject, and the write helpers, so losing one fails even
+          # while another still matches the filter.
+          filter='PlatformUnsupported'
+          minimum=4
+          log="$(mktemp)"
+          listed="$(go test -list "$filter" ./pkg/harneval/intake | awk '/^Test/' | sort -u | tr '\n' ' ')"
+          read -ra listed_tests <<<"$listed"
+          if [[ "${#listed_tests[@]}" -lt "$minimum" ]]; then
+            echo "::error::-run '${filter}' lists ${#listed_tests[@]} test(s) in ./pkg/harneval/intake, below the declared ${minimum}: [${listed}]"
+            exit 1
+          fi
+          go test -count=1 -timeout=5m -v ./pkg/harneval/intake -run "$filter" 2>&1 | tee "$log"
+          observed="$(sed -n 's/^--- PASS: \([^ ]*\).*/\1/p' "$log" | sort -u | tr '\n' ' ')"
+          if [[ "$observed" != "$listed" ]]; then
+            echo "::error::-run '${filter}' listed [${listed}] but only [${observed}] reported PASS; the difference skipped or never ran"
+            exit 1
+          fi
 
       - name: Test Windows installer signing on PowerShell 5.1
         run: >-

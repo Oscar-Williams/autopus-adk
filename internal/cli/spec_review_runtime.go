@@ -10,10 +10,14 @@ import (
 )
 
 var (
-	specReviewRunOrchestra    = runStructuredSpecReviewOrchestra
-	specReviewConfigProviders = buildReviewProvidersWithConfig
-	// specReviewBackendFactory preserves pane/subprocess selection as the base
-	// while routing only providers explicitly configured with backend: omp.
+	specReviewRunOrchestra = runStructuredSpecReviewOrchestra
+	// specReviewProviderAssembly and specReviewJudgeAssembly build the gated,
+	// read-only reviewer set and judge; tests replace them to inject configs.
+	specReviewProviderAssembly = assembleSpecReviewProviders
+	specReviewJudgeAssembly    = assembleSpecReviewJudge
+	// specReviewBackendFactory selects the subprocess base for the read-only
+	// review config and routes providers configured with backend: omp to the
+	// OMP review backend.
 	specReviewBackendFactory func(orchestra.OrchestraConfig) orchestra.ExecutionBackend = selectRoutedBackend
 )
 
@@ -52,6 +56,9 @@ func syncReviewedSpecStatusWithReceipt(
 	}
 	if result == nil {
 		return receipt, nil
+	}
+	if len(runtimeEvidence) > 0 {
+		receipt.ProviderPolicy = append([]specReviewProviderPolicyRow(nil), runtimeEvidence[0].ProviderPolicy...)
 	}
 	receipt.SpecID = result.SpecID
 	receipt.Verdict = string(result.Verdict)

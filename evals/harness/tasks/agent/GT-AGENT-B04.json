@@ -1,0 +1,71 @@
+{
+  "schema_version": "harness_golden_task.v1",
+  "id": "GT-AGENT-B04",
+  "kind": "agent",
+  "category": "gate_security_classification",
+  "intent": "Repair change classification so even one security or data path selects the security/data class, including changes that also span multiple modules. Keep documentation-only, UI-only, empty, and ordinary change classifications intact. Do not modify tests.",
+  "outcome": "With the generated Codex surface installed, the agent repairs the seeded regression in pkg/spec/gates/classify.go so every expected oracle test passes again (A single sensitive path must be sufficient to require the appropriate safety gates; file count is not a safety exemption.)",
+  "variants": [],
+  "assertions": [
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/config.toml"
+    },
+    {
+      "kind": "file_exists",
+      "platform": "codex",
+      "path": ".codex/skills/codex-auto/SKILL.md"
+    }
+  ],
+  "corpus_ref": {
+    "file": "scripts/benchmarks/harness/corpus_b.json",
+    "task_id": "b04",
+    "file_sha256": "b9149571e3381eb961c23eaac35b0b20a10e36311b2b1f2395547d2588a9643f"
+  },
+  "expected_tests": [
+    "TestClassifyChange_Table"
+  ],
+  "oracle_mode": "black_box",
+  "black_box_oracle": {
+    "build": "./cmd/auto",
+    "command": [
+      "{artifact}",
+      "spec",
+      "gates",
+      "{input}",
+      "--changed",
+      "pkg/a/x.go,pkg/b/schema.go",
+      "--read-only"
+    ],
+    "inputs": [
+      {
+        "path": "evals/harness/oracles/GT-AGENT-B04/spec.md",
+        "sha256": "e8afa5854bc58c7fed0efe8014be9ce2cd74ff8ec84c3bdd6412be9611ea7c48"
+      }
+    ],
+    "assertions": [
+      {
+        "id": "exit",
+        "kind": "exit_code",
+        "exit_code": 0
+      },
+      {
+        "id": "stdout",
+        "kind": "stdout",
+        "expected": {
+          "path": "evals/harness/oracles/GT-AGENT-B04/stdout.txt",
+          "sha256": "63b46b282e668619241e9e795ea09205425bbacc13cd3fdd1a79198e38b1dc39"
+        }
+      }
+    ]
+  },
+  "provenance": {
+    "kind": "benchmark",
+    "ref": "scripts/benchmarks/harness/corpus_b.json#b04"
+  },
+  "status": {
+    "state": "active",
+    "reason": ""
+  }
+}

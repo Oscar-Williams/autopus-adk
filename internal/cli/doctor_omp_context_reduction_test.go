@@ -19,10 +19,19 @@ func TestOMPContextReductionVerdict_SeparatesMeasuredFromUnmeasured(t *testing.T
 		good    bool
 		reason  string
 	}{
+		// The pin production ships: the signed v0.50.127 release canary
+		// measured 10 compactions and a 3429 bp median against 2000.
+		{version: "omp/18.12.3", good: true, reason: "measured_reduction_verified"},
+		// The pin it replaced keeps its measured verdict: the row describes
+		// the installed version, not the pin.
 		{version: "omp/17.2.7", good: true, reason: "measured_reduction_verified"},
 		{version: "omp/18.1.2", good: false, reason: "measured_zero_reduction"},
 		{version: "omp/18.1.5", good: false, reason: "measured_zero_reduction"},
 		{version: "omp/18.1.10", good: false, reason: "measured_zero_reduction"},
+		// "omp/18.1" is a string prefix of "omp/18.12", so a neighbour of
+		// the measured pin must be neither verified nor swallowed by the
+		// 18.1.x zero rule.
+		{version: "omp/18.12.4", good: false, reason: "reduction_unmeasured"},
 		{version: "omp/18.2.0", good: false, reason: "reduction_unmeasured"},
 		{version: "omp/19.0.0", good: false, reason: "reduction_unmeasured"},
 		{version: "omp/17.2.6", good: false, reason: "reduction_unmeasured"},
@@ -41,7 +50,7 @@ func TestOMPContextReductionVerdict_SeparatesMeasuredFromUnmeasured(t *testing.T
 func TestOMPContextReductionReasons_SurviveTheDoctorAllowList(t *testing.T) {
 	t.Parallel()
 
-	for _, version := range []string{"omp/17.2.7", "omp/18.1.5", "omp/18.2.0", ""} {
+	for _, version := range []string{"omp/18.12.3", "omp/17.2.7", "omp/18.1.5", "omp/18.2.0", ""} {
 		reason := ompContextReductionReason(version)
 		assert.Equal(t, reason, ompContextDoctorSafeReason(reason),
 			"reason %q for %q must not be redacted", reason, version)

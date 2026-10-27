@@ -154,12 +154,24 @@ func runDoctorText(cmd *cobra.Command, opts doctorOptions) error {
 	if !checkProviderTransportSmokeText(out, cfg, opts) {
 		allOK = false
 	}
+	allOK = checkProviderReadinessText(ctx, out, cfg) && allOK
 
 	if configuresClaudeCode(cfg) {
 		tui.SectionHeader(out, "Hooks & Permissions")
 		if !checkHooksPermissions(out, opts.dir) {
 			allOK = false
 		}
+	}
+	// The edit-guard registration report is advisory and never touches allOK.
+	checkEditGuardText(out, opts.dir, cfg)
+	checkReaText(ctx, out, opts.dir, cfg)
+
+	// Legacy orchestra keys and stale completion hooks are what `auto update`
+	// removes, so they share the managed-surface remediation unless every
+	// remaining member is one that update keeps.
+	retiredHealthy, retiredUpdateFixes := checkRetiredOrchestraText(out, opts.dir, cfg)
+	if !retiredHealthy {
+		allOK = false
 	}
 
 	// Context weight is advisory: it warns on an over-weight context catalog
@@ -183,7 +195,7 @@ func runDoctorText(cmd *cobra.Command, opts doctorOptions) error {
 		if allOK {
 			return "All checks passed"
 		}
-		return doctorRemediationAdvice(platformFailed, depsMissing)
+		return doctorRemediationAdvice(platformFailed || retiredUpdateFixes, depsMissing)
 	}())
 
 	return nil

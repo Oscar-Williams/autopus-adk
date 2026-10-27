@@ -34,7 +34,7 @@ func TestDefaultConfig(t *testing.T) {
 	t.Run("claude models", func(t *testing.T) {
 		t.Parallel()
 		m := cfg.Models["claude"]
-		assert.Equal(t, "claude-sonnet-5", m.Simple)
+		assert.Equal(t, "claude-sonnet-5-5", m.Simple)
 		assert.Equal(t, "claude-opus-5-5", m.Medium)
 		assert.Equal(t, "claude-fable-5-1", m.Complex)
 	})
@@ -43,7 +43,7 @@ func TestDefaultConfig(t *testing.T) {
 		t.Parallel()
 		m := cfg.Models["codex"]
 		assert.Equal(t, "gpt-6-luna", m.Simple)
-		assert.Equal(t, "gpt-6-sol", m.Medium)
+		assert.Equal(t, "gpt-6.1-sol", m.Medium)
 		assert.Equal(t, "gpt-6-astra", m.Complex)
 	})
 

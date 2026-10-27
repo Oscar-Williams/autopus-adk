@@ -59,6 +59,7 @@ func MergeOMPProjectManagedConfig(input OMPProjectManagedInput) (OMPProjectManag
 	sort.Slice(claims, func(i, j int) bool { return claims[i].Path < claims[j].Path })
 	data := append([]byte(nil), input.Existing...)
 	fingerprints := make(map[string]string, len(claims))
+	edits := make([]ompManagedEdit, 0, len(claims))
 	for _, claim := range claims {
 		updated, fingerprint, err := applyOMPManagedClaim(data, claim)
 		if err != nil {
@@ -66,6 +67,10 @@ func MergeOMPProjectManagedConfig(input OMPProjectManagedInput) (OMPProjectManag
 		}
 		data = updated
 		fingerprints[claim.Path] = fingerprint
+		edits = append(edits, ompManagedEdit{path: strings.Split(claim.Path, "."), value: claim.Value})
+	}
+	if err := verifyOMPManagedEdit(input.Existing, data, edits); err != nil {
+		return result, err
 	}
 	result.Bytes = data
 	result.Changed = string(data) != string(input.Existing)
@@ -176,9 +181,9 @@ func applyOMPManagedClaim(data []byte, claim OMPManagedKeyClaim) ([]byte, string
 	}
 	var updated []byte
 	if location.exists {
-		updated, err = replaceOMPManagedEntry(data, location.key, valueNode)
+		updated, err = replaceOMPManagedEntry(data, document, location.key, valueNode)
 	} else {
-		updated, err = insertOMPManagedEntry(data, location.mapping, segments[location.missingIndex:], valueNode)
+		updated, err = insertOMPManagedEntry(data, document, location.mapping, segments[location.missingIndex:], valueNode)
 	}
 	if err != nil {
 		return nil, "", err

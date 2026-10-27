@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,11 +17,12 @@ import (
 // base profile instead of inventing a route for them.
 func TestQualityOMPWizardCustomPinsChosenModelPerBundledAgent(t *testing.T) {
 	dir, runner := qualityOMPWizardFixture(t)
+	markOMPProjectNative(t, dir)
 	runner.catalog = ompCLIBalancedCatalogJSON()
 
-	// custom -> task: model 3 (openai-codex/gpt-6-astra) at thinking max;
+	// custom -> task: model 4 (openai-codex/gpt-6-astra) at thinking max;
 	// every other agent keeps the balanced default.
-	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n\n\n\n3\nmax\n\ny\n", ompPlatformDependencies{
+	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n\n\n\n4\nmax\n\ny\n", ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate:  func(context.Context, string, *config.HarnessConfig) error { return nil },
 	})
@@ -47,7 +49,7 @@ func TestQualityOMPWizardCustomWithoutPinsWritesNothing(t *testing.T) {
 	runner.catalog = ompCLIBalancedCatalogJSON()
 	before := readAutopusConfigTree(t, dir)
 
-	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n\n\n\n\n\n", ompPlatformDependencies{
+	out, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n"+strings.Repeat("\n", 17), ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate: func(context.Context, string, *config.HarnessConfig) error {
 			t.Fatal("an empty selection must not activate a profile")
@@ -66,8 +68,8 @@ func TestQualityOMPWizardCustomRejectsUnsupportedThinking(t *testing.T) {
 	runner.catalog = ompCLIBalancedCatalogJSON()
 	before := readAutopusConfigTree(t, dir)
 
-	// scout requires fast_validation, which claude-sonnet-5 (2) declares.
-	_, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n2\nminimal\n", ompPlatformDependencies{
+	// annotator requires fast_validation, which claude-sonnet-5-5 (3) declares.
+	_, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n3\nminimal\n", ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate: func(context.Context, string, *config.HarnessConfig) error {
 			t.Fatal("an unsupported thinking level must not activate a profile")
@@ -87,7 +89,7 @@ func TestQualityOMPWizardCustomRefusesModelMissingTheAgentCapability(t *testing.
 	runner.catalog = ompCLIBalancedCatalogJSON()
 	before := readAutopusConfigTree(t, dir)
 
-	// scout requires fast_validation; claude-fable-5-1 (1) does not declare it.
+	// annotator requires fast_validation; claude-fable-5-1 (1) does not declare it.
 	_, err := runQualityOMPWizard(t, dir, "omp\ncustom\ngpt\n1\n", ompPlatformDependencies{
 		newRunner: func() omp.OMPModelCatalogRunner { return runner },
 		activate: func(context.Context, string, *config.HarnessConfig) error {
@@ -97,6 +99,6 @@ func TestQualityOMPWizardCustomRefusesModelMissingTheAgentCapability(t *testing.
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "does not declare fast_validation")
-	assert.Contains(t, err.Error(), "anthropic/claude-sonnet-5")
+	assert.Contains(t, err.Error(), "anthropic/claude-sonnet-5-5")
 	assert.Equal(t, before, readAutopusConfigTree(t, dir))
 }

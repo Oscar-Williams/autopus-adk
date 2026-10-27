@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	MaxDocumentBytes  = 8192
-	channelSchema     = "adk-channel.v1"
-	channelName       = "stable"
-	channelRepository = "Insajin/autopus-adk"
+	MaxDocumentBytes = 8192
+	channelSchema    = "adk-channel.v1"
+	channelName      = "stable"
 )
 
 type Options struct {
@@ -88,8 +87,8 @@ func verify(signed SignedBytes, options Options, allowExpired bool) (Verified, e
 	if document.Channel != channelName {
 		return Verified{}, fmt.Errorf("channel must be %q", channelName)
 	}
-	if document.Repository != channelRepository {
-		return Verified{}, fmt.Errorf("repository must be %q", channelRepository)
+	if !channelRepositoryAccepted(document.Repository) {
+		return Verified{}, fmt.Errorf("repository must be %q or %q", channelRepository, previousChannelRepository)
 	}
 
 	parsedVersion, err := parseVersion(document.Version)

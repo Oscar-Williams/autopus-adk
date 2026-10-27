@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/insajin/autopus-adk/pkg/config"
+	"github.com/insajin/autopus-adk/templates"
 )
 
 type customWorkflowBody struct {
@@ -44,6 +45,8 @@ func customWorkflowBodies(spec workflowSpec) (customWorkflowBody, bool) {
 		return whyWorkflowBody(spec.Name, spec.Description), true
 	case "auto-dev":
 		return devWorkflowBody(spec.Name, spec.Description), true
+	case "auto-reverse":
+		return reverseWorkflowBody(spec.Name, spec.Description), true
 	default:
 		return customWorkflowBody{}, false
 	}
@@ -188,6 +191,25 @@ func devWorkflowBody(name, summary string) customWorkflowBody {
 		"- For explicit `--team`, verify that the current runtime exposes the requested native team lifecycle before dispatch. If unavailable, stop with unsupported-mode; do not substitute the default task-based pipeline or report it as team execution.",
 		"- `--multi` is a review modifier, not a team topology; preserve it independently through plan → go → sync.",
 		"- 각 단계가 실패하면 조용히 건너뛰지 말고 실패 지점과 재개 방법을 명시합니다.",
+	)
+
+	return customWorkflowBody{skill: skill}
+}
+
+// reverseWorkflowBody renders the shared /auto reverse contract. The OpenCode
+// reverse-engineer has no REA tools, so the contract's analysis step ends the
+// route with that agent's unavailable sentence and writes nothing.
+func reverseWorkflowBody(name, summary string) customWorkflowBody {
+	skill := compose(
+		"# "+name+" — Clean-room Reverse Implementation",
+		"",
+		"## 설명",
+		"",
+		summary,
+		"",
+		"## Contract",
+		"",
+		templates.ReverseRouteContract(),
 	)
 
 	return customWorkflowBody{skill: skill}

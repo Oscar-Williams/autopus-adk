@@ -38,6 +38,14 @@ func ompProfileDeclaredFamilies(
 	return declared
 }
 
+// ompBuiltinDeclaredFamilies is the family of every model a built-in profile
+// can name: the only attestation a pins-only pin has when the catalog reports
+// no family (SPEC-MODELUX-003 Pins-only Policy Contract). The adapter attests
+// with the same set, so the tab never lists a model the run would refuse.
+func ompBuiltinDeclaredFamilies() map[string]string {
+	return config.BuiltinRoleModelSelectorFamilies()
+}
+
 func collectOMPProfileCandidateFamilies(
 	declared map[string]string,
 	profile config.RoleModelProfileConf,

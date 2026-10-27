@@ -2,13 +2,16 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
 
 	"github.com/insajin/autopus-adk/internal/cli/tui"
+	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/version"
 )
 
@@ -37,11 +40,13 @@ func NewRootCmd() *cobra.Command {
 		SilenceErrors:    true,
 		TraverseChildren: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// Before any config load below, so the notice knows the command.
+			configNoticeFromContext(cmd.Context()).bind(cmd)
 			flags, err := collectGlobalFlags(cmd, configPath)
 			if err != nil {
 				return err
 			}
-			ctx := withGlobalFlags(cmd.Context(), flags)
+			ctx := withReaFallbackNotice(withGlobalFlags(cmd.Context(), flags), cmd)
 			cmd.Root().SetContext(ctx)
 			cmd.SetContext(ctx)
 			return nil
@@ -83,6 +88,7 @@ func NewRootCmd() *cobra.Command {
 	root.AddCommand(newIssueCmd())
 	root.AddCommand(newCheckCmd())
 	root.AddCommand(newExperimentCmd())
+	root.AddCommand(newEvalCmd())
 	// @AX:ANCHOR [AUTO] @AX:SPEC: SPEC-QAMESH-001: registers the public `auto qa` namespace for QAMESH evidence and feedback workflows.
 	// @AX:REASON: External CLI users and integration tests depend on this registration to expose evidence normalization and repair prompt commands.
 	root.AddCommand(newQACmd())
@@ -114,6 +120,10 @@ func NewRootCmd() *cobra.Command {
 	// @AX:ANCHOR [AUTO] @AX:SPEC: SPEC-CONDRULE-001: registers the public `auto rules` namespace for conditional rule inspection and PreToolUse dispatch.
 	// @AX:REASON: The generated claude-code PreToolUse hook shells out to `auto rules fire`, so dropping this registration silently stops every hook-fired rule.
 	root.AddCommand(newRulesCmd())
+	// SPEC-EDITGUARD-001: generated PreToolUse hooks run `auto guard edit`, and
+	// the /auto fix workflow runs `auto fix lock|unlock`.
+	root.AddCommand(newGuardCmd())
+	root.AddCommand(newFixCmd())
 
 	return root
 }
@@ -174,12 +184,29 @@ func Execute() {
 	// Must run before any lipgloss.NewStyle() or .Render() call.
 	tui.InitStyles()
 
-	if err := NewRootCmd().Execute(); err != nil {
-		code := exitCodeForError(err)
-		if isJSONFatalError(err) {
-			os.Exit(code)
-		}
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+	// One config notice per process (SPEC-PANERM-001 REQ-09): every config
+	// load reports the retired keys it ignored, and the notice prints them
+	// once the root pre-run has bound the executing command.
+	notice := newConfigNotice(stderrIsTerminal)
+	config.SetRetiredKeyReporter(notice.report)
+	ctx := withConfigNotice(context.Background(), notice)
+
+	if code, failed := runRootCommand(ctx, NewRootCmd(), os.Stderr); failed {
 		os.Exit(code)
 	}
+}
+
+// runRootCommand runs root and, when it fails, writes its error to stderr unless
+// a JSON envelope already reported it. It returns the exit code and whether
+// the command failed. An error can carry text from a user file, so it is
+// printed through terminalSafeMultiline.
+func runRootCommand(ctx context.Context, root *cobra.Command, stderr io.Writer) (int, bool) {
+	err := root.ExecuteContext(ctx)
+	if err == nil {
+		return 0, false
+	}
+	if !isJSONFatalError(err) {
+		fmt.Fprintf(stderr, "Error: %s\n", terminalSafeMultiline(err.Error()))
+	}
+	return exitCodeForError(err), true
 }

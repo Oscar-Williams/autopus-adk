@@ -173,4 +173,122 @@ var shippedReleasePhases = []releasePhase{
 		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
 		bridgePredecessor: true,
 	},
+	{
+		// A32 follows A31 under the same autopus-ai owner on the retained
+		// omp/17.2.7 pin; the predecessor pins are measured from immutable
+		// release 398906327.
+		phase: "A32", tag: "v0.50.121", version: "0.50.121",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "b69a8450d6a1c916dfd6e86b254907b4b0c76b78",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
+	{
+		// A33 follows A32 under the same autopus-ai owner on the retained
+		// omp/17.2.7 pin; the predecessor pins are measured from immutable
+		// release 402213224.
+		phase: "A33", tag: "v0.50.122", version: "0.50.122",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "8299c8df85bc0e24bfb4d4fbbd71889dceb96986",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
+	{
+		// A34 follows A33 under the same autopus-ai owner on the retained
+		// omp/17.2.7 pin; the predecessor pins are measured from immutable
+		// release 402813712.
+		phase: "A34", tag: "v0.50.123", version: "0.50.123",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "c42337f4dcf9592d065130150af18dcc5a16c5b8",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
+	{
+		// A35 follows A34 under the same autopus-ai owner on the retained
+		// omp/17.2.7 pin; the predecessor pins are measured from immutable
+		// release 402971620.
+		// v0.50.124 is absent on purpose. It was armed as A35, tagged, and
+		// pushed, but the protected release job failed inside GoReleaser on both
+		// attempts, so no asset was published and the coordinate was burned. A
+		// burned coordinate never enters this table, like v0.50.112 before it.
+		// A35 is v0.50.125.
+		phase: "A35", tag: "v0.50.125", version: "0.50.125",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "c447badc28e393b19984d2eeea159a81d609acd9",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
+	{
+		// A36 follows A35 under the same autopus-ai owner on the retained
+		// omp/17.2.7 pin; the predecessor pins are measured from immutable
+		// release 410986343.
+		// v0.50.126 is absent on purpose. It was armed as A36, tagged, and
+		// pushed, but the protected release job was approved only after its
+		// one-day same-run evidence artifact and its K3 attestation had both
+		// expired, so no asset was published and the coordinate was burned. A
+		// burned coordinate never enters this table, like v0.50.124 before it.
+		// A36 is v0.50.127.
+		phase: "A36", tag: "v0.50.127", version: "0.50.127",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "dd6d6ea2435d759144ec093b9b464a831f47703d",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
+	{
+		// A37 follows A36 under the same autopus-ai owner; the predecessor pins
+		// are measured from immutable release 421737046.
+		phase: "A37", tag: "v0.50.128", version: "0.50.128",
+		acceptedField: "source-tree",
+		rejects:       "unsignedTag",
+		ancestorSHA:   "81186d0c73bb6eb633e52a7cb6a2af23d0f54d12",
+		extraSourceGates: []string{
+			"COMPANION_RELEASE_TAG_SIGNATURE_REQUIRED",
+			"release-tag-signing-2026-q3-r2.pub",
+			"SHA256:7FISPXCi8p7cFEdh4Fcyyp8RPQbXYZwmo3Mxi5+YjrQ",
+			`verify-tag "refs/tags/$GITHUB_REF_NAME"`,
+		},
+		pinsRepository: true, pinsEvidenceSource: true, pinsTagObject: true,
+		pinsReleaseID: true, callerTreeSHA: true, callerReleaseID: true,
+		bridgePredecessor: true,
+	},
 }

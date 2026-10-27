@@ -20,7 +20,7 @@ compatibility: omp
 - `--team --multi` composes team execution with provider-diverse planning and review.
 - without `--team` or `--solo`, owner `omp` uses the default native `task` batch pipeline.
 - `--team` conflicts with `--solo` and owner `orca`.
-- Lead, Builder, and Guardian coordinate only through native `task`, `hub`, and `todo`; the main OMP session owns the checklist and DAG.
+- Lead, Builder, and Guardian coordinate only through native `task` and `todo` plus `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP); the main OMP session owns the checklist and DAG.
 
 
 ## Execution Owner Control Plane
@@ -28,7 +28,7 @@ compatibility: omp
 - Invocation: `/auto go SPEC-ID [--execution-owner omp|orca]`. Omission selects `omp` with receipt source `default`; a supplied exact value has source `explicit`.
 - Parse the flag exactly once before any `task`, DAG-owning `todo`, OMP subprocess, or Orca Run effect. Reject repeated, mixed, case-shifted, whitespace-padded, or aliased values without fallback.
 - Persist the body-free receipt `.autopus/pipeline-state/<SPEC-ID>.execution-owner.json` with schema `pipeline_execution_owner_receipt.v1` and only owner, source, reason, SPEC/run identity, `checked_at`, and `verification_status` evidence.
-- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task`, `hub`, and `todo`, and must not create an Orca Run.
+- Owner `omp`: the current OMP session is the sole DAG owner, uses native `task` and `todo`, coordinates through `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP), and must not create an Orca Run.
 - Owner `orca`: do not initialize an OMP task/todo DAG or call `task`. Run and read `orca skills get orchestration --full`, then use its supervised durable cross-worktree Run contract.
 - At `auto pipeline run SPEC-ID --platform omp --execution-owner orca`, the tier integrity gate runs and the receipt is persisted before any Run, worker, or provider session exists, and the pipeline then executes its phases on supervised Orca workers. Never retry a failure as owner `omp`.
 
@@ -80,7 +80,8 @@ SPEC 문서를 기반으로 코드를 구현합니다. TDD 방법론을 따릅�
 - 구현 전에 `auto workflow context --project-dir <root> --command go --spec-dir <SPEC_DIR> --format json`을 실행해 필수 문서 매니페스트를 생성하고 검증합니다.
 - `AGENTS.md`, `.autopus/project/workspace.md`, 현재 존재하는 architecture 문서, relevant `spec.md`, `plan.md`, `acceptance.md` 전문을 receipt 예산 밖의 비축약 frozen snapshot으로 전달합니다.
 - task별 추가 문서는 context 생성 시 `--required-document <ref>`로 선언하고, binding 검증 시 같은 집합을 `--context-required-document <ref>`로 다시 전달합니다. 선택한 conditional profile도 두 명령에 같은 값으로 전달합니다.
-- scenarios, canary, signatures, learnings는 선택한 command profile이나 현재 task가 명시적으로 요구할 때만 추가합니다.
+- scenarios, canary, signatures는 선택한 command profile이나 현재 task가 명시적으로 요구할 때만 추가합니다.
+- learnings는 파일 전체가 아니라 query 출력만 넣습니다. `.autopus/learnings/pipeline.jsonl`이 있으면 `auto learn query --spec <SPEC_ID> --top 5 --mark-reused`를 실행하고, 출력된 항목만 planner와 executor 입력의 `## Previous Learnings`에 넣습니다(2000 토큰 이하). `--mark-reused`가 넣은 항목을 재사용으로 셉니다. 점수가 높은 항목은 실행 근거(`deterministic`)가 있는 교훈입니다. 파일이 없거나 결과가 없으면 조용히 건너뜁니다. 이것은 optional recall이라 예산이 모자라면 먼저 줄입니다.
 - worker에게 모든 문서와 해시를 전달하고 `context_ack`를 진단 증거로 요청합니다. 전달 무결성은 `context_ack` 문구가 아니라 supervisor가 보유한 필수 reference 집합과 매니페스트 해시로 판정합니다.
 - core/SPEC 문서가 없거나 비어 있거나 읽을 수 없거나, 현재 존재하는 architecture 문서가 안전하게 전달되지 않거나, 매니페스트가 stale·incomplete·wrong-SPEC·hash mismatch 상태이면 provider를 호출하지 않습니다. full Ultra binding을 유지한 채 문서를 복구하거나 task를 분할한 뒤 다시 검증합니다.
 - 토큰 예산으로 줄일 수 있는 것은 memory/knowledge/index의 optional recall뿐입니다. 전체 입력이 128K 안전 한도를 넘으면 필수 문서를 자르지 말고 task를 분할하거나 차단합니다.
@@ -365,6 +366,7 @@ approved였던 SPEC의 clean re-review는 `status_changed=false`여도 위 curre
   "tasks": [
     {
       "name": "executor",
+      "agent": "executor",
       "task": "Implement {task description}",
       "outputSchema": {
         "type": "object",
@@ -393,6 +395,7 @@ approved였던 SPEC의 clean re-review는 `status_changed=false`여도 위 curre
   "tasks": [
     {
       "name": "tester",
+      "agent": "tester",
       "task": "Write tests for {scope}",
       "outputSchema": {
         "type": "object",
@@ -455,10 +458,10 @@ approved였던 SPEC의 clean re-review는 `status_changed=false`여도 위 curre
 `--multi` 플래그로 멀티 프로바이더 오케스트레이션을 활성화합니다:
 
 ```bash
-auto orchestra review {review paths} --risk-tier {risk_tier} --strategy {strategy} --providers {providers} --no-detach --format json
+auto orchestra review {review paths} --risk-tier {risk_tier} --strategy {strategy} --providers {providers} --format json
 ```
 
-pane-capable 터미널에서는 로그인된 interactive pane이 기본이며, plain/CI·mux 미가용·명시적 `--subprocess`에서만 subprocess를 사용해 여러 AI 프로바이더의 합의 기반 리뷰를 수행합니다.
+각 프로바이더는 subprocess(또는 `backend: omp` 프로바이더는 OMP)로 실행되며, orchestra가 모든 라운드를 동기적으로 마친 뒤 합의 기반 리뷰 결과를 직접 출력합니다.
 
 The review result is an `orchestration_run_receipt.v1`. Preserve
 `requested_providers`, `configured_providers`, `resolved_providers`,
@@ -466,16 +469,16 @@ The review result is an `orchestration_run_receipt.v1`. Preserve
 `degraded_reasons`, `critical_veto`, `analysis_verdict`, and `gate_status`.
 Provider discovery evidence never overrides deterministic validation, and a
 degraded PASS requires an explicit audited override.
-The synchronous review gate accepts only `schema=orchestration_cli_result.v1` with
-an embedded `receipt.schema=orchestration_run_receipt.v1`; a detached job ID or
-untyped prose cannot satisfy the gate.
+The review gate accepts only `schema=orchestration_cli_result.v1` with an
+embedded `receipt.schema=orchestration_run_receipt.v1`; untyped prose cannot
+satisfy the gate.
 
 ## Codex Notes
 
 - Codex의 기본 구현 모드는 `task` batch 기반 subagent pipeline입니다.
 - Codex에서 `--auto`는 기본 subagent pipeline 진행에 대한 명시적 승인입니다.
 - `--auto`가 없고 현재 Codex 런타임 정책이 암묵적 `task` batch 호출을 제한하면, 조용히 단일 세션으로 폴백하지 말고 하네스 기본값과 제약을 사용자에게 명시적으로 설명한 뒤 서브에이전트 opt-in 또는 `--solo` 선택을 받습니다.
-- `--team`은 Codex Multi-Agent V2 팀 프로파일입니다. 모든 worker는 같은 shared cwd/filesystem을 사용하며 병렬 writer는 disjoint write ownership을 가져야 합니다. 메인 세션은 `task` batch, `hub send`, `hub send`, target-less `hub with {"i":"Waiting for blocked work","op":"wait","ids":["<job id>"]}`, `hub cancel`, `hub list`만 사용합니다.
+- `--team` uses the OMP Team and Provider Axes contract plus the pipeline reference above; Lead/Builder/Guardian share cwd/filesystem, write only disjoint paths, dispatch through `task`, coordinate through `wait` and `proc://`/`agent://` URLs (OMP 18.3+) or `hub` (older OMP), and leave parent progress to `todo`.
 - Use only a runtime-exposed OMP goal surface. If none is available, do not claim or create persisted goal state; `/auto goal` remains the explicit route.
 - `--multi`는 구현 이후 reviewer / security-auditor / orchestra 리뷰를 추가로 붙이는 강화 모드입니다.
 - 전체 파이프라인 단계, 재시도 한도, 게이트 규칙은 `/auto go ...` 라우터 본문을 우선합니다.
