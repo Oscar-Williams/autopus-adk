@@ -152,18 +152,32 @@ func TestDesktopReleaseIdentity_RejectsSymlinkedBundleAndExecutable(t *testing.T
 func TestDesktopReleaseIdentity_VerificationUsesOperationContext(t *testing.T) {
 	t.Parallel()
 	artifactPath, _ := writeControlledDesktopProvider(t, t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// The verifier cancels the operation while verification is in flight and
+	// then waits on the context it was handed, which only the operation context
+	// can satisfy. A wall-clock deadline on the operation instead raced
+	// ResolveLocal's own ctx.Err() guard under load, which returned the raw
+	// context error before verification ever ran. The wait below is a ceiling
+	// for the regression where the verifier gets an unrelated context.
+	verifierSawCancellation := false
 	resolver := &processDesktopProviderResolver{
 		artifactPath: artifactPath,
-		verifier: func(ctx context.Context, _ string) error {
-			<-ctx.Done()
-			return ctx.Err()
+		verifier: func(verifyCtx context.Context, _ string) error {
+			cancel()
+			select {
+			case <-verifyCtx.Done():
+				verifierSawCancellation = true
+				return verifyCtx.Err()
+			case <-time.After(10 * time.Second):
+				return errors.New("verifier context outlived the cancelled operation")
+			}
 		},
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
-	defer cancel()
 	client, err := resolver.ResolveLocal(ctx)
 	assert.ErrorIs(t, err, errDesktopProviderUnavailable)
 	assert.Nil(t, client)
+	assert.True(t, verifierSawCancellation, "verification must run on the operation context")
 }
 
 func TestDesktopReleaseIdentity_RejectsPostResolutionExecutableSwapBeforeExecution(t *testing.T) {

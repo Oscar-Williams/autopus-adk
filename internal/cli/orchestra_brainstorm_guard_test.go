@@ -36,6 +36,10 @@ type brainstormFixture struct {
 	evidenceDir string
 	captured    *orchestra.OrchestraConfig
 	result      *orchestra.OrchestraResult
+	// beforeExecute, when set, runs inside the guarded window: after the
+	// workspace guard took its before snapshot and before the orchestrator
+	// starts, with the config the run is about to execute.
+	beforeExecute func(cfg *orchestra.OrchestraConfig)
 }
 
 // newBrainstormFixture installs fake claude/codex/agy binaries on PATH, points
@@ -69,6 +73,9 @@ func newBrainstormFixture(t *testing.T, gitRepo bool) *brainstormFixture {
 	originalRun := runOrchestraExecute
 	t.Cleanup(func() { runOrchestraExecute = originalRun })
 	runOrchestraExecute = func(ctx context.Context, cfg orchestra.OrchestraConfig) (*orchestra.OrchestraResult, error) {
+		if fixture.beforeExecute != nil {
+			fixture.beforeExecute(&cfg)
+		}
 		fixture.captured = &cfg
 		result, err := originalRun(ctx, cfg)
 		fixture.result = result

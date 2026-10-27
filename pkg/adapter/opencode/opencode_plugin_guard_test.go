@@ -30,7 +30,7 @@ func TestOpenCodeGuardPlugin_SendsTheSynthesizedPayloadOfEveryA2Event(t *testing
 		t.Run(version, func(t *testing.T) {
 			t.Parallel()
 			h := newGuardHarness(t)
-			results := h.run(renderGuardPlugin(t, version, 0), version, autoStub, h.a2Calls(version))
+			results := h.run(renderGuardPlugin(t, version, healthyHookTimeout), version, autoStub, h.a2Calls(version))
 			for i, result := range results {
 				assert.Equal(t, "resolved", result.Outcome, "call %d: %+v", i+1, result)
 			}
@@ -56,7 +56,7 @@ func TestOpenCodeGuardPlugin_RealGuardDeniesProtectedTargets(t *testing.T) {
 		t.Run(version, func(t *testing.T) {
 			t.Parallel()
 			h := newGuardHarness(t)
-			results := h.run(renderGuardPlugin(t, version, 0), version, autoReal, h.a2Calls(version))
+			results := h.run(renderGuardPlugin(t, version, healthyHookTimeout), version, autoReal, h.a2Calls(version))
 			// edit protected, write protected, write pkg/foo.go, shell, two-file
 			// patch, move onto protected, patch pkg/a.go only, shell.
 			want := []string{guardGSCon, guardGSCon, "", "", guardGSCon, guardGSCon, "", ""}
@@ -87,9 +87,9 @@ func TestOpenCodeGuardPlugin_FailsOpenUnlessACleanExitDenies(t *testing.T) {
 			for _, mode := range modes {
 				calls = append(calls, pluginCall{Event: protected.Event, Mode: modeOf(mode)})
 			}
-			// The generated 5 second timeout leaves room for the stub's first
-			// exec on a loaded macOS runner.
-			results := h.run(renderGuardPlugin(t, version, 0), version, autoStub, calls)
+			// The decision runs give the guard a budget nothing asserts; the
+			// hung run below is the one that exercises the timeout.
+			results := h.run(renderGuardPlugin(t, version, healthyHookTimeout), version, autoStub, calls)
 			assert.Equal(t, pluginResult{Outcome: "rejected", Message: "R1"},
 				pluginResult{Outcome: results[0].Outcome, Message: results[0].Message}, "deny on exit 0: %+v", results[0])
 			for i, mode := range modes[1:] {
@@ -99,9 +99,10 @@ func TestOpenCodeGuardPlugin_FailsOpenUnlessACleanExitDenies(t *testing.T) {
 			hung := h.run(renderGuardPlugin(t, version, 1), version, autoStub,
 				[]pluginCall{{Event: protected.Event, Mode: modeOf("sleep")}})
 			assert.Equal(t, "resolved", hung[0].Outcome, "a hung guard: %+v", hung[0])
-			assert.Less(t, hung[0].MS, 4000, "a hung guard is cut off at the hook timeout")
+			assert.Less(t, hung[0].MS, hungGuardSeconds*1000/2,
+				"a hung guard is cut off at the 1s hook timeout, not when the stub's sleep ends")
 
-			absent := h.run(renderGuardPlugin(t, version, 0), version, autoAbsent, []pluginCall{protected})
+			absent := h.run(renderGuardPlugin(t, version, healthyHookTimeout), version, autoAbsent, []pluginCall{protected})
 			assert.Equal(t, "resolved", absent[0].Outcome, "a missing auto: %+v", absent[0])
 		})
 	}
@@ -144,7 +145,7 @@ func TestOpenCodeGuardPlugin_PatchTargetsFollowTheOpenCodeParser(t *testing.T) {
 		calls = append(calls, pluginCall{Event: map[string]any{"tool": c.tool, "sessionID": "ses", "id": i,
 			"input": map[string]any{"patchText": c.patch}}})
 	}
-	h.run(renderGuardPlugin(t, "v2", 0), "v2", autoStub, calls)
+	h.run(renderGuardPlugin(t, "v2", healthyHookTimeout), "v2", autoStub, calls)
 	payloads := h.stubLog("stdin.log")
 	require.Len(t, payloads, len(cases))
 	for i, c := range cases {
@@ -165,7 +166,7 @@ func TestOpenCodeGuardPlugin_V1Spellings(t *testing.T) {
 		{Event: map[string]any{"tool": "read", "sessionID": "ses", "id": "3",
 			"input": map[string]any{"filePath": guardSkill}}},
 	}
-	h.run(renderGuardPlugin(t, "v1", 0), "v1", autoStub, calls)
+	h.run(renderGuardPlugin(t, "v1", healthyHookTimeout), "v1", autoStub, calls)
 	assert.Equal(t, []string{
 		synthesized(h.root, "apply_patch", []string{"x.txt"}),
 		synthesized(h.root, "multiedit", []string{"pkg/a.go", guardSkill}),
