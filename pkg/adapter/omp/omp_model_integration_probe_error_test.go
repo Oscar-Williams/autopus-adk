@@ -14,6 +14,9 @@ func TestOMPCatalogUnavailableError_KeepsReasonAndAddsNextStep(t *testing.T) {
 	assert.Contains(t, timeout, "model_catalog_unavailable: catalog_timeout")
 	assert.Contains(t, timeout, "omp models --json --no-extensions")
 	assert.Contains(t, timeout, defaultOMPModelProbeTimeout.String())
+	// The probe runs with remote network access closed, so the operator must
+	// not be sent to debug their connectivity.
+	assert.Contains(t, timeout, "closes remote network access")
 
 	assert.Contains(t, ompCatalogUnavailableError("identity_unverified").Error(), "omp --version")
 	assert.Equal(t, "model_catalog_unavailable: catalog_invalid", ompCatalogUnavailableError("catalog_invalid").Error())

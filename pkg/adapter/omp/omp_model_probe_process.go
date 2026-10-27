@@ -16,7 +16,8 @@ import (
 // OMPModelProbeProcess pins one executable identity and runs metadata-only
 // probes with bounded output. The default constructor uses an empty temporary
 // profile; the installed-profile constructor passes only the current user's
-// canonical HOME and PI_CODING_AGENT_DIR locator.
+// canonical HOME and PI_CODING_AGENT_DIR locator. Every run closes remote
+// network access the way the readiness probes do (ompProbeNetworkIsolationEnvironment).
 type OMPModelProbeProcess struct {
 	executable string
 	identity   os.FileInfo
@@ -139,6 +140,17 @@ func (process *OMPModelProbeProcess) run(
 		"XDG_CACHE_HOME=" + filepath.Join(sandbox, "cache"),
 		"LANG=C", "LC_ALL=C",
 	}
+	// omp 18.12.3 `models` refreshes its catalog online before answering
+	// whenever a cached provider row is past its TTL (2h authoritative, 5min
+	// otherwise): catalog.stencil.so, every provider's model list, and an
+	// OAuth preflight per logged-in provider. One stalled remote hop held the
+	// probe for 10s at 0.8s CPU while the warm answer takes 0.4s, so an open
+	// network made the catalog bound measure the operator's connectivity.
+	// With remote access closed the refresh fails at connect time and omp
+	// answers from its cached rows: byte-identical to the online answer while
+	// the cache is fresh, the last refreshed rows otherwise. Loopback stays
+	// open for local providers and the auth broker.
+	command.Env = append(command.Env, ompProbeNetworkIsolationEnvironment()...)
 	if process.profile != "" {
 		command.Env = append(command.Env, "PI_CODING_AGENT_DIR="+process.profile)
 	}

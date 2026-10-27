@@ -47,7 +47,7 @@ func ompCatalogUnavailableError(reason string) error {
 	err := fmt.Errorf("model_catalog_unavailable: %s", reason)
 	switch reason {
 	case "catalog_timeout":
-		return fmt.Errorf("%w (`omp models --json --no-extensions` did not answer within %s; run it once to check OMP, then retry)",
+		return fmt.Errorf("%w (`omp models --json --no-extensions` did not answer within %s although the probe closes remote network access, so omp itself stalled; run it once to check OMP, then retry)",
 			err, defaultOMPModelProbeTimeout)
 	case "identity_unverified":
 		return fmt.Errorf("%w (`omp --version` did not identify the Oh My Pi CLI; check the omp on PATH)", err)
