@@ -254,6 +254,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 
 	resultCh := make(chan ProviderResponse, len(cfg.Providers))
 	var wg sync.WaitGroup
+	var rejections fastestRejections
 
 	for _, p := range cfg.Providers {
 		wg.Add(1)
@@ -263,6 +264,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 			// Reject failures the same way runParallel does: an exit-0 provider
 			// with empty stdout is not a usable "fastest" winner (false green).
 			if err != nil || resp == nil || resp.TimedOut || resp.EmptyOutput {
+				rejections.record(provider, resp, err)
 				return
 			}
 			select {
@@ -281,7 +283,7 @@ func runFastest(ctx context.Context, cfg OrchestraConfig) ([]ProviderResponse, e
 
 	resp, ok := <-resultCh
 	if !ok {
-		return nil, fmt.Errorf("모든 프로바이더가 응답하지 않았습니다")
+		return nil, rejections.err()
 	}
 	return []ProviderResponse{resp}, nil
 }

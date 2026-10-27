@@ -68,7 +68,7 @@ func TestRunOrchestra_SubprocessJudgeResumeArgsFailClosedBeforeDispatch(t *testi
 			marker := filepath.Join(t.TempDir(), "judge-dispatched")
 			script := "#!/bin/sh\n: > " + shellSingleQuote(marker) +
 				"\ncat >/dev/null\nprintf '%s\\n' '{\"recommendation\":\"resumed judge\"}'\n"
-			require.NoError(t, os.WriteFile(judge.Binary, []byte(script), 0o700))
+			writeExecutableFixture(t, judge.Binary, script, 0o700)
 			judge.Args = tt.args
 			cfg := OrchestraConfig{
 				Providers:      []ProviderConfig{echoProvider("debater")},
