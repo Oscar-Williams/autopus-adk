@@ -512,7 +512,7 @@ auto quality
 
 **Claude Code / Codex**: 에이전트별 상대 티어와 그 티어가 해당 도구에서 어떤 구체 모델이 되는지 함께 보여 주고, `agent=tier`(`fable`, `opus`, `sonnet`, `haiku`) 형식으로 수정합니다. 미리보기를 확인하고 `y`를 입력하면 `quality.presets.<name>`으로 저장하고 `quality.providers.<tool>`로 연결합니다. 도구별로 preset이 따로 있으므로 Claude Code의 executor를 `fable`로 올려도 Codex는 그대로입니다. `quality.default`는 바뀌지 않습니다. 사용자가 고친 `balanced`·`ultra` 프리셋은 덮어쓰지 않습니다. 편집기는 그 이름을 거절하고 3번째 거절에서 취소합니다. 생성 파일에 반영하려면 `auto update`(또는 `auto quality --apply`)를 실행하세요.
 
-**OMP**: **balanced/ultra → GPT/Claude**를 고르거나, **custom**으로 기본 에이전트별 설치 모델을 직접 지정합니다. custom도 지정하지 않은 에이전트를 위해 기준 계열을 먼저 고르고, 설치된 카탈로그와 각 모델의 thinking 단계를 보여 주며, 각 질문에 그 에이전트 경로가 요구하는 capability를 함께 표시합니다. 카탈로그가 해당 capability를 선언하지 않은 모델은 그 자리에서 거절하고 가능한 모델을 알려 줍니다. 마지막 역할·모델·추론 강도 표를 확인하고 `y`를 입력하면 적용합니다. 이 줄 편집기는 두 mode 모두 OMP 프로필을 씁니다. 기본 autopus mode의 구성 단계 OMP 탭은 대신 프로필 없이 에이전트별로 pin합니다([에이전트별 모델 구성](#에이전트별-모델-구성)).
+**OMP**: **balanced/ultra → GPT/Claude**를 고르거나, **custom**으로 에이전트별 설치 모델을 직접 지정합니다. 기본 autopus 모드는 Autopus 에이전트 17개를 묻고(`task`는 planner pin을 따릅니다. 기본 에이전트 이름에 건 pin은 예전에 그 에이전트로 모이던 역할 전부에 적용되므로 묻지 않습니다), `agent_source: native`는 기본 에이전트 다섯을 묻습니다. custom도 지정하지 않은 에이전트를 위해 기준 계열을 먼저 고르고, 설치된 카탈로그와 각 모델의 thinking 단계를 보여 주며, 각 질문에 그 에이전트 경로가 요구하는 capability를 함께 표시합니다. 카탈로그가 해당 capability를 선언하지 않은 모델은 그 자리에서 거절하고 가능한 모델을 알려 줍니다. 마지막 역할·모델·추론 강도 표를 확인하고 `y`를 입력하면 적용합니다. 이 줄 편집기는 두 mode 모두 OMP 프로필을 씁니다. 기본 autopus mode의 구성 단계 OMP 탭은 대신 프로필 없이 에이전트별로 pin합니다([에이전트별 모델 구성](#에이전트별-모델-구성)).
 
 확인 단계에서 Enter, `n`, EOF로 취소하면 아무것도 바꾸지 않습니다. `--apply`도 필요 없습니다.
 기존 에이전트별 지정값과 멀티프로바이더 리뷰 설정은 유지합니다.

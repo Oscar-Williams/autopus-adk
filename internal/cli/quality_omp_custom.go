@@ -39,13 +39,19 @@ type ompCustomModelChoice struct {
 
 func (c ompCustomModelChoice) selector() string { return c.Provider + "/" + c.Model }
 
-// readOMPCustomAgentPins asks for one installed model per bundled agent and
-// returns them in `--agent` form, so the selection travels through the same
-// attestation, preview, and rollback path as the flag.
+// readOMPCustomAgentPins asks for one installed model per agent the source
+// serves and returns them in `--agent` form, so the selection travels through
+// the same attestation, preview, and rollback path as the flag. Native asks
+// the bundled agents. Autopus asks the 17 Autopus agents and no bundled name,
+// task included: under the Route Contract's rule (2) a pin on one folds onto
+// every role that collapsed there before v0.50.127 (an agents.task pin reaches
+// fifteen), which is not the per-agent choice the prompt promises; task
+// follows the planner pin instead.
 func readOMPCustomAgentPins(
 	ctx context.Context,
 	cmd *cobra.Command,
 	runner omp.OMPModelCatalogRunner,
+	source string,
 ) ([]string, error) {
 	out := cmd.OutOrStdout()
 	choices, version, err := installedOMPCustomModelChoices(ctx, cmd, runner)
@@ -57,8 +63,12 @@ func readOMPCustomAgentPins(
 	fmt.Fprintf(out, "Pick a model per agent; empty keeps the %s default.\n", ompCustomBaseProfile)
 
 	reader := bufio.NewReader(cmd.InOrStdin())
-	pins := make([]string, 0, len(config.OMPNativeAgentNames()))
-	for _, agent := range config.OMPNativeAgentNames() {
+	agents := config.CanonicalAgentNames()
+	if source == config.OMPAgentSourceNative {
+		agents = config.OMPNativeAgentNames()
+	}
+	pins := make([]string, 0, len(agents))
+	for _, agent := range agents {
 		capability, err := ompCustomAgentCapability(agent)
 		if err != nil {
 			return nil, err

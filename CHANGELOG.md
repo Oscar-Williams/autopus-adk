@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **OMP custom 품질 편집기가 autopus 모드에서 Autopus 에이전트 17개를 묻는다** (2026-10-27): `auto quality`의 OMP
+  custom 줄 편집기는 모드와 상관없이 bundled 이름 다섯(scout·reviewer·security-reviewer·task·sonic)을 물었다. 기본 autopus
+  모드에서 그 이름에 건 pin은 Route Contract 규칙 (2)로 예전에 그 에이전트로 모이던 역할 전부에 적용되어, task를 고르면
+  열다섯 역할이 그 모델을 받고 capability가 맞지 않는 annotator·frontend-specialist·ux-validator·validator는 plan이 막았다.
+  이제 autopus 모드는 Autopus 에이전트 17개를 묻고 task는 planner pin을 따른다. `agent_source: native`는 전처럼 다섯을 묻는다.
 - **프로젝트의 `.npmrc`가 REA MCP 서버를 받을 registry를 바꾸지 못하게 한다** (2026-10-27, SPEC-REA-001 보안 감사 L4):
   Claude Code·Codex·Antigravity에 등록하는 REA 항목은 `npx -y rea-agents@6.5.0 mcp`를 프로젝트 디렉터리에서 실행했다.
   그래서 npx가 그 디렉터리(또는 `package.json`·`node_modules`가 있는 가장 가까운 상위 디렉터리)의 `.npmrc`를 읽었고,
