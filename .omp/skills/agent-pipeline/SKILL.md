@@ -61,19 +61,25 @@ Before dispatch, inspect the tools actually exposed by this runtime. Use their
 current schemas rather than copying static payloads. If the selected topology
 requires an unavailable tool, report that blocker; never simulate dispatch.
 
-OMP registers five agents: `scout`, `reviewer`, `security-reviewer`, `task`,
-and `sonic`. There is no Autopus-specific agent to select, so pick by what the
-work needs:
+OMP serves this project's 17 Autopus agents from `.omp/agents/`:
+`annotator`, `architect`, `debugger`, `deep-worker`, `devops`, `executor`,
+`explorer`, `frontend-specialist`, `perf-engineer`, `planner`,
+`reverse-engineer`, `reviewer`, `security-auditor`, `spec-writer`, `tester`,
+`ux-validator`, and `validator`. Select the agent of the role a worker plays:
 
-- `task` runs planning, implementation, debugging, test authoring, and UX work.
-  It is the default for every writing slice; omitting the agent selects it.
-- `scout` is read-only exploration only. Never give it work that writes.
-- `reviewer` and `security-reviewer` keep their built-in review boundaries; use
-  them for review and security findings, not for implementation.
-- `sonic` is only for an explicit mechanical request. Never route reasoning,
-  planning, validation, or review to it.
+- `planner`, `architect`, and `spec-writer` plan and design; `executor`,
+  `debugger`, `tester`, and the other implementation roles write code.
+- `explorer` is read-only exploration only. Never give it work that writes.
+- `reverse-engineer` only analyses an existing app or binary into a behaviour
+  specification; never give it implementation work.
+- `reviewer`, `validator`, and `security-auditor` review and verify; keep them
+  off implementation.
+- Omitting the agent runs the bundled `task` agent, the default for work no
+  role fits. Every other bundled agent (`scout`, `security-reviewer`, `sonic`,
+  `designer`, `librarian`) is disabled through `task.disabledAgents`; never
+  select them.
 
-The role a worker plays belongs in its assignment text, not in an agent name.
+The agent field names the role; the assignment text still states its scope.
 State the responsibility, scope, and exit condition in the task itself.
 
 Batch independent owned slices together. Native OMP owns isolated worktree

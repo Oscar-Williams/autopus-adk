@@ -24,7 +24,7 @@ var ompAgentSurfaceTextKO = ompAgentSurfaceText{
 		"단독 CR·NEL·LS·PS 줄바꿈) task.disabledAgents를 쓰지 않았습니다. scout, security-reviewer, sonic, designer, librarian, seance가 켜져 있습니다",
 	kept: ".omp/config.yml에 ADK가 고치지 않는 줄바꿈(단독 CR, NEL, LS, PS)이 있어 task.disabledAgents를 " +
 		"마지막으로 쓴 그대로 둡니다. 파일을 다시 읽을 수 있으면 이어서 관리합니다",
-	migration: "OMP는 이제 Autopus 에이전트 17개를 씁니다. v0.50.127 동안 role_model_policy.agent_source: native로 되돌릴 수 있습니다.",
+	migration: "OMP는 이제 Autopus 에이전트 17개를 씁니다. v0.50.128까지 role_model_policy.agent_source: native로 되돌릴 수 있습니다.",
 	restored:  "task.disabledAgents 복원",
 	sonic:     "경고: role_model_policy.agents.sonic에 model을 지정했지만 autopus 모드는 sonic을 끄므로 그 model을 받는 에이전트가 없습니다",
 }
@@ -37,7 +37,7 @@ var ompAgentSurfaceTextEN = ompAgentSurfaceText{
 		"or a lone CR, NEL, LS, or PS line break); scout, security-reviewer, sonic, designer, librarian, and seance stay enabled",
 	kept: "task.disabledAgents is left as last written: .omp/config.yml holds a lone CR, NEL, LS, or PS " +
 		"line break, which ADK does not edit; it is managed again once the file reads cleanly",
-	migration: "OMP now uses the 17 Autopus agents; set role_model_policy.agent_source: native to go back during v0.50.127.",
+	migration: "OMP now uses the 17 Autopus agents; set role_model_policy.agent_source: native to go back through v0.50.128.",
 	restored:  "task.disabledAgents restored",
 	sonic:     "warning: role_model_policy.agents.sonic pins a model, but autopus mode disables sonic, so no agent receives it",
 }
