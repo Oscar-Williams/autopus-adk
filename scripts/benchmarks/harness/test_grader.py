@@ -253,6 +253,15 @@ class SandboxTests(unittest.TestCase):
         self.assertFalse((fresh / 'gocache' / 'planted').exists())
         self.assertFalse((Path(self.prepared['warm_cache']) / 'planted').exists())
 
+    def test_the_sandboxed_go_command_reads_the_telemetry_mode_of_its_grade_root(self):
+        # grader.sb reopens reads below the grade root only, so the mode file must lie there: an unreadable one
+        # reads as the default mode, local, and a detached telemetry child writes on after the run ends.
+        root, result = self.run_probe('g4', 'TestSleep')
+        self.assertEqual(result['signal'], 'accepted')
+        telemetry = root / 'home' / 'Library' / 'Application Support' / 'go' / 'telemetry'
+        self.assertEqual(sorted(path.name for path in telemetry.iterdir()), ['mode'])
+        self.assertEqual((telemetry / 'mode').read_text(), 'off')
+
     def test_output_over_the_limit_is_cut_and_invalid(self):
         _, result = self.run_probe('g3', 'TestFlood')
         self.assertTrue(result['overflow'])

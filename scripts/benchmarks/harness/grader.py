@@ -45,6 +45,22 @@ def allowlist(root: Path, go: Path, modcache: Path, proxy: str = 'off') -> dict:
             'GOFLAGS': '-mod=mod', 'GOPROXY': proxy, 'GOSUMDB': 'off', 'GOTOOLCHAIN': 'local'}
 
 
+def telemetry_off(home: Path) -> None:
+    """Seed Go telemetry mode "off" under a fresh HOME before any go command runs there. Telemetry has no
+    environment switch, only this file; without it the first go command starts a detached telemetry child
+    (in a new session, so no process-group kill reaches it) that can keep writing into HOME after the
+    command exits, racing whoever removes that HOME next (a grade root, a session cleanup, a test's
+    temporary directory). grader.sb and artifact.sb reopen reads below the root that holds the HOME, so a
+    sandboxed go command sees the file; one it could not read would count as the default mode, local. The
+    harness sets no XDG_CONFIG_HOME, so off macOS the file is $HOME/.config/go/telemetry/mode. A HOME no
+    go command runs in (the surface driver run, the artifact run, the oracle harness) gets no mode file."""
+    home = Path(home)
+    config = home / 'Library' / 'Application Support' if sys.platform == 'darwin' else home / '.config'
+    mode = config / 'go' / 'telemetry' / 'mode'
+    mode.parent.mkdir(parents=True, exist_ok=True)
+    mode.write_text('off')
+
+
 def credential_roots() -> tuple:
     """The canonical account home and Codex home whose credential stores grader.sb keeps unreadable.
 

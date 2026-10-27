@@ -69,6 +69,16 @@ class PrepareTests(unittest.TestCase):
         self.assertTrue(any(Path(prepared['warm_cache']).rglob('*-d')))
         self.assertEqual(Path(prepared['go']).name, 'go')
 
+    def test_the_trusted_go_commands_leave_no_telemetry_in_the_warm_home(self):
+        # The first go command in the fresh warm HOME started a detached telemetry child that could still be
+        # writing there after prepare returned, racing the removal of the session or of this test's directory.
+        config = ('Library', 'Application Support') if sys.platform == 'darwin' else ('.config',)
+        (self.source / 'go.sum').write_text(self.go_sum)
+        pg.prepare(self.source, self.base / 'grader', ['./...'], self.proxy)
+        telemetry = (self.base / 'grader' / 'warm' / 'home').joinpath(*config, 'go', 'telemetry')
+        self.assertEqual(sorted(path.name for path in telemetry.iterdir()), ['mode'])
+        self.assertEqual((telemetry / 'mode').read_text(), 'off')
+
     def test_unpinned_or_mismatched_module_hash_refuses_preparation(self):
         zip_line, mod_line = self.go_sum.splitlines()
         tampered = zip_line[:-6] + 'AAAAA=' + '\n' + mod_line + '\n'

@@ -17,6 +17,7 @@ import golden_sandbox as gs
 from golden_agent import agent_argv, agent_env, prompt_text, run_agent
 from golden_protocol import sha256_hex
 from golden_trial import _observe, agent_signal
+from grader import telemetry_off
 from prepare_grader import new_grade, remove_tree
 from run import copy_candidate
 from workspace import apply_mutation, audit, hashes, initialize, install_surface
@@ -28,13 +29,14 @@ STATS = ('exit_code', 'timed_out', 'overflow', 'leftover', 'duration_s')
 
 def new_build_root(root: Path, source: Path, warm_cache: Path) -> Path:
     """A fresh build root: clonefile copies of the snapshot (ws/) and the warm cache (gocache/), scratch/
-    for HOME, TMPDIR and GOPATH, and bin/ for the artifact."""
+    for HOME (Go telemetry off), TMPDIR and GOPATH, and bin/ for the artifact."""
     Path(root).mkdir(parents=True)
     root = Path(root).resolve()
     for origin, name in ((source, 'ws'), (warm_cache, 'gocache')):
         subprocess.run(['cp', '-c', '-R', str(origin), str(root / name)], check=True)
     for name in ('scratch/home', 'scratch/tmp', 'scratch/gopath', 'bin'):
         (root / name).mkdir(parents=True)
+    telemetry_off(root / 'scratch' / 'home')
     return root
 
 

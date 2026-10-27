@@ -19,7 +19,7 @@ import shutil
 import subprocess
 import sys
 
-from grader import HERE, PROFILE, allowlist, grade, toolchain
+from grader import HERE, PROFILE, allowlist, grade, telemetry_off, toolchain
 from workspace import apply_mutation, snapshot
 
 
@@ -107,6 +107,7 @@ def prepare(source: Path, directory: Path, packages: list, proxy: str | None = N
     modcache, warm = directory / 'modcache', directory / 'warm'
     for path in (modcache, warm / 'home', warm / 'tmp', warm / 'gopath', warm / 'gocache'):
         path.mkdir(parents=True)
+    telemetry_off(warm / 'home')
     if proxy is None:
         local = subprocess.check_output([str(go), 'env', 'GOMODCACHE'], text=True).strip()
         proxy = Path(local, 'cache', 'download').as_uri()
@@ -137,13 +138,15 @@ def prepare(source: Path, directory: Path, packages: list, proxy: str | None = N
 
 
 def new_grade(root: Path, source: Path, warm_cache: Path) -> Path:
-    """Create a fresh grade root: clonefile copies (cp -c) of the snapshot and of the warm build cache."""
+    """Create a fresh grade root: clonefile copies (cp -c) of the snapshot and of the warm build cache, and
+    its own HOME (Go telemetry off), TMPDIR and GOPATH."""
     Path(root).mkdir(parents=True)
     root = Path(root).resolve()
     for origin, name in ((source, 'ws'), (warm_cache, 'gocache')):
         subprocess.run(['cp', '-c', '-R', str(origin), str(root / name)], check=True)
     for name in ('home', 'tmp', 'gopath'):
         (root / name).mkdir()
+    telemetry_off(root / 'home')
     return root
 
 

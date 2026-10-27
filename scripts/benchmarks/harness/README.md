@@ -103,6 +103,19 @@ tasks on a maintainer macOS host. None of them calls a model.
   below them. Every rule names its read operations: a rule on a named
   operation outranks a `file-read*` rule whatever their order. This is a scope
   expansion of REQ-HE-08 (T12, widened by the Phase 4 review).
+- Every fresh `HOME` a `go` command runs in starts with the Go telemetry mode
+  file (`Library/Application Support/go/telemetry/mode` on macOS,
+  `.config/go/telemetry/mode` elsewhere) set to `off`: the trusted
+  preparation's warm `HOME`, each grade root's, each black-box build's and the
+  surface driver's download and build `HOME`s (`grader.telemetry_off`).
+  Telemetry has no environment switch (`GOTELEMETRY` in the environment is
+  ignored), and without the file the first `go` command starts a detached
+  telemetry child in a new session that can keep writing into that `HOME`
+  after the command exits, racing the removal of the root. The file lies
+  below the root each profile reopens for reads; a mode file the profile
+  could not read would count as the default, `local`. The surface driver run,
+  the artifact run and the oracle harness start no `go` command, and their
+  `HOME`s get no mode file.
 - Every process of a sandboxed run gets hard rlimits (soft = hard): CPU
   seconds twice the wall timeout, 1 GiB per written file and, on macOS, the
   account's process count at launch plus 512 (`RLIMIT_NPROC` counts every
