@@ -144,6 +144,19 @@ class ProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'protected'):
             gs.check_roots({'SCRATCH': self.base}, self.params)
 
+    def test_build_mode_reads_the_telemetry_mode_of_its_scratch_home(self):
+        # artifact.sb reads only below its roots; the mode file lies in SCRATCH, so the build's go command
+        # writes no telemetry and starts no detached telemetry child.
+        import golden_blackbox_trial as gbt
+        root = gbt.new_build_root(self.base / 'build-telemetry', self.source, Path(self.prepared['warm_cache']))
+        argv = gs.build_argv(self.prepared, root, '.', self.params)
+        run = gs.run_stage(argv, root / 'ws', self.base / 'bt.out', self.base / 'bt.err', 300,
+                           confined=root / 'scratch')
+        self.assertEqual(run['exit_code'], 0, (self.base / 'bt.err').read_text())
+        telemetry = root / 'scratch' / 'home' / 'Library' / 'Application Support' / 'go' / 'telemetry'
+        self.assertEqual(sorted(path.name for path in telemetry.iterdir()), ['mode'])
+        self.assertEqual((telemetry / 'mode').read_text(), 'off')
+
     def judge(self, name: str, setup, path: str = 'result.txt') -> dict:
         work, _, run_root = self.stage_dirs(name)
         out = run_root / 'out'
