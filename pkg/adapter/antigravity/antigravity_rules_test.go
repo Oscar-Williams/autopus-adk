@@ -65,6 +65,11 @@ func TestAntigravityRulesImport(t *testing.T) {
 		"GEMINI.md should have @import for language-policy")
 	assert.Contains(t, content, "@.agents/plugins/autopus/rules/techstack-freshness.md",
 		"GEMINI.md should have @import for techstack-freshness")
+
+	// agy 1.4.2 inlines only `@[label](path)`; a bare `@path` stays a mention.
+	// The bare form keeps these Gemini CLI imports from loading a second copy
+	// of the plugin rules agy already loads by their trigger.
+	assert.NotContains(t, content, "@[", "GEMINI.md must not include plugin rules for agy")
 }
 
 func TestAntigravityRulesContent(t *testing.T) {
