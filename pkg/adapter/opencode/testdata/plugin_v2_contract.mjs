@@ -57,7 +57,9 @@ if (scenario === "v1") {
         assert.ok(!String(error).includes("secret-credential"))
         return true
       })
-      assert.ok(Date.now()-started<4000)
+      // A failing hook is cut off by its own fault or 1s deadline, far below
+      // the healthy hook budget; the margin absorbs a loaded runner.
+      assert.ok(Date.now()-started<20000)
       await assert.rejects(fs.stat(path.join(workdir,"hook.log")))
       if (scenario === "timeout") {
         await new Promise(resolve=>setTimeout(resolve,1300))

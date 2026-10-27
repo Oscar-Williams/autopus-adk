@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,13 +63,39 @@ func TestOrchestraBrainstorm_ProviderWriteFailsRunWithoutRollback(t *testing.T) 
 	assert.Equal(t, report.RunReceipt.Workspace.SnapshotBefore.Entries+1, report.RunReceipt.Workspace.SnapshotAfter.Entries)
 }
 
+// widenBudgetsExcept gives every debater but sleeper, and the judge, a budget
+// nothing asserts, leaving the sleeper on the deadline --timeout resolved for
+// it. The fake providers are shell scripts, and under load their startup
+// alone raced the same 2s deadline the sleeper is meant to miss.
+func widenBudgetsExcept(t *testing.T, cfg *orchestra.OrchestraConfig, sleeper string, budget time.Duration) {
+	t.Helper()
+	for i := range cfg.Providers {
+		if cfg.Providers[i].Name == sleeper {
+			require.Positive(t, cfg.Providers[i].ExecutionTimeout, "the sleeper keeps the deadline resolved from --timeout")
+			require.Less(t, cfg.Providers[i].ExecutionTimeout, budget)
+			continue
+		}
+		cfg.Providers[i].ExecutionTimeout = budget
+	}
+	require.NotNil(t, cfg.JudgeConfig, "the brainstorm judge is resolved before execution")
+	cfg.JudgeConfig.ExecutionTimeout = budget
+}
+
+// The mutation lands from inside the guarded window, after the guard's before
+// snapshot, instead of being written by the sleeper: a sleeper killed by its
+// deadline before it reached its write left a plain quorum error, so under
+// load the test proved nothing about the composition it is for. Who wrote the
+// file is not what the composition asserts; that a provider's own write is
+// detected is TestOrchestraBrainstorm_ProviderWriteFailsRunWithoutRollback.
 func TestOrchestraBrainstorm_MutationOutranksTimeoutButKeepsIt(t *testing.T) {
 	fixture := newBrainstormFixture(t, true)
 	sentinel := filepath.Join(fixture.repo, "sentinel.txt")
-	t.Setenv("AUTOPUS_TEST_SENTINEL", sentinel)
-	t.Setenv("AUTOPUS_TEST_WRITER", "codex")
 	t.Setenv("AUTOPUS_TEST_SLEEPER", "codex")
 	t.Setenv("AUTOPUS_TEST_SLEEP", "30")
+	fixture.beforeExecute = func(cfg *orchestra.OrchestraConfig) {
+		require.NoError(t, os.WriteFile(sentinel, []byte("mutation\n"), 0o644))
+		widenBudgetsExcept(t, cfg, "codex", time.Minute)
+	}
 
 	err := fixture.run(t, 2, OrchestraFlags{})
 

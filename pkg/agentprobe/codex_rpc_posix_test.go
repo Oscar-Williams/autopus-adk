@@ -44,7 +44,11 @@ func TestCodexRPCBoundedSubprocessRoundTrip(t *testing.T) {
 	if err := os.WriteFile(exe, []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	// The fixture is this test binary re-executed through sh, and its startup
+	// is the slow part under load. This deadline only guards against a hang;
+	// the bounds under test are the client's own (its close drains the
+	// subprocess within its WaitDelay regardless of this context).
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	rpc, err := startCodexRPC(ctx, exe, root)
 	if err != nil {

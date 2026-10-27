@@ -15,7 +15,7 @@ func TestRunVerifiedExecSmoke_ExactBodyFreeOutput_Succeeds(t *testing.T) {
 	policy := ompCanaryPolicy{version: pinnedOMPVersion, sha256: "sha256:" + strings.Repeat("a", 64)}
 	err := runVerifiedExecSmoke(verifiedExecSmokeConfig{
 		artifact: testArtifact(t), ompExecutable: "/absolute/omp", policy: policy,
-		timeout: 2 * time.Second, pipeWait: 100 * time.Millisecond,
+		timeout: fixtureBudget, pipeWait: 100 * time.Millisecond,
 		extraEnvironment: []string{
 			"AUTOPUS_EXEC_SMOKE_FIXTURE=verified-exec-output",
 			`AUTOPUS_VERIFIED_EXEC_OUTPUT={"schema_version":"workflow-context-verified-exec-smoke/v1","omp_version":"` + pinnedOMPVersion + `","omp_executable_sha256":"sha256:` + strings.Repeat("a", 64) + `","rpc_ready":true,"provider_calls":0,"uid_isolated":true,"effective_user":"nobody"}`,
@@ -54,7 +54,7 @@ func TestRunVerifiedExecSmoke_OutputLimitAndTimeout_FailClosed(t *testing.T) {
 		timeout time.Duration
 		want    error
 	}{
-		{name: "output limit", mode: "verified-exec-output-limit", timeout: 2 * time.Second, want: errOutputLimit},
+		{name: "output limit", mode: "verified-exec-output-limit", timeout: fixtureBudget, want: errOutputLimit},
 		{name: "timeout", mode: "verified-exec-timeout", timeout: 100 * time.Millisecond, want: errExecutionTimeout},
 	}
 	for _, test := range tests {

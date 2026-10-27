@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -125,7 +126,10 @@ func newGuardHarness(t *testing.T) *guardHarness {
 
 // renderGuardPlugin renders the version's plugin with two shell-tool hooks
 // that log to hook.log and the guard registration pkg/content generates for
-// OpenCode, its timeout replaced when timeout is positive.
+// OpenCode, its timeout replaced when timeout is positive. Runtime tests pass
+// a timeout: healthyHookTimeout where the decision is asserted, a short one
+// where the cut-off is. The generated value itself is pinned by
+// TestOpenCodePluginMapping_CarriesTheVersionGuard.
 func renderGuardPlugin(t *testing.T, version string, timeout int) string {
 	t.Helper()
 	generated, _, err := content.GenerateProjectHookConfigs(config.DefaultFullConfig("guard"), adapterName, true)
@@ -141,9 +145,9 @@ func renderGuardPlugin(t *testing.T, version string, timeout int) string {
 		guards[0].Timeout = timeout
 	}
 	hooks := []adapter.HookConfig{
-		{Event: "PreToolUse", Matcher: "Bash", Command: "printf before >> hook.log", Timeout: 5},
+		{Event: "PreToolUse", Matcher: "Bash", Command: "printf before >> hook.log", Timeout: healthyHookTimeout},
 		guards[0],
-		{Event: "PostToolUse", Matcher: "Bash", Command: "printf after >> hook.log", Timeout: 5},
+		{Event: "PostToolUse", Matcher: "Bash", Command: "printf after >> hook.log", Timeout: healthyHookTimeout},
 	}
 	render := renderHookPluginV2
 	if version == "v1" {
@@ -217,7 +221,9 @@ func (h *guardHarness) run(plugin, version string, auto guardAuto, calls []plugi
 		require.NoError(h.t, err)
 		require.NoError(h.t, os.Symlink(self, filepath.Join(bin, "auto")))
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	// A hang guard only: an overrun kills node (`signal: killed`). The guard
+	// and the shell hooks carry their own budgets, so nothing is timed here.
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, h.node, driver, pluginPath, version, h.root, callsPath)
 	cmd.Env = []string{
@@ -235,6 +241,12 @@ func (h *guardHarness) run(plugin, version string, auto guardAuto, calls []plugi
 	return results
 }
 
+// hungGuardSeconds is how long the stub's sleep mode lives. The hung-guard
+// assertion divides it by two: a guard cut off at its 1s hook timeout
+// returns far sooner on any runner, while one that waited for the stub
+// runs for the whole span.
+const hungGuardSeconds = 30
+
 // writeOpenCodeGuardStub installs an `auto` that records its stdin and argv in
 // $GUARD_STUB and answers as the mode file says: deny0 prints a deny and exits
 // 0, deny2 prints it and exits 2, sleep outlives the hook timeout, text and
@@ -249,7 +261,7 @@ mode=$(cat "$GUARD_STUB_MODE")
 case "$mode" in
   deny0) printf '%s' '{"decision":"deny","reason":"R1"}' ;;
   deny2) printf '%s' '{"decision":"deny","reason":"R1"}'; exit 2 ;;
-  sleep) sleep 5 ;;
+  sleep) sleep ` + strconv.Itoa(hungGuardSeconds) + ` ;;
   text) printf 'deny R1' ;;
   noreason) printf '%s' '{"decision":"deny"}' ;;
 esac
