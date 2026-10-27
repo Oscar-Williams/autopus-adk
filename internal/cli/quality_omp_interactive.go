@@ -55,14 +55,14 @@ func runOMPQualityInteractive(cmd *cobra.Command, root string, cfg *config.Harne
 	family, pins := "", []string(nil)
 	switch {
 	case mode == "custom":
-		// Pins govern the agents the operator names; every other bundled agent
+		// Pins govern the agents the operator names; every other served agent
 		// still resolves through the base profile, and that derivation needs an
 		// anchor family.
 		mode = ompCustomBaseProfile
 		if family, err = readOMPQualityFamily(cmd); err != nil {
 			return err
 		}
-		if pins, err = readOMPCustomAgentPins(cmd.Context(), cmd, runner); err != nil {
+		if pins, err = readOMPCustomAgentPins(cmd.Context(), cmd, runner, cfg.RoleModelPolicy.OMPAgentSource()); err != nil {
 			return err
 		}
 		if len(pins) == 0 {
