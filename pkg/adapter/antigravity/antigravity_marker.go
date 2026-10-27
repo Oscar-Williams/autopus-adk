@@ -60,6 +60,14 @@ func checksum(s string) string {
 }
 
 // geminiMDTemplate is the GEMINI.md AUTOPUS section template.
+//
+// The bare `@path` lines under `## Rules` are imports for Gemini CLI only.
+// agy 1.4.2 inlines nothing but `@[label](path)`; it rewrites a bare `@path`
+// into a path mention and never reads the file, so in agy each plugin rule is
+// loaded by its own `trigger` frontmatter alone. Turning these lines into
+// `@[label](path)` includes would inline every listed rule into each agy
+// session: a second copy of an always_on rule, and an unconditional copy of a
+// glob or model_decision one.
 const geminiMDTemplate = `# Autopus-ADK Harness
 
 > 이 섹션은 Autopus-ADK에 의해 자동 생성됩니다. 수동으로 편집하지 마세요.

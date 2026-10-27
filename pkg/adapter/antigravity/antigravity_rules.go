@@ -13,6 +13,7 @@ import (
 	"github.com/insajin/autopus-adk/pkg/adapter"
 	"github.com/insajin/autopus-adk/pkg/config"
 	"github.com/insajin/autopus-adk/pkg/content"
+	"github.com/insajin/autopus-adk/pkg/rulecond"
 	"github.com/insajin/autopus-adk/templates"
 )
 
@@ -21,9 +22,43 @@ const rulesTemplateDir = "gemini/rules/autopus"
 // fileSizeLimitData is the template data for file-size-limit.md. MaxFileLines
 // carries the project's declared ceiling; zero means no ceiling is declared
 // and the rendered rule says so instead of asserting a universal number.
+// Globs is the canonical rule's `globs` list in the shape agy's `trigger: glob`
+// rule reads.
 type fileSizeLimitData struct {
 	MaxFileLines int
 	Exclusions   []content.FileSizeExclusion
+	Globs        string
+}
+
+// fileSizeLimitGlobs returns the globs of content/rules/file-size-limit.md, the
+// list claude-code loads that rule by, in agy's `globs` shape.
+func fileSizeLimitGlobs() (string, error) {
+	const source = "file-size-limit.md"
+	raw, err := fs.ReadFile(contentfs.FS, "rules/"+source)
+	if err != nil {
+		return "", err
+	}
+	rule, err := rulecond.ParseRule(source, raw)
+	if err != nil {
+		return "", err
+	}
+	return agyGlobs(rule.Globs)
+}
+
+// agyGlobs joins globs into one comma-separated string. agy 1.4.2 skips a rule
+// whose `globs` is a YAML list and splits the string on commas, so a glob that
+// itself holds a comma, such as a brace set, cannot be carried, and a glob
+// rule with no globs never applies.
+func agyGlobs(globs []string) (string, error) {
+	if len(globs) == 0 {
+		return "", fmt.Errorf("glob rule에 globs가 없음")
+	}
+	for _, glob := range globs {
+		if strings.Contains(glob, ",") {
+			return "", fmt.Errorf("glob %q에 쉼표가 있어 agy globs로 옮길 수 없음", glob)
+		}
+	}
+	return strings.Join(globs, ","), nil
 }
 
 // renderRuleTemplates reads Antigravity rule templates from embedded FS,
@@ -70,12 +105,18 @@ func (a *Adapter) prepareRuleMappings(cfg *config.HarnessConfig) ([]adapter.File
 			return nil, fmt.Errorf("gemini rule 템플릿 읽기 실패 %s: %w", name, err)
 		}
 
-		// file-size-limit renders the declared ceiling plus stack exclusions.
+		// file-size-limit renders the declared ceiling, stack exclusions, and
+		// the source globs its agy glob trigger matches.
 		var rendered string
 		if outFile == "file-size-limit.md" {
+			globs, globsErr := fileSizeLimitGlobs()
+			if globsErr != nil {
+				return nil, fmt.Errorf("gemini rule globs 읽기 실패 %s: %w", name, globsErr)
+			}
 			data := fileSizeLimitData{
 				MaxFileLines: cfg.Architecture.MaxFileLines,
 				Exclusions:   content.FileSizeExclusions(cfg.Stack, cfg.Framework),
+				Globs:        globs,
 			}
 			rendered, err = a.engine.RenderString(string(tmplContent), data)
 		} else {

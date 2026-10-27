@@ -25,6 +25,22 @@ All notable changes to this project will be documented in this file.
   readiness 조회와 같은 방식으로 원격 네트워크를 닫고(루프백은 열어 둔다) omp가 캐시한 행으로 답하게 한다. 캐시가 신선할 때
   결과 바이트는 온라인 답과 같고, 오래됐을 때는 마지막으로 받은 행을 쓴다. 20초 상한은 그대로이며 이제 omp 자체가 멈춘
   경우에만 닿고, 오류 문구도 그렇게 말한다.
+- **Antigravity 플러그인 rule이 Claude Code와 같은 조건으로 실린다** (2026-10-27, SPEC-REA-001 후속): agy 1.4.2는
+  `trigger` frontmatter가 없는 rule을 적용하지 않는다(`agy plugin validate`: `no valid trigger in the frontmatter, so the
+  rule never applies`). 그래서 `.agents/plugins/autopus/rules/`의 rule 15개 중 REA 가드 하나만 적용되었다. `GEMINI.md`의
+  `@.agents/plugins/autopus/rules/...` 다섯 줄도 agy에서는 경로 언급일 뿐 rule 본문을 싣지 않는다(agy가 파일을 읽어 펼치는
+  것은 `@[label](path)`뿐이다). 이제 rule마다 trigger를 단다.
+  - Claude Code가 세션 시작에 싣는 6개(branding, deferred-tools, language-policy, objective-reasoning, project-identity,
+    subagent-delegation)는 `always_on`이다.
+  - file-size-limit은 `trigger: glob`이고, Claude Code의 `paths:`와 같은 소스 glob을 쉼표로 이은 `globs` 문자열을 단다.
+    그 파일을 열거나 고칠 때만 실린다.
+  - Claude Code가 명령 hook이나 skill 참조로만 싣는 7개(lore-commit, shell-portability, worktree-safety, context7-docs,
+    doc-storage, spec-quality, techstack-freshness)는 `model_decision`이다. agy는 이름과 설명만 보이고 본문은 model이
+    고를 때 싣는다. 그래서 이 설명은 `Apply before …`·`Apply when …`으로 언제 쓰는 rule인지부터 말한다.
+  - 새 `auto init` 프로젝트에서 agy가 늘 싣는 양은 `GEMINI.md` 1.9KB와 REA 가드 1.3KB에서, `GEMINI.md`와 always_on
+    rule 7개 10.7KB, model_decision 설명 7줄 약 1KB로 바뀐다. agy의 rule 예산(always-on과 global rule을 합쳐 20,000
+    token) 안이다. `agy plugin validate`의 rule 오류 14개가 사라진다.
+  - Gemini CLI는 전처럼 `GEMINI.md`의 `@` 다섯 줄로 rule을 import한다. 기존 프로젝트는 `auto update`로 반영된다.
 - **worker: 아무것도 실행하지 않던 스케줄 폴링을 지운다** (2026-10-25): workspace ID가 있는 worker는 시작할 때와
   그 뒤 60초마다 `GET /api/v1/workspaces/{id}/schedules`를 불렀다. 그런데 cron이 맞아도 `schedule triggered` 로그만
   남기고 태스크는 실행하지 않았다(`pkg/worker/scheduler`). 호출마다 서버는 워크스페이스 멤버십 확인과 스케줄 목록
